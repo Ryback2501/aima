@@ -3,7 +3,7 @@
 
 export const STRINGS = {
   en: {
-    signIn: 'Sign in with Google',
+    signIn: 'Login with Google',
     checking: 'Checking your access…',
     noAccess: "You don't have access to this document. Ask its owner to share it with you.",
     signInFailed: 'Sign-in did not finish. Please try again.',

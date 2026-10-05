@@ -14,9 +14,6 @@
   --text: #1c2321;
   --text-soft: #5b6662;
   --accent: #0f766e;
-  --google-background: #ffffff;
-  --google-border: #747775;
-  --google-text: #1f1f1f;
   --label-from: #14b8a6;
   --label-to: #ec4899;
   --label-background: #ffffff;
@@ -30,9 +27,6 @@
     --text: #e8eeeb;
     --text-soft: #a3aea9;
     --accent: #5eead4;
-    --google-background: #131314;
-    --google-border: #8e918f;
-    --google-text: #e3e3e3;
     --label-background: #1b2220;
     --label-shadow: rgba(0, 0, 0, 0.6);
   }
@@ -106,33 +100,6 @@ main {
   color: var(--accent);
 }
 
-/* The sign-in button follows Google's design rules for "Sign in with Google". */
-.google-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 0 16px 0 12px;
-  border: 1px solid var(--google-border);
-  border-radius: 22px;
-  background: var(--google-background);
-  color: var(--google-text);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.google-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.google-mark {
-  width: 20px;
-  height: 20px;
-}
-
 .message {
   max-width: 32ch;
   margin: 0;
@@ -144,10 +111,14 @@ main {
   justify-content: space-between;
 }
 
-/* The card around the text. The colored border is a gradient behind a solid inner fill. */
+/* A card, like the cards in the iisu app. The colored border is a gradient behind a solid
+   inner fill. Other elements can change the colors, sizes and badge through the variables. */
 .label {
   --border: 3px;
   --radius: 24px;
+  --badge-size: 48px;
+  --badge-icon: 26px;
+  --label-border: linear-gradient(to bottom right, var(--label-from) 10%, var(--label-to));
   position: relative;
   width: min(100%, 34rem);
   margin: auto 0;
@@ -156,28 +127,51 @@ main {
   border-radius: var(--radius);
   background:
     linear-gradient(var(--label-background), var(--label-background)) padding-box,
-    linear-gradient(to bottom right, var(--label-from) 10%, var(--label-to)) border-box;
+    var(--label-border) border-box;
   /* The shadow falls to the bottom-right. */
   box-shadow: 10px 12px 24px var(--label-shadow);
 }
 
-/* The star badge covers the top-left corner of the border, so it looks like part of it. */
+/* The badge covers the top-left corner of the border, so it looks like part of it. */
 .label-badge {
   position: absolute;
   top: calc(-1 * var(--border));
   left: calc(-1 * var(--border));
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius) 0 18px 0;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  border-radius: var(--radius) 0 calc(var(--badge-size) * 0.375) 0;
   background: var(--label-from);
 }
 
 .label-badge svg {
-  width: 26px;
-  height: 26px;
+  width: var(--badge-icon);
+  height: var(--badge-icon);
   fill: #ffffff;
+}
+
+/* The sign-in button: the same card, smaller, in Google's colors, with the "G" in the badge. */
+.google-button {
+  --label-from: #4285f4;
+  --label-border: linear-gradient(to bottom right, #4285f4 10%, #ea4335, #fbbc05, #34a853);
+  --radius: 20px;
+  --badge-size: 40px;
+  --badge-icon: 22px;
+  width: min(100%, 20rem);
+  min-height: 64px;
+  margin: 0;
+  /* The same room on both sides keeps the text in the middle, clear of the badge. */
+  padding: 12px 52px;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+
+.google-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .briefing {

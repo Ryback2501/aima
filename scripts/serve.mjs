@@ -16,7 +16,7 @@ const TYPES = {
 };
 
 const folder = resolve(process.argv[2] ?? 'dist');
-const port = Number(process.argv[3] ?? 8080);
+const port = Number(process.argv[3] ?? 8082);
 
 createServer(async (request, response) => {
   try {

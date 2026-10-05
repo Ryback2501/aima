@@ -60,7 +60,17 @@
 
       <!-- Main screen: the text from the sheet, in the middle of the screen. -->
       <section id="briefing" class="screen" hidden>
-        <p id="briefing-text" class="briefing"></p>
+        <!-- A card with a colored border and a star badge in its top-left corner. -->
+        <div class="label">
+          <span class="label-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z"
+              />
+            </svg>
+          </span>
+          <p id="briefing-text" class="briefing"></p>
+        </div>
         <footer class="account">
           <span id="signed-in-as"></span>
           <button id="sign-out" class="link-button" type="button" data-i18n="signOut">

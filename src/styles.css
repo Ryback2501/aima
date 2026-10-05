@@ -7,6 +7,10 @@
   --google-background: #ffffff;
   --google-border: #747775;
   --google-text: #1f1f1f;
+  --label-from: #14b8a6;
+  --label-to: #ec4899;
+  --label-background: #ffffff;
+  --label-shadow: rgba(28, 35, 33, 0.25);
   color-scheme: light dark;
 }
 
@@ -19,6 +23,8 @@
     --google-background: #131314;
     --google-border: #8e918f;
     --google-text: #e3e3e3;
+    --label-background: #1b2220;
+    --label-shadow: rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -127,13 +133,45 @@ main {
   justify-content: space-between;
 }
 
+/* The card around the text. The colored border is a gradient behind a solid inner fill. */
+.label {
+  --border: 3px;
+  --radius: 24px;
+  position: relative;
+  width: min(100%, 34rem);
+  margin: auto 0;
+  padding: 56px 24px 40px;
+  border: var(--border) solid transparent;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(var(--label-background), var(--label-background)) padding-box,
+    linear-gradient(to bottom right, var(--label-from) 10%, var(--label-to)) border-box;
+  /* The shadow falls to the bottom-right. */
+  box-shadow: 10px 12px 24px var(--label-shadow);
+}
+
+/* The star badge covers the top-left corner of the border, so it looks like part of it. */
+.label-badge {
+  position: absolute;
+  top: calc(-1 * var(--border));
+  left: calc(-1 * var(--border));
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius) 0 18px 0;
+  background: var(--label-from);
+}
+
+.label-badge svg {
+  width: 26px;
+  height: 26px;
+  fill: #ffffff;
+}
+
 .briefing {
-  flex: 1;
-  display: flex;
-  align-items: center;
   margin: 0;
-  max-width: 24ch;
-  font-size: clamp(1.75rem, 7vw, 3.5rem);
+  font-size: clamp(1.5rem, 6vw, 2.75rem);
   font-weight: 600;
   line-height: 1.25;
   /* Keep the line breaks from the cell and break very long words. */

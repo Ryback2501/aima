@@ -5,7 +5,7 @@
 
 export const config = {
   // The "Client ID" from Google Cloud (it ends in .apps.googleusercontent.com).
-  googleClientId: '1031516526294-pg8bt7nhkgg1b8v3391qsovasn8rkv95.apps.googleusercontent.com',
+  googleClientId: '1031516526294-ti9605k0osnr9inr06fav204q3s94gpb.apps.googleusercontent.com',
 
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
   spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',

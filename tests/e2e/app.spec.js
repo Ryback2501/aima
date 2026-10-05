@@ -46,6 +46,42 @@ test.describe('sign-in', () => {
     expect(log.requests[0].scope).toContain('spreadsheets.readonly');
   });
 
+  test('the text sits in a rounded label with a star badge', async ({ page }) => {
+    await setUp(page, { cell: 'Buy milk' });
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    const label = page.locator('.label');
+    const badge = label.locator('.label-badge');
+    await expect(label.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(badge).toBeVisible();
+
+    // The badge sits in the label's top-left corner, on top of the border.
+    const labelBox = await label.boundingBox();
+    const badgeBox = await badge.boundingBox();
+    expect(Math.abs(badgeBox.x - labelBox.x)).toBeLessThan(1);
+    expect(Math.abs(badgeBox.y - labelBox.y)).toBeLessThan(1);
+
+    // A rectangle, wider than it is tall.
+    expect(labelBox.width).toBeGreaterThan(labelBox.height);
+
+    const style = await label.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return {
+        radius: parseFloat(css.borderTopLeftRadius),
+        background: css.backgroundImage,
+        shadow: css.boxShadow,
+      };
+    });
+    expect(style.radius).toBeGreaterThan(0);
+    expect(style.background).toContain('linear-gradient');
+    // The shadow falls to the bottom-right: both offsets are positive.
+    const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+  });
+
   test('the cell is shown as plain text, never as page code', async ({ page }) => {
     await setUp(page, { cell: '<img src=x onerror="window.hacked=1">Hello' });
     await page.goto('./');

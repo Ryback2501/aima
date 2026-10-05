@@ -19,48 +19,58 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     getToken: () => session.getToken(),
   });
 
-  // Loads Google sign-in once. Returns null when it cannot load.
+  // Loads Google sign-in once. If it fails, the next call tries again.
   function getAuth() {
     authReady ??= loadAuth().then(
       (loaded) => (auth = loaded),
       (error) => {
-        authReady = null; // Allow a new try later.
+        authReady = null;
         throw error;
       },
     );
     return authReady;
   }
 
+  // Returns Google sign-in, waiting for it to load if needed, or null when it cannot load.
+  async function loadedAuth() {
+    return auth ?? (await getAuth().catch(() => null));
+  }
+
   // Asks the sheet for the briefing. Google answers only if this person may open the sheet.
-  async function check(token) {
+  // "fresh" means the person just signed in, so we ask Google which account they chose.
+  async function check(token, { fresh = false } = {}) {
     view.render({ screen: 'checking' });
     try {
       const text = await sheets.getCell(config.briefingCell);
-      let email = session.getHint();
+      let email = fresh ? null : session.getHint();
       if (!email) {
-        const loaded = auth ?? (await getAuth().catch(() => null));
-        email = (await loaded?.getEmail(token)) ?? null;
+        email = (await (await loadedAuth())?.getEmail(token)) ?? null;
         if (email) session.saveHint(email);
       }
       view.render({ screen: 'briefing', text: text || t('empty'), email });
     } catch (error) {
       if (error instanceof NoAccessError) {
         // This person cannot open the sheet, so we sign them out completely.
-        const loaded = auth ?? (await getAuth().catch(() => null));
-        await loaded?.signOut(token);
+        await (await loadedAuth())?.signOut(token);
         session.clear();
         view.render({ screen: 'login', message: 'noAccess' });
       } else if (error instanceof SignInExpiredError) {
         session.clearToken();
         view.render({ screen: 'login', message: 'expired' });
       } else {
-        session.clearToken();
+        // No internet or a problem at Google. The sign-in is still good, so we keep it:
+        // the next tap on the button tries again without a new Google window.
         view.render({ screen: 'login', message: 'error' });
       }
     }
   }
 
-  async function signIn() {
+  async function runSignIn() {
+    const saved = session.getToken();
+    if (saved) {
+      await check(saved);
+      return;
+    }
     let pending;
     try {
       // The Google window must open in the same moment as the tap, so we do not wait for
@@ -68,7 +78,7 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
       pending = (auth ?? (await getAuth())).signIn({ hint: session.getHint() });
       const result = await pending;
       session.saveToken(result);
-      await check(result.token);
+      await check(result.token, { fresh: true });
     } catch (error) {
       if (error instanceof PermissionMissingError) {
         view.render({ screen: 'login', message: 'permissionMissing' });
@@ -80,11 +90,24 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     }
   }
 
+  // A quick double tap must not open two Google windows, so we ignore taps while one runs.
+  let signingIn = false;
+  async function signIn() {
+    if (signingIn) return;
+    signingIn = true;
+    try {
+      await runSignIn();
+    } finally {
+      signingIn = false;
+    }
+  }
+
   async function signOut() {
     const token = session.getToken();
     session.clear();
-    await auth?.signOut(token);
     view.render({ screen: 'login', message: 'signedOut' });
+    // Cancel the token at Google too, even if Google sign-in is still loading.
+    if (token) await (await loadedAuth())?.signOut(token);
   }
 
   async function start() {

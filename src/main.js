@@ -6,7 +6,7 @@ import { createView } from './view.js';
 import { createSession } from './session.js';
 import { createSheetsClient } from './sheets.js';
 import { createAuth, loadGoogleIdentity } from './auth.js';
-import { createTranslator, pickLanguage } from './i18n.js';
+import { browserLanguages, createTranslator, pickLanguage } from './i18n.js';
 import { blockZoom } from './no-zoom.js';
 
 // Some browsers throw an error just for looking at storage (for example with cookies blocked).
@@ -25,7 +25,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-const language = pickLanguage(navigator.languages ?? [navigator.language]);
+const language = pickLanguage(browserLanguages(navigator));
 document.documentElement.lang = language;
 const t = createTranslator(language);
 

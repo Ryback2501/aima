@@ -28,6 +28,8 @@ function setup({
   email = 'ana@example.com',
   authFails = false,
   appConfig = config,
+  storage = memoryStorage,
+  loadAuth,
 } = {}) {
   const screens = [];
   const handlers = {};
@@ -37,8 +39,8 @@ function setup({
     onSignOut: (handler) => (handlers.signOut = handler),
   };
   const session = createSession({
-    sessionStorage: memoryStorage(),
-    localStorage: memoryStorage(),
+    sessionStorage: storage(),
+    localStorage: storage(),
   });
   const log = { signIns: [], revoked: [], cells: [], tokens: [] };
   const auth = {
@@ -47,17 +49,19 @@ function setup({
       return signIn(options);
     },
     signOut: async (token) => log.revoked.push(token),
-    getEmail: async () => email,
+    getEmail: async () => (typeof email === 'function' ? email() : email),
   };
   const app = createApp({
     config: appConfig,
     view,
     session,
     t: (key, values) => (values ? `${key}:${JSON.stringify(values)}` : key),
-    loadAuth: async () => {
-      if (authFails) throw new SignInFailedError('script_not_loaded');
-      return auth;
-    },
+    loadAuth: loadAuth
+      ? () => loadAuth(auth)
+      : async () => {
+          if (authFails) throw new SignInFailedError('script_not_loaded');
+          return auth;
+        },
     createSheets: ({ spreadsheetId, getToken }) => ({
       getCell: async (range) => {
         log.cells.push({ spreadsheetId, range });
@@ -250,4 +254,85 @@ test('signing out cancels the token, forgets the person and shows the login page
   assert.equal(session.getToken(), null);
   assert.equal(session.getHint(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'signedOut' });
+});
+
+// Storage that always fails, like in a browser that blocks it.
+const brokenStorage = () => ({
+  getItem() {
+    throw new Error('blocked');
+  },
+  setItem() {
+    throw new Error('blocked');
+  },
+  removeItem() {
+    throw new Error('blocked');
+  },
+});
+
+test('sign-in still works when the browser blocks storage', async () => {
+  const { app, handlers, log, last } = setup({ storage: brokenStorage });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.tokens, ['tok']);
+  assert.equal(last().screen, 'briefing');
+});
+
+test('after sign-in the app shows the account the person really chose', async () => {
+  // Google suggested Ana's account, but the person chose Bob's account.
+  const { app, handlers, session, last } = setup({ email: 'bob@example.com' });
+  session.saveHint('ana@example.com');
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().email, 'bob@example.com');
+  assert.equal(session.getHint(), 'bob@example.com');
+});
+
+test('signing out cancels the token even while Google sign-in is still loading', async () => {
+  let finishLoading;
+  const { app, handlers, session, log, last } = setup({
+    loadAuth: (auth) => new Promise((resolve) => (finishLoading = () => resolve(auth))),
+  });
+  session.saveToken({ token: 'old-tok', expiresAt: Date.now() + 3_600_000 });
+  session.saveHint('ana@example.com');
+  await app.start();
+
+  const signingOut = handlers.signOut();
+  finishLoading();
+  await signingOut;
+
+  assert.deepEqual(log.revoked, ['old-tok']);
+  assert.deepEqual(last(), { screen: 'login', message: 'signedOut' });
+});
+
+test('after a network problem, the next tap tries again with the same sign-in', async () => {
+  let fails = true;
+  const { app, handlers, log, last } = setup({
+    cell: async () => {
+      if (fails) throw new SheetsError('offline');
+      return 'Buy milk';
+    },
+  });
+  await app.start();
+  await handlers.signIn();
+  assert.deepEqual(last(), { screen: 'login', message: 'error' });
+
+  fails = false;
+  await handlers.signIn();
+
+  assert.equal(log.signIns.length, 1);
+  assert.deepEqual(log.tokens, ['tok', 'tok']);
+  assert.equal(last().screen, 'briefing');
+});
+
+test('a quick double tap opens only one Google sign-in window', async () => {
+  const { app, handlers, log } = setup();
+  await app.start();
+
+  await Promise.all([handlers.signIn(), handlers.signIn()]);
+
+  assert.equal(log.signIns.length, 1);
 });

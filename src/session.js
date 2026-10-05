@@ -41,30 +41,34 @@ function safe(storage) {
 export function createSession({ sessionStorage, localStorage, now = Date.now }) {
   const short = safe(sessionStorage);
   const long = safe(localStorage);
+  // We also keep the token in memory, so sign-in works even when the browser blocks storage.
+  let current = null;
+
+  const isValid = (saved) =>
+    Boolean(saved) && typeof saved.token === 'string' && saved.expiresAt - SAFETY_MARGIN_MS > now();
+
+  function readSaved() {
+    try {
+      return JSON.parse(short.get(TOKEN_KEY));
+    } catch {
+      return null; // Damaged data: act as if there is no token.
+    }
+  }
 
   return {
     saveToken({ token, expiresAt }) {
-      short.set(TOKEN_KEY, JSON.stringify({ token, expiresAt }));
+      current = { token, expiresAt };
+      short.set(TOKEN_KEY, JSON.stringify(current));
     },
 
     // Returns the token, or null when there is none or it is about to expire.
     getToken() {
-      try {
-        const saved = JSON.parse(short.get(TOKEN_KEY));
-        if (
-          saved &&
-          typeof saved.token === 'string' &&
-          saved.expiresAt - SAFETY_MARGIN_MS > now()
-        ) {
-          return saved.token;
-        }
-      } catch {
-        // Damaged data: act as if there is no token.
-      }
-      return null;
+      const saved = current ?? readSaved();
+      return isValid(saved) ? saved.token : null;
     },
 
     clearToken() {
+      current = null;
       short.remove(TOKEN_KEY);
     },
 
@@ -78,6 +82,7 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
 
     // Forgets everything, for example when the person signs out.
     clear() {
+      current = null;
       short.remove(TOKEN_KEY);
       long.remove(HINT_KEY);
     },

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickLanguage, createTranslator, STRINGS } from '../../src/i18n.js';
+import { pickLanguage, browserLanguages, createTranslator, STRINGS } from '../../src/i18n.js';
 
 test('the phone language is used when the app has it', () => {
   assert.equal(pickLanguage(['es-MX', 'en-US']), 'es');
@@ -52,4 +52,14 @@ test('t fills in values like the email address', () => {
 
 test('t shows the key itself when a message does not exist, so it is easy to spot', () => {
   assert.equal(createTranslator('en')('noSuchMessage'), 'noSuchMessage');
+});
+
+test('the phone languages come from the browser list, or from the main language when the list is empty', () => {
+  assert.deepEqual(browserLanguages({ languages: ['ru-RU', 'en'], language: 'ru-RU' }), [
+    'ru-RU',
+    'en',
+  ]);
+  assert.deepEqual(browserLanguages({ languages: [], language: 'es-ES' }), ['es-ES']);
+  assert.deepEqual(browserLanguages({ language: 'es-ES' }), ['es-ES']);
+  assert.deepEqual(browserLanguages({}), []);
 });

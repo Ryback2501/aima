@@ -63,6 +63,13 @@ export function pickLanguage(preferred = []) {
   return FALLBACK;
 }
 
+// Returns the phone's languages in order of preference. Some browsers give an empty list,
+// so then we use the phone's main language.
+export function browserLanguages(navigator) {
+  if (navigator.languages?.length) return [...navigator.languages];
+  return navigator.language ? [navigator.language] : [];
+}
+
 // Returns a function that gives the text for a message key, for example t("signOut").
 // Values like {email} are filled in from the second argument.
 export function createTranslator(language) {

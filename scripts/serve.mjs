@@ -19,11 +19,13 @@ const folder = resolve(process.argv[2] ?? 'dist');
 const port = Number(process.argv[3] ?? 8080);
 
 createServer(async (request, response) => {
-  const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  // normalize() removes "../" so nobody can read files outside the folder.
-  let file = join(folder, normalize(path));
-  if (path.endsWith('/')) file = join(file, 'index.html');
   try {
+    // A broken address (for example a bad "%" code) makes decodeURIComponent fail. The
+    // try/catch below answers "Not found" instead of stopping the server.
+    const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+    // normalize() removes "../" so nobody can read files outside the folder.
+    let file = join(folder, normalize(path));
+    if (path.endsWith('/')) file = join(file, 'index.html');
     const body = await readFile(file);
     response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
     response.end(body);

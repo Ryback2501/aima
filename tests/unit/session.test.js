@@ -121,3 +121,25 @@ test('damaged token data in storage is ignored', () => {
 
   assert.equal(session.getToken(), null);
 });
+
+test('the token works during the visit even when the browser blocks storage', () => {
+  const session = createSession({ sessionStorage: brokenStorage, localStorage: brokenStorage });
+
+  session.saveToken({ token: 'abc', expiresAt: Date.now() + 3_600_000 });
+
+  assert.equal(session.getToken(), 'abc');
+});
+
+test('a token kept only in memory also expires', () => {
+  let time = 0;
+  const session = createSession({
+    sessionStorage: undefined,
+    localStorage: undefined,
+    now: () => time,
+  });
+  session.saveToken({ token: 'abc', expiresAt: 3_600_000 });
+
+  time = 3_600_000;
+
+  assert.equal(session.getToken(), null);
+});

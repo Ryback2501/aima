@@ -50,13 +50,13 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return response.json();
   }
 
-  // Returns the rows of a range, for example "Briefing!A1:C5". Empty cells at the end are left out.
+  // Returns the rows of a range, for example "Sheet1!A1:C5". Empty cells at the end are left out.
   async function getValues(range) {
     const data = await request(`/values/${encodeURIComponent(range)}`);
     return data.values ?? [];
   }
 
-  // Returns the text of one cell, for example "Briefing!B3", or '' when the cell is empty.
+  // Returns the text of one cell, for example "Sheet1!A1", or '' when the cell is empty.
   async function getCell(range) {
     const rows = await getValues(range);
     return rows[0]?.[0] ?? '';

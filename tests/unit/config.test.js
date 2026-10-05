@@ -19,8 +19,8 @@ test('example values or empty values do not count as set up', () => {
   assert.equal(isConfigured({}), false);
 });
 
-test('the app reads cell B3 of the Briefing sheet', () => {
-  assert.equal(config.briefingCell, 'Briefing!B3');
+test('the config names one cell to show after sign-in', () => {
+  assert.match(config.briefingCell, /^.+![A-Z]+[0-9]+$/);
 });
 
 test('the permission to read sheets is required and asked for', () => {

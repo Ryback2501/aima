@@ -8,7 +8,7 @@ aima is a small web app. It shows information from a Google Sheet on your phone.
 - The Google Sheet decides who can see the data. If the sheet is shared with you (as a viewer or
   an editor), you see the data. If it is not shared with you, the app signs you out and tells you
   why.
-- After you sign in, the app shows the text of cell **B3** of the **Briefing** sheet.
+- After you sign in, the app shows a short text from the sheet.
 - The app speaks English, Spanish and Russian. It uses your phone's language. If it does not have
   your language, it uses English.
 - You can add it to your phone's home screen. It then opens like a normal app, without the
@@ -96,7 +96,7 @@ The app has no extra libraries at run time. The files in `src/` are the files pe
 
 | File                   | What it does                                                    |
 | ---------------------- | --------------------------------------------------------------- |
-| `src/index.html`       | The page: login screen, "checking" screen and briefing screen.  |
+| `src/index.html`       | The page: login screen, "checking" screen and main screen.      |
 | `src/main.js`          | Starts the app in the browser.                                  |
 | `src/app.js`           | Decides which screen to show and what each button does.        |
 | `src/view.js`          | Shows the screens on the page.                                  |

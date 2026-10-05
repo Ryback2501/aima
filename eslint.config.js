@@ -20,6 +20,8 @@ const browserGlobals = Object.fromEntries(
     'Headers',
     'Event',
     'HTMLElement',
+    'getComputedStyle',
+    'caches',
   ].map((name) => [name, 'readonly']),
 );
 

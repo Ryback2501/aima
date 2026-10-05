@@ -1,0 +1,162 @@
+/* Colors for light mode. Dark mode changes them below. */
+:root {
+  --background: #f6f7f6;
+  --text: #1c2321;
+  --text-soft: #5b6662;
+  --accent: #0f766e;
+  --google-background: #ffffff;
+  --google-border: #747775;
+  --google-text: #1f1f1f;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111614;
+    --text: #e8eeeb;
+    --text-soft: #a3aea9;
+    --accent: #5eead4;
+    --google-background: #131314;
+    --google-border: #8e918f;
+    --google-text: #e3e3e3;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  /* Stops double-tap zoom on phones. */
+  touch-action: manipulation;
+  /* Stops the page from bouncing or reloading when pulled down in the installed app. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+main {
+  min-height: 100%;
+  display: grid;
+  /* Keep content away from the phone's notch and rounded corners. */
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.logo {
+  width: 128px;
+  height: 128px;
+}
+
+.logo-small {
+  width: 72px;
+  height: 72px;
+}
+
+.app-name {
+  margin: 0 0 12px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+/* The sign-in button follows Google's design rules for "Sign in with Google". */
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px 0 12px;
+  border: 1px solid var(--google-border);
+  border-radius: 22px;
+  background: var(--google-background);
+  color: var(--google-text);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.google-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.google-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.message {
+  max-width: 32ch;
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+#briefing {
+  justify-content: space-between;
+}
+
+.briefing {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  max-width: 24ch;
+  font-size: clamp(1.75rem, 7vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+  /* Keep the line breaks from the cell and break very long words. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  color: var(--text-soft);
+  font-size: 0.875rem;
+}
+
+.link-button {
+  padding: 8px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

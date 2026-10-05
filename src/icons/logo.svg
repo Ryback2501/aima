@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="aima">
+  <rect id="background" width="512" height="512" rx="112" fill="#0f766e"/>
+  <g fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="136,236 256,136 376,236"/>
+    <circle cx="246" cy="318" r="58"/>
+    <line x1="304" y1="262" x2="304" y2="376"/>
+  </g>
+</svg>

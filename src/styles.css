@@ -52,6 +52,8 @@ body {
     'Segoe UI',
     Roboto,
     sans-serif;
+  /* Sol is always heavy. Bold makes the system font (used for Russian letters) look close to it. */
+  font-weight: 700;
   /* Stops double-tap zoom on phones. */
   touch-action: manipulation;
   /* Stops the page from bouncing or reloading when pulled down in the installed app. */

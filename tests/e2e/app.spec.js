@@ -66,10 +66,13 @@ test.describe('login page', () => {
           (face) => face.family.replace(/["']/g, '') === 'Sol' && face.status === 'loaded',
         ),
         body: getComputedStyle(document.body).fontFamily,
+        weight: getComputedStyle(document.body).fontWeight,
       };
     });
     expect(font.loaded).toBe(true);
     expect(font.body).toMatch(/^["']?Sol["']?,/);
+    // Bold, so letters Sol does not have (like Russian ones) look heavy too.
+    expect(font.weight).toBe('700');
   });
 
   test('says the app is not set up while the example IDs are in the config', async ({ page }) => {

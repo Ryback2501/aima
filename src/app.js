@@ -2,7 +2,7 @@
 // It does not touch the page or Google directly. It gets helpers for that, so tests can use fakes.
 //
 // Screens:
-//   login     - logo, name and the "Sign in with Google" button, maybe with a message
+//   login     - logo, name and the "Login with Google" button, maybe with a message
 //   checking  - we ask the sheet if this person may see it
 //   briefing  - the text of the cell named in the config
 

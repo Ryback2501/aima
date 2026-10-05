@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID, FAKE_CELL } from './helpers.js';
 
-const signInButton = (page) => page.getByRole('button', { name: 'Sign in with Google' });
+const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
 
 test.describe('login page', () => {
   test('shows the logo, the name and the Google button, and nothing else', async ({ page }) => {
@@ -14,6 +14,65 @@ test.describe('login page', () => {
     await expect(signInButton(page)).toBeEnabled();
     await expect(page.locator('#briefing')).toBeHidden();
     await expect(page.locator('#login-message')).toBeHidden();
+  });
+
+  test('the Google button looks like the main label, in Google colors', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    const button = signInButton(page);
+    const badge = button.locator('.label-badge');
+    await expect(button).toHaveText('Login with Google');
+    await expect(badge.locator('svg')).toBeVisible();
+
+    // The "G" badge sits in the button's top-left corner, on top of the border.
+    const buttonBox = await button.boundingBox();
+    const badgeBox = await badge.boundingBox();
+    expect(Math.abs(badgeBox.x - buttonBox.x)).toBeLessThan(1);
+    expect(Math.abs(badgeBox.y - buttonBox.y)).toBeLessThan(1);
+
+    const style = await button.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return {
+        radius: parseFloat(css.borderTopLeftRadius),
+        background: css.backgroundImage,
+        shadow: css.boxShadow,
+      };
+    });
+    expect(style.radius).toBeGreaterThan(0);
+    // Google blue, red, yellow and green.
+    for (const color of [
+      'rgb(66, 133, 244)',
+      'rgb(234, 67, 53)',
+      'rgb(251, 188, 5)',
+      'rgb(52, 168, 83)',
+    ]) {
+      expect(style.background).toContain(color);
+    }
+    // The shadow falls to the bottom-right: both offsets are positive.
+    const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+  });
+
+  test('uses the Sol font for the whole app', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    const font = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return {
+        loaded: [...document.fonts].some(
+          (face) => face.family.replace(/["']/g, '') === 'Sol' && face.status === 'loaded',
+        ),
+        body: getComputedStyle(document.body).fontFamily,
+        weight: getComputedStyle(document.body).fontWeight,
+      };
+    });
+    expect(font.loaded).toBe(true);
+    expect(font.body).toMatch(/^["']?Sol["']?,/);
+    // Bold, so letters Sol does not have (like Russian ones) look heavy too.
+    expect(font.weight).toBe('700');
   });
 
   test('says the app is not set up while the example IDs are in the config', async ({ page }) => {
@@ -52,7 +111,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    const label = page.locator('.label');
+    const label = page.locator('#briefing .label');
     const badge = label.locator('.label-badge');
     await expect(label.locator('#briefing-text')).toHaveText('Buy milk');
     await expect(badge).toBeVisible();
@@ -191,7 +250,7 @@ test.describe('language', () => {
   const cases = [
     { locale: 'es-ES', lang: 'es', button: 'Iniciar sesión con Google' },
     { locale: 'ru-RU', lang: 'ru', button: 'Войти через Google' },
-    { locale: 'fr-FR', lang: 'en', button: 'Sign in with Google' },
+    { locale: 'fr-FR', lang: 'en', button: 'Login with Google' },
   ];
   for (const { locale, lang, button } of cases) {
     test.describe(locale, () => {

@@ -23,12 +23,13 @@ export async function setUp(
 
   await page.route('**/config.js', async (route) => {
     const response = await route.fetch();
-    let body = await response.text();
-    if (configured) {
-      body = body
-        .replace('REPLACE_WITH_GOOGLE_CLIENT_ID', FAKE_CLIENT_ID)
-        .replace('REPLACE_WITH_SPREADSHEET_ID', FAKE_SHEET_ID);
-    }
+    // Tests never use the real IDs: they get fake IDs, or the example values to test the
+    // "not set up yet" message.
+    const clientId = configured ? FAKE_CLIENT_ID : 'REPLACE_WITH_GOOGLE_CLIENT_ID';
+    const sheetId = configured ? FAKE_SHEET_ID : 'REPLACE_WITH_SPREADSHEET_ID';
+    const body = (await response.text())
+      .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
+      .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`);
     await route.fulfill({ response, body });
   });
 

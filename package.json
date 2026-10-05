@@ -14,7 +14,7 @@
     "test:unit": "node --test \"tests/unit/**/*.test.js\"",
     "test:e2e": "playwright test",
     "build": "node scripts/build.mjs",
-    "start": "node scripts/build.mjs && node scripts/serve.mjs dist 8080",
+    "start": "node scripts/build.mjs && node scripts/serve.mjs dist 8082",
     "icons": "node scripts/make-icons.mjs"
   },
   "devDependencies": {

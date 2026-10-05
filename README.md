@@ -39,7 +39,7 @@ settings, not by hiding these values.
    - Application type: **Web application**.
    - Under **Authorized JavaScript origins**, add:
      - `https://ryback2501.github.io`
-     - `http://localhost:8080` (to try the app on your computer)
+     - `http://localhost:8082` (to try the app on your computer)
    - You do not need a redirect address.
 5. Copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
 
@@ -73,10 +73,10 @@ You need [Node.js](https://nodejs.org/) 22 or newer.
 
 ```bash
 npm ci          # install the tools (only needed once)
-npm start       # build the app and open it at http://localhost:8080
+npm start       # build the app and open it at http://localhost:8082
 ```
 
-Sign-in works on your computer only when `http://localhost:8080` is in the Client ID's
+Sign-in works on your computer only when `http://localhost:8082` is in the Client ID's
 authorized origins (see step 1).
 
 ## Checks

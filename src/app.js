@@ -4,7 +4,7 @@
 // Screens:
 //   login     - logo, name and the "Sign in with Google" button, maybe with a message
 //   checking  - we ask the sheet if this person may see it
-//   briefing  - the text of the briefing cell
+//   briefing  - the text of the cell named in the config
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
@@ -36,7 +36,7 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     return auth ?? (await getAuth().catch(() => null));
   }
 
-  // Asks the sheet for the briefing. Google answers only if this person may open the sheet.
+  // Asks the sheet for the text to show. Google answers only if this person may open the sheet.
   // "fresh" means the person just signed in, so we ask Google which account they chose.
   async function check(token, { fresh = false } = {}) {
     view.render({ screen: 'checking' });

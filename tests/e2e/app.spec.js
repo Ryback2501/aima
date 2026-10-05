@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID } from './helpers.js';
+import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID, FAKE_CELL } from './helpers.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Sign in with Google' });
 
@@ -37,7 +37,7 @@ test.describe('sign-in', () => {
     await expect(page.locator('#login')).toBeHidden();
     expect(sheetRequests).toEqual([
       {
-        url: `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values/Briefing!B3`,
+        url: `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values/${FAKE_CELL}`,
         authorization: 'Bearer fake-token',
       },
     ]);

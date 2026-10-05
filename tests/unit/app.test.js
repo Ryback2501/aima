@@ -9,7 +9,7 @@ import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 const config = {
   googleClientId: 'client-1.apps.googleusercontent.com',
   spreadsheetId: 'sheet-1',
-  briefingCell: 'Briefing!B3',
+  briefingCell: 'Sheet1!A1',
 };
 
 function memoryStorage() {
@@ -106,7 +106,7 @@ test('a person with access sees the briefing text after sign-in', async () => {
 
   await handlers.signIn();
 
-  assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Briefing!B3' }]);
+  assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Sheet1!A1' }]);
   assert.deepEqual(log.tokens, ['tok']);
   assert.deepEqual(last(), { screen: 'briefing', text: 'Buy milk', email: 'ana@example.com' });
 });

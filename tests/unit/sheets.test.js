@@ -25,12 +25,12 @@ function client(fetch) {
 test('getValues asks the Sheets API for the range with the access token', async () => {
   const { fetch, calls } = fakeFetch(200, { values: [['hello']] });
 
-  await client(fetch).getValues('Briefing!B3');
+  await client(fetch).getValues('Sheet1!A1');
 
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].url,
-    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Briefing!B3',
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Sheet1!A1',
   );
   assert.equal(calls[0].options.headers.Authorization, 'Bearer token-abc');
 });
@@ -46,45 +46,45 @@ test('getValues encodes sheet names with spaces and other special characters', a
 test('getValues returns the rows of the range', async () => {
   const { fetch } = fakeFetch(200, { values: [['a', 'b'], ['c']] });
 
-  assert.deepEqual(await client(fetch).getValues('Briefing!A1:B2'), [['a', 'b'], ['c']]);
+  assert.deepEqual(await client(fetch).getValues('Sheet1!A1:B2'), [['a', 'b'], ['c']]);
 });
 
 test('getValues returns no rows when the range is empty', async () => {
-  const { fetch } = fakeFetch(200, { range: 'Briefing!B3' });
+  const { fetch } = fakeFetch(200, { range: 'Sheet1!A1' });
 
-  assert.deepEqual(await client(fetch).getValues('Briefing!B3'), []);
+  assert.deepEqual(await client(fetch).getValues('Sheet1!A1'), []);
 });
 
 test('getCell returns the text of one cell', async () => {
   const { fetch } = fakeFetch(200, { values: [['Buy milk']] });
 
-  assert.equal(await client(fetch).getCell('Briefing!B3'), 'Buy milk');
+  assert.equal(await client(fetch).getCell('Sheet1!A1'), 'Buy milk');
 });
 
 test('getCell returns an empty text when the cell is empty', async () => {
   const { fetch } = fakeFetch(200, {});
 
-  assert.equal(await client(fetch).getCell('Briefing!B3'), '');
+  assert.equal(await client(fetch).getCell('Sheet1!A1'), '');
 });
 
 for (const status of [403, 404]) {
   test(`a ${status} answer means the person cannot open the sheet`, async () => {
     const { fetch } = fakeFetch(status, { error: { code: status } });
 
-    await assert.rejects(client(fetch).getCell('Briefing!B3'), NoAccessError);
+    await assert.rejects(client(fetch).getCell('Sheet1!A1'), NoAccessError);
   });
 }
 
 test('a 401 answer means the sign-in has expired', async () => {
   const { fetch } = fakeFetch(401);
 
-  await assert.rejects(client(fetch).getCell('Briefing!B3'), SignInExpiredError);
+  await assert.rejects(client(fetch).getCell('Sheet1!A1'), SignInExpiredError);
 });
 
 test('any other error answer becomes a SheetsError with the status', async () => {
   const { fetch } = fakeFetch(500);
 
-  await assert.rejects(client(fetch).getCell('Briefing!B3'), (error) => {
+  await assert.rejects(client(fetch).getCell('Sheet1!A1'), (error) => {
     assert.ok(error instanceof SheetsError);
     assert.equal(error.status, 500);
     return true;
@@ -96,5 +96,5 @@ test('a network failure becomes a SheetsError', async () => {
     throw new TypeError('Failed to fetch');
   };
 
-  await assert.rejects(client(fetch).getCell('Briefing!B3'), SheetsError);
+  await assert.rejects(client(fetch).getCell('Sheet1!A1'), SheetsError);
 });

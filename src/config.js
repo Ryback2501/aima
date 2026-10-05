@@ -5,10 +5,10 @@
 
 export const config = {
   // The "Client ID" from Google Cloud (it ends in .apps.googleusercontent.com).
-  googleClientId: 'REPLACE_WITH_GOOGLE_CLIENT_ID',
+  googleClientId: '1031516526294-pg8bt7nhkgg1b8v3391qsovasn8rkv95.apps.googleusercontent.com',
 
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
-  spreadsheetId: 'REPLACE_WITH_SPREADSHEET_ID',
+  spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',
 
   // The cell the app shows after sign-in.
   briefingCell: 'Briefing!B3',

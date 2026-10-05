@@ -1,3 +1,13 @@
+/* The app's font. It has one heavy style, so we say it covers every weight. Then the browser
+   does not draw a fake, even bolder copy of it. It has no Russian letters: those use the
+   system font. */
+@font-face {
+  font-family: 'Sol';
+  src: url('fonts/solheavy.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* Colors for light mode. Dark mode changes them below. */
 :root {
   --background: #f6f7f6;
@@ -42,6 +52,7 @@ body {
   background: var(--background);
   color: var(--text);
   font-family:
+    'Sol',
     system-ui,
     -apple-system,
     'Segoe UI',

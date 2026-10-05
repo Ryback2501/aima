@@ -16,6 +16,23 @@ test.describe('login page', () => {
     await expect(page.locator('#login-message')).toBeHidden();
   });
 
+  test('uses the Sol font for the whole app', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    const font = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return {
+        loaded: [...document.fonts].some(
+          (face) => face.family.replace(/["']/g, '') === 'Sol' && face.status === 'loaded',
+        ),
+        body: getComputedStyle(document.body).fontFamily,
+      };
+    });
+    expect(font.loaded).toBe(true);
+    expect(font.body).toMatch(/^["']?Sol["']?,/);
+  });
+
   test('says the app is not set up while the example IDs are in the config', async ({ page }) => {
     await setUp(page, { configured: false });
     await page.goto('./');

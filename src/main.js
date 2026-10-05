@@ -7,6 +7,7 @@ import { createSession } from './session.js';
 import { createSheetsClient } from './sheets.js';
 import { createAuth, loadGoogleIdentity } from './auth.js';
 import { createTranslator, pickLanguage } from './i18n.js';
+import { blockZoom } from './no-zoom.js';
 
 // Some browsers throw an error just for looking at storage (for example with cookies blocked).
 function storage(name) {
@@ -15,6 +16,13 @@ function storage(name) {
   } catch {
     return undefined;
   }
+}
+
+blockZoom(document);
+
+// The service worker lets phones install aima as an app. If it fails, the app still works.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 const language = pickLanguage(navigator.languages ?? [navigator.language]);

@@ -4,6 +4,23 @@ import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID, FAKE_CELL } from './he
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
 
+// The badge has no color of its own. The card's inner fill leaves a hole in the badge's shape,
+// so the card's border gradient shows through: badge and border are one painted surface.
+async function expectBadgeShowsBorder(label) {
+  const paint = await label.evaluate((node) => {
+    const badge = getComputedStyle(node.querySelector('.label-badge'));
+    const fill = getComputedStyle(node, '::before');
+    return {
+      badgeColor: badge.backgroundColor,
+      badgeImage: badge.backgroundImage,
+      fillMask: fill.maskImage || fill.webkitMaskImage,
+    };
+  });
+  expect(paint.badgeColor).toBe('rgba(0, 0, 0, 0)');
+  expect(paint.badgeImage).toBe('none');
+  expect(paint.fillMask).toContain('radial-gradient');
+}
+
 test.describe('login page', () => {
   test('shows the logo, the name and the Google button, and nothing else', async ({ page }) => {
     await setUp(page);
@@ -40,6 +57,7 @@ test.describe('login page', () => {
       };
     });
     expect(style.radius).toBeGreaterThan(0);
+    await expectBadgeShowsBorder(button);
     // Google blue, red, yellow and green.
     for (const color of [
       'rgb(66, 133, 244)',
@@ -134,6 +152,7 @@ test.describe('sign-in', () => {
       };
     });
     expect(style.radius).toBeGreaterThan(0);
+    await expectBadgeShowsBorder(label);
     expect(style.background).toContain('linear-gradient');
     // The shadow falls to the bottom-right: both offsets are positive.
     const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);

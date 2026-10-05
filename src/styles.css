@@ -113,28 +113,53 @@ main {
   justify-content: space-between;
 }
 
-/* A card, like the cards in the iisu app. The colored border is a gradient behind a solid
-   inner fill. Other elements can change the colors, sizes and badge through the variables. */
+/* A card, like the cards in the iisu app. The card is painted with its border gradient, and
+   an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
+   shows the same gradient as the border: one surface, with no edge between them.
+   Other elements can change the colors and sizes through the variables. */
 .label {
   --border: 3px;
   --radius: 24px;
   --badge-size: 48px;
   --badge-icon: 26px;
-  --label-border: linear-gradient(to bottom right, var(--label-from) 10%, var(--label-to));
+  --badge-corner: calc(var(--badge-size) * 0.375);
+  --label-border: linear-gradient(to bottom right, var(--label-from), var(--label-to));
   position: relative;
+  /* Keeps the inner fill (below) behind the text but in front of the gradient. */
+  isolation: isolate;
   width: min(100%, 34rem);
   margin: auto 0;
   padding: 56px 24px 40px;
   border: var(--border) solid transparent;
   border-radius: var(--radius);
-  background:
-    linear-gradient(var(--label-background), var(--label-background)) padding-box,
-    var(--label-border) border-box;
+  background: var(--label-border) border-box;
   /* The shadow falls to the bottom-right. */
   box-shadow: 10px 12px 24px var(--label-shadow);
 }
 
-/* The badge covers the top-left corner of the border, so it looks like part of it. */
+/* The inner fill. Its mask shows it everywhere except the badge: to the right of the badge,
+   below the badge, and outside the badge's round bottom-right corner. */
+.label::before {
+  --hole: calc(var(--badge-size) - var(--border));
+  --corner-start: calc(var(--hole) - var(--badge-corner));
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: calc(var(--radius) - var(--border));
+  background: var(--label-background);
+  mask:
+    linear-gradient(to right, transparent var(--hole), #000 var(--hole)),
+    linear-gradient(to bottom, transparent var(--hole), #000 var(--hole)),
+    radial-gradient(
+        circle at 0 0,
+        transparent calc(var(--badge-corner) - 0.25px),
+        #000 calc(var(--badge-corner) + 0.25px)
+      )
+      var(--corner-start) var(--corner-start) / var(--badge-corner) var(--badge-corner) no-repeat;
+}
+
+/* The badge only holds the icon. Its color comes from the card's border gradient. */
 .label-badge {
   position: absolute;
   top: calc(-1 * var(--border));
@@ -143,8 +168,6 @@ main {
   place-items: center;
   width: var(--badge-size);
   height: var(--badge-size);
-  border-radius: var(--radius) 0 calc(var(--badge-size) * 0.375) 0;
-  background: var(--label-from);
 }
 
 .label-badge svg {
@@ -155,8 +178,7 @@ main {
 
 /* The sign-in button: the same card, smaller, in Google's colors, with the "G" in the badge. */
 .google-button {
-  --label-from: #4285f4;
-  --label-border: linear-gradient(to bottom right, #4285f4 10%, #ea4335, #fbbc05, #34a853);
+  --label-border: linear-gradient(to bottom right, #4285f4, #ea4335, #fbbc05, #34a853);
   --radius: 20px;
   --badge-size: 40px;
   --badge-icon: 22px;

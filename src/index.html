@@ -28,7 +28,7 @@
         <img class="logo" src="icons/logo.svg" alt="" width="128" height="128" />
         <h1 class="app-name">aima</h1>
         <!-- Looks like the card on the main screen, with Google's "G" in the corner badge. -->
-        <button id="sign-in" class="label google-button" type="button" disabled>
+        <button id="sign-in" class="label card-button google-button" type="button" disabled>
           <span class="label-badge" aria-hidden="true">
             <svg viewBox="0 0 48 48">
               <path
@@ -47,8 +47,8 @@
         <p class="message" data-i18n="checking">Checking your access…</p>
       </section>
 
-      <!-- Main screen: the text from the sheet, in the middle of the screen. -->
-      <section id="briefing" class="screen" hidden>
+      <!-- Main screen: the Total from the sheet, in the middle of the screen. -->
+      <section id="main" class="screen" hidden>
         <!-- A card with a colored border and a star badge in its top-left corner. -->
         <div class="label">
           <span class="label-badge" aria-hidden="true">
@@ -58,14 +58,19 @@
               />
             </svg>
           </span>
-          <p id="briefing-text" class="briefing"></p>
+          <p id="total-value" class="total-value"></p>
         </div>
-        <footer class="account">
-          <span id="signed-in-as"></span>
-          <button id="sign-out" class="link-button" type="button" data-i18n="signOut">
-            Sign out
-          </button>
-        </footer>
+        <!-- The same kind of card, with an exit icon in the corner badge. -->
+        <button id="sign-out" class="label card-button" type="button">
+          <span class="label-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
+              />
+            </svg>
+          </span>
+          <span data-i18n="signOut">Log out</span>
+        </button>
       </section>
     </main>
     <noscript>aima needs JavaScript to work.</noscript>

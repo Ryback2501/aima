@@ -109,7 +109,7 @@ main {
   line-height: 1.5;
 }
 
-#briefing {
+#main {
   justify-content: space-between;
 }
 
@@ -176,13 +176,11 @@ main {
   fill: #ffffff;
 }
 
-/* The sign-in button: the same card, smaller, in Google's colors, with the "G" in the badge. */
-.google-button {
-  --label-border: linear-gradient(to bottom right, #4285f4, #ea4335, #fbbc05, #34a853);
+/* A card people can tap: smaller than the Total card, with the text in the middle. */
+.card-button {
   --radius: 20px;
   --badge-size: 40px;
   --badge-icon: 22px;
-  width: min(100%, 20rem);
   min-height: 64px;
   margin: 0;
   /* The same room on both sides keeps the text in the middle, clear of the badge. */
@@ -193,12 +191,18 @@ main {
   cursor: pointer;
 }
 
-.google-button:disabled {
+.card-button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.briefing {
+/* The sign-in button: in Google's colors, with the "G" in the badge. */
+.google-button {
+  --label-border: linear-gradient(to bottom right, #4285f4, #ea4335, #fbbc05, #34a853);
+  width: min(100%, 20rem);
+}
+
+.total-value {
   margin: 0;
   font-size: clamp(1.5rem, 6vw, 2.75rem);
   font-weight: 600;
@@ -207,24 +211,4 @@ main {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
-}
-
-.account {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 4px 12px;
-  color: var(--text-soft);
-  font-size: 0.875rem;
-}
-
-.link-button {
-  padding: 8px;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
 }

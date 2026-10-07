@@ -20,7 +20,7 @@ test('example values or empty values do not count as set up', () => {
 });
 
 test('the config names one cell to show after sign-in', () => {
-  assert.match(config.briefingCell, /^.+![A-Z]+[0-9]+$/);
+  assert.match(config.totalCell, /^.+![A-Z]+[0-9]+$/);
 });
 
 test('the permission to read sheets is required and asked for', () => {

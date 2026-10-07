@@ -10,8 +10,8 @@ export const config = {
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
   spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',
 
-  // The cell the app shows after sign-in.
-  briefingCell: 'Briefing!B3',
+  // The cell with the Total, which the app shows after sign-in.
+  totalCell: 'Briefing!B3',
 
   // What the app asks Google for. Today it only reads. When the app can add and change data,
   // the first one becomes "https://www.googleapis.com/auth/spreadsheets".

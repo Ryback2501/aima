@@ -29,7 +29,7 @@ test.describe('login page', () => {
     await expect(page.locator('#login .logo')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'aima' })).toBeVisible();
     await expect(signInButton(page)).toBeEnabled();
-    await expect(page.locator('#briefing')).toBeHidden();
+    await expect(page.locator('#main')).toBeHidden();
     await expect(page.locator('#login-message')).toBeHidden();
   });
 
@@ -103,14 +103,15 @@ test.describe('login page', () => {
 });
 
 test.describe('sign-in', () => {
-  test('a person with access sees the briefing cell in the middle', async ({ page }) => {
+  test('a person with access sees the total in the middle', async ({ page }) => {
     const sheetRequests = await setUp(page, { cell: 'Pay the rent on Friday' });
     await page.goto('./');
 
     await signInButton(page).click();
 
-    await expect(page.locator('#briefing-text')).toHaveText('Pay the rent on Friday');
-    await expect(page.getByText('Signed in as ana@example.com')).toBeVisible();
+    await expect(page.locator('#total-value')).toHaveText('Pay the rent on Friday');
+    // The account email is not shown.
+    await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
     expect(sheetRequests).toEqual([
       {
@@ -123,15 +124,53 @@ test.describe('sign-in', () => {
     expect(log.requests[0].scope).toContain('spreadsheets.readonly');
   });
 
+  test('the Log out button is a card as wide as the Total card', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    const button = page.getByRole('button', { name: 'Log out' });
+    const badge = button.locator('.label-badge');
+    await expect(button).toHaveText('Log out');
+    await expect(badge.locator('svg')).toBeVisible();
+
+    const buttonBox = await button.boundingBox();
+    const totalBox = await page.locator('#main .label:has(#total-value)').boundingBox();
+    expect(Math.abs(buttonBox.width - totalBox.width)).toBeLessThan(1);
+    expect(Math.abs(buttonBox.x - totalBox.x)).toBeLessThan(1);
+
+    // The exit icon badge sits in the button's top-left corner, on top of the border.
+    const badgeBox = await badge.boundingBox();
+    expect(Math.abs(badgeBox.x - buttonBox.x)).toBeLessThan(1);
+    expect(Math.abs(badgeBox.y - buttonBox.y)).toBeLessThan(1);
+
+    const style = await button.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return {
+        radius: parseFloat(css.borderTopLeftRadius),
+        background: css.backgroundImage,
+        shadow: css.boxShadow,
+      };
+    });
+    expect(style.radius).toBeGreaterThan(0);
+    expect(style.background).toContain('linear-gradient');
+    await expectBadgeShowsBorder(button);
+    // The shadow falls to the bottom-right: both offsets are positive.
+    const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+  });
+
   test('the text sits in a rounded label with a star badge', async ({ page }) => {
     await setUp(page, { cell: 'Buy milk' });
     await page.goto('./');
 
     await signInButton(page).click();
 
-    const label = page.locator('#briefing .label');
+    const label = page.locator('#main .label:has(#total-value)');
     const badge = label.locator('.label-badge');
-    await expect(label.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(label.locator('#total-value')).toHaveText('Buy milk');
     await expect(badge).toBeVisible();
 
     // The badge sits in the label's top-left corner, on top of the border.
@@ -166,10 +205,10 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.locator('#briefing-text')).toHaveText(
+    await expect(page.locator('#total-value')).toHaveText(
       '<img src=x onerror="window.hacked=1">Hello',
     );
-    await expect(page.locator('#briefing-text img')).toHaveCount(0);
+    await expect(page.locator('#total-value img')).toHaveCount(0);
     expect(await page.evaluate(() => window.hacked)).toBeUndefined();
   });
 
@@ -179,7 +218,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.locator('#briefing-text')).toHaveText('There is no briefing yet.');
+    await expect(page.locator('#total-value')).toHaveText('There is no total yet.');
   });
 
   for (const status of [403, 404]) {
@@ -194,7 +233,7 @@ test.describe('sign-in', () => {
           "You don't have access to this document. Ask its owner to share it with you.",
         ),
       ).toBeVisible();
-      await expect(page.locator('#briefing')).toBeHidden();
+      await expect(page.locator('#main')).toBeHidden();
       await expect(signInButton(page)).toBeEnabled();
       expect((await googleLog(page)).revoked).toEqual(['fake-token']);
       expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
@@ -226,11 +265,11 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
 
     await page.reload();
 
-    await expect(page.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
     expect((await googleLog(page)).requests).toEqual([]);
   });
 
@@ -238,14 +277,14 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
     // A new visit: the token is gone, the remembered email stays.
     await page.evaluate(() => sessionStorage.clear());
 
     await page.reload();
     await signInButton(page).click();
 
-    await expect(page.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
     const { requests } = await googleLog(page);
     expect(requests[0]).toMatchObject({ prompt: '', login_hint: 'ana@example.com' });
   });
@@ -254,12 +293,12 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#briefing-text')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
 
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.getByRole('button', { name: 'Log out' }).click();
 
     await expect(page.getByText('You have signed out.')).toBeVisible();
-    await expect(page.locator('#briefing')).toBeHidden();
+    await expect(page.locator('#main')).toBeHidden();
     expect((await googleLog(page)).revoked).toEqual(['fake-token']);
     expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
   });

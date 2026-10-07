@@ -43,13 +43,6 @@ test('t returns the message in the chosen language', () => {
   assert.equal(createTranslator('ru')('signOut'), STRINGS.ru.signOut);
 });
 
-test('t fills in values like the email address', () => {
-  assert.equal(
-    createTranslator('en')('signedInAs', { email: 'ana@example.com' }),
-    'Signed in as ana@example.com',
-  );
-});
-
 test('t shows the key itself when a message does not exist, so it is easy to spot', () => {
   assert.equal(createTranslator('en')('noSuchMessage'), 'noSuchMessage');
 });

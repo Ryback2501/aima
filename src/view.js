@@ -2,12 +2,11 @@
 
 export function createView(document, t) {
   const element = (id) => document.getElementById(id);
-  const screens = ['login', 'checking', 'briefing'].map((id) => element(id));
+  const screens = ['login', 'checking', 'main'].map((id) => element(id));
   const signInButton = element('sign-in');
   const signOutButton = element('sign-out');
   const loginMessage = element('login-message');
-  const briefingText = element('briefing-text');
-  const signedInAs = element('signed-in-as');
+  const totalValue = element('total-value');
 
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -22,10 +21,9 @@ export function createView(document, t) {
       loginMessage.textContent = state.message ? t(state.message) : '';
       loginMessage.hidden = !state.message;
     }
-    if (state.screen === 'briefing') {
+    if (state.screen === 'main') {
       // textContent shows the cell as plain text, never as page code.
-      briefingText.textContent = state.text;
-      signedInAs.textContent = state.email ? t('signedInAs', { email: state.email }) : '';
+      totalValue.textContent = state.text;
     }
   }
 

@@ -14,8 +14,6 @@
   --text: #1c2321;
   --text-soft: #5b6662;
   --accent: #0f766e;
-  --label-from: #14b8a6;
-  --label-to: #ec4899;
   --label-background: #ffffff;
   --label-shadow: rgba(28, 35, 33, 0.25);
   color-scheme: light dark;
@@ -116,20 +114,29 @@ main {
 /* A card, like the cards in the iisu app. The card is painted with its border gradient, and
    an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
    shows the same gradient as the border: one surface, with no edge between them.
-   Other elements can change the colors and sizes through the variables. */
+   Each card's sizes and colors come from cards.js. The values here are only a fallback. */
 .label {
+  --width: 34rem;
+  --height: 0px;
   --border: 3px;
   --radius: 24px;
   --badge-size: 48px;
-  --badge-icon: 26px;
-  --badge-corner: calc(var(--badge-size) * 0.375);
-  --label-border: linear-gradient(to bottom right, var(--label-from), var(--label-to));
+  --pad-x: 24px;
+  --pad-y: 48px;
+  --label-border: linear-gradient(to bottom right, #14b8a6, #ec4899);
+  /* The badge's round corner has the card's corner size, but never more than the badge allows. */
+  --badge-corner: min(var(--radius), calc(var(--badge-size) - var(--border)));
   position: relative;
   /* Keeps the inner fill (below) behind the text but in front of the gradient. */
   isolation: isolate;
-  width: min(100%, 34rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, var(--width));
+  min-height: var(--height);
   margin: auto 0;
-  padding: 56px 24px 40px;
+  padding: var(--pad-y) var(--pad-x);
   border: var(--border) solid transparent;
   border-radius: var(--radius);
   background: var(--label-border) border-box;
@@ -142,6 +149,9 @@ main {
 .label::before {
   --hole: calc(var(--badge-size) - var(--border));
   --corner-start: calc(var(--hole) - var(--badge-corner));
+  /* The round-corner piece reaches 1px past the badge, over the straight parts. Then no thin
+     see-through line shows where they meet, also on phones with uneven pixel sizes. */
+  --corner-piece: calc(var(--badge-corner) + 1px);
   content: '';
   position: absolute;
   inset: 0;
@@ -156,7 +166,7 @@ main {
         transparent calc(var(--badge-corner) - 0.25px),
         #000 calc(var(--badge-corner) + 0.25px)
       )
-      var(--corner-start) var(--corner-start) / var(--badge-corner) var(--badge-corner) no-repeat;
+      var(--corner-start) var(--corner-start) / var(--corner-piece) var(--corner-piece) no-repeat;
 }
 
 /* The badge only holds the icon. Its color comes from the card's border gradient. */
@@ -171,20 +181,12 @@ main {
 }
 
 .label-badge svg {
-  width: var(--badge-icon);
-  height: var(--badge-icon);
   fill: #ffffff;
 }
 
-/* A card people can tap: smaller than the Total card, with the text in the middle. */
+/* A card people can tap. */
 .card-button {
-  --radius: 20px;
-  --badge-size: 40px;
-  --badge-icon: 22px;
-  min-height: 64px;
   margin: 0;
-  /* The same room on both sides keeps the text in the middle, clear of the badge. */
-  padding: 12px 52px;
   color: var(--text);
   font: inherit;
   font-size: 1.125rem;
@@ -194,12 +196,6 @@ main {
 .card-button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-/* The sign-in button: in Google's colors, with the "G" in the badge. */
-.google-button {
-  --label-border: linear-gradient(to bottom right, #4285f4, #ea4335, #fbbc05, #34a853);
-  width: min(100%, 20rem);
 }
 
 .total-value {

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID, FAKE_CELL } from './helpers.js';
+import { CARDS } from '../../src/cards.js';
+import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
 
@@ -20,6 +22,51 @@ async function expectBadgeShowsBorder(label) {
   expect(paint.badgeImage).toBe('none');
   expect(paint.fillMask).toContain('radial-gradient');
 }
+
+// Checks that a card on the page follows its settings in CARDS.
+async function expectCardFollowsSettings(card, name) {
+  const settings = CARDS[name];
+  const look = await card.evaluate((node) => {
+    const css = getComputedStyle(node);
+    const icon = node.querySelector('.label-badge svg');
+    return {
+      width: node.getBoundingClientRect().width,
+      height: node.getBoundingClientRect().height,
+      room: node.parentElement.clientWidth,
+      minHeight: css.minHeight,
+      border: css.borderTopWidth,
+      radius: css.borderTopLeftRadius,
+      padX: css.paddingLeft,
+      padY: css.paddingTop,
+      iconWidth: icon.getAttribute('width'),
+      iconHeight: icon.getAttribute('height'),
+      iconPath: icon.querySelector('path').getAttribute('d'),
+    };
+  });
+  // As wide as set, unless the screen is narrower.
+  expect(Math.abs(look.width - Math.min(settings.width, look.room))).toBeLessThan(1);
+  expect(look.minHeight).toBe(`${settings.height}px`);
+  expect(look.height).toBeGreaterThanOrEqual(settings.height - 0.5);
+  expect(look.border).toBe(`${settings.border}px`);
+  expect(look.radius).toBe(`${settings.radius}px`);
+  expect(look.padX).toBe(`${settings.padding.x}px`);
+  expect(look.padY).toBe(`${settings.padding.y}px`);
+  expect(look.iconWidth).toBe(String(settings.iconSize));
+  expect(look.iconHeight).toBe(String(settings.iconSize));
+  expect(look.iconPath).toBe(ICONS[settings.icon].path);
+}
+
+test('each card follows its settings', async ({ page }) => {
+  await setUp(page);
+  await page.goto('./');
+  await expectCardFollowsSettings(signInButton(page), 'signIn');
+
+  await signInButton(page).click();
+  await expect(page.locator('#total-value')).toHaveText('Buy milk');
+
+  await expectCardFollowsSettings(page.locator('#main .label:has(#total-value)'), 'total');
+  await expectCardFollowsSettings(page.getByRole('button', { name: 'Log out' }), 'logOut');
+});
 
 test.describe('login page', () => {
   test('shows the logo, the name and the Google button, and nothing else', async ({ page }) => {

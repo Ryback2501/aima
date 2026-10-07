@@ -100,6 +100,8 @@ The app has no extra libraries at run time. The files in `src/` are the files pe
 | `src/main.js`          | Starts the app in the browser.                                  |
 | `src/app.js`           | Decides which screen to show and what each button does.        |
 | `src/view.js`          | Shows the screens on the page.                                  |
+| `src/cards.js`         | How each card looks: size, border, corners, icon, colors, room around the content. |
+| `src/icons.js`         | The shapes of the app's icons, with no size, so they can be used anywhere. |
 | `src/auth.js`          | Signs people in and out with Google.                            |
 | `src/sheets.js`        | Reads data from the Google Sheet. Later it will also write data. |
 | `src/session.js`       | Remembers the sign-in, so the next sign-in needs only one tap.  |

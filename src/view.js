@@ -5,13 +5,14 @@ import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-export function createView(document, t) {
+export function createView(document, t, formatMoney) {
   const element = (id) => document.getElementById(id);
   const screens = ['login', 'checking', 'main'].map((id) => element(id));
   const signInButton = element('sign-in');
   const signOutButton = element('sign-out');
   const loginMessage = element('login-message');
   const totalValue = element('total-value');
+  const goalValue = element('goal-value');
 
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -66,6 +67,9 @@ export function createView(document, t) {
     if (state.screen === 'main') {
       // textContent shows the cell as plain text, never as page code.
       totalValue.textContent = state.text;
+      // The color comes from the level: "over" is red, "close" is yellow (see styles.css).
+      goalValue.textContent = formatMoney(state.goal.amount);
+      goalValue.dataset.level = state.goal.level;
     }
   }
 

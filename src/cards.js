@@ -27,6 +27,17 @@ export const CARDS = {
     colors: ['#14b8a6', '#ec4899'],
     padding: { x: 24, y: 48 },
   },
+  // The spending goal, below the Total.
+  goal: {
+    width: 544,
+    height: 136,
+    border: 3,
+    radius: 24,
+    icon: 'flag',
+    iconSize: 26,
+    colors: ['#14b8a6', '#ec4899'],
+    padding: { x: 24, y: 48 },
+  },
   // The "Login with Google" button.
   signIn: {
     width: 320,

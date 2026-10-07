@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-import { setUp, googleLog, FAKE_CLIENT_ID, FAKE_SHEET_ID, FAKE_CELL } from './helpers.js';
+import {
+  setUp,
+  googleLog,
+  sheetDay,
+  FAKE_CLIENT_ID,
+  FAKE_SHEET_ID,
+  FAKE_CELL,
+  FAKE_MOVEMENTS,
+} from './helpers.js';
 import { CARDS } from '../../src/cards.js';
 import { ICONS } from '../../src/icons.js';
 
@@ -96,6 +104,7 @@ test('each card follows its settings', async ({ page }) => {
   await expect(page.locator('#total-value')).toHaveText('Buy milk');
 
   await expectCardFollowsSettings(page.locator('#main .label:has(#total-value)'), 'total');
+  await expectCardFollowsSettings(page.locator('#main .label:has(#goal-value)'), 'goal');
   await expectCardFollowsSettings(page.getByRole('button', { name: 'Log out' }), 'logOut');
 });
 
@@ -191,12 +200,19 @@ test.describe('sign-in', () => {
     // The account email is not shown.
     await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
-    expect(sheetRequests).toEqual([
-      {
-        url: `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values/${FAKE_CELL}`,
-        authorization: 'Bearer fake-token',
-      },
-    ]);
+    const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values`;
+    expect(sheetRequests).toHaveLength(2);
+    expect(sheetRequests).toEqual(
+      expect.arrayContaining([
+        { url: `${sheetUrl}/${FAKE_CELL}`, authorization: 'Bearer fake-token' },
+        {
+          url:
+            `${sheetUrl}/${encodeURIComponent(FAKE_MOVEMENTS)}` +
+            '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+          authorization: 'Bearer fake-token',
+        },
+      ]),
+    );
     const log = await googleLog(page);
     expect(log.requests[0].clientId).toBe(FAKE_CLIENT_ID);
     expect(log.requests[0].scope).toContain('spreadsheets.readonly');
@@ -459,5 +475,70 @@ test.describe('service worker', () => {
     await expect
       .poll(() => page.evaluate(async () => (await caches.keys()).join(',')))
       .toMatch(/^aima-\d+\.\d+\.\d+$/);
+  });
+});
+
+test.describe('spending goal', () => {
+  // October spending: 150 counted. Salary is not spending, so it is left out.
+  const movements = [
+    ['Date', 'Category', 'Description', 'Amount'],
+    [sheetDay('2026-10-03'), 'Food', 'Market', -100],
+    [sheetDay('2026-10-04'), 'Leisure', 'Cinema', -50],
+    [sheetDay('2026-10-01'), 'Salary', 'October', 2500],
+  ];
+
+  async function openMain(page, rows) {
+    await setUp(page, { movements: rows });
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+  }
+
+  test('a card with a flag below the Total shows the spending', async ({ page }) => {
+    await openMain(page, movements);
+
+    const goal = page.locator('#goal-value');
+    await expect(goal).toHaveText('€150.00');
+    const card = page.locator('#main .label:has(#goal-value)');
+    const total = page.locator('#main .label:has(#total-value)');
+    expect((await card.boundingBox()).y).toBeGreaterThan((await total.boundingBox()).y);
+    await expect(card.locator('.label-badge path')).toHaveAttribute('d', ICONS.flag.path);
+  });
+
+  const colorOf = (locator) => locator.evaluate((node) => getComputedStyle(node).color);
+
+  test('under the warning line, the amount has the normal text color', async ({ page }) => {
+    await openMain(page, movements);
+
+    await expect(page.locator('#goal-value')).toHaveAttribute('data-level', 'ok');
+    expect(await colorOf(page.locator('#goal-value'))).toBe(
+      await colorOf(page.locator('#total-value')),
+    );
+  });
+
+  test('close to the limit for the time gone by, the amount is yellow', async ({ page }) => {
+    await openMain(page, [[sheetDay('2026-10-10'), 'Food', 'Market', -1500]]);
+
+    await expect(page.locator('#goal-value')).toHaveAttribute('data-level', 'close');
+    expect(await colorOf(page.locator('#goal-value'))).toBe('rgb(180, 83, 9)');
+  });
+
+  test('over the limit, the amount is red', async ({ page }) => {
+    await openMain(page, [[sheetDay('2026-12-10'), 'Food', 'Market', -4000.5]]);
+
+    await expect(page.locator('#goal-value')).toHaveAttribute('data-level', 'over');
+    expect(await colorOf(page.locator('#goal-value'))).toBe('rgb(220, 38, 38)');
+  });
+
+  test.describe('in Spanish', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('the amount is written the Spanish way', async ({ page }) => {
+      await setUp(page, { movements: [[sheetDay('2026-10-03'), 'Food', 'Market', -1234.5]] });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Iniciar sesión con Google' }).click();
+
+      await expect(page.locator('#goal-value')).toHaveText(/^1\.234,50\s€$/);
+    });
   });
 });

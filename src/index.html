@@ -44,9 +44,16 @@
 
       <!-- Main screen: the Total from the sheet, in the middle of the screen. -->
       <section id="main" class="screen" hidden>
-        <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
-        <div class="label" data-card="total">
-          <p id="total-value" class="total-value"></p>
+        <!-- The Total and the spending goal, kept together in the middle of the screen. -->
+        <div class="card-stack">
+          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
+          <div class="label" data-card="total">
+            <p id="total-value" class="total-value"></p>
+          </div>
+          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
+          <div class="label" data-card="goal">
+            <p id="goal-value" class="total-value goal-value"></p>
+          </div>
         </div>
         <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
         <button id="sign-out" class="label card-button" data-card="logOut" type="button">

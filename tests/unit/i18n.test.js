@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickLanguage, browserLanguages, createTranslator, STRINGS } from '../../src/i18n.js';
+import {
+  pickLanguage,
+  browserLanguages,
+  createTranslator,
+  createMoneyFormatter,
+  STRINGS,
+} from '../../src/i18n.js';
 
 test('the phone language is used when the app has it', () => {
   assert.equal(pickLanguage(['es-MX', 'en-US']), 'es');
@@ -55,4 +61,18 @@ test('the phone languages come from the browser list, or from the main language 
   assert.deepEqual(browserLanguages({ languages: [], language: 'es-ES' }), ['es-ES']);
   assert.deepEqual(browserLanguages({ language: 'es-ES' }), ['es-ES']);
   assert.deepEqual(browserLanguages({}), []);
+});
+
+// Money texts use special spaces that do not break the line. Plain spaces are easier to read here.
+const plain = (text) => text.replace(/\s/g, ' ');
+
+test('money is written the way each language writes euros', () => {
+  assert.equal(plain(createMoneyFormatter('en')(1234.5)), '€1,234.50');
+  assert.equal(plain(createMoneyFormatter('es')(1234.5)), '1.234,50 €');
+  assert.equal(plain(createMoneyFormatter('ru')(1234.5)), '1 234,50 €');
+});
+
+test('small amounts and zero always show two decimals', () => {
+  assert.equal(plain(createMoneyFormatter('es')(0)), '0,00 €');
+  assert.equal(plain(createMoneyFormatter('en')(7)), '€7.00');
 });

@@ -10,7 +10,17 @@ const config = {
   googleClientId: 'client-1.apps.googleusercontent.com',
   spreadsheetId: 'sheet-1',
   totalCell: 'Sheet1!A1',
+  goal: {
+    movements: 'Sheet2!B:E',
+    from: '2026-10-01',
+    to: '2026-12-31',
+    limit: 3000,
+    skip: { categories: ['Pay'], house: { category: 'Home', descriptions: ['Water'] } },
+  },
 };
+
+// 5 October 2026 as the sheet sends it: days since 30 December 1899.
+const OCTOBER_5 = 46300;
 
 function memoryStorage() {
   const data = new Map();
@@ -24,6 +34,7 @@ function memoryStorage() {
 // Builds the app with fakes. Each test changes only what it needs.
 function setup({
   cell = async () => 'Buy milk',
+  movements = async () => [[OCTOBER_5, 'Food', 'Shop', -12.5]],
   signIn = async () => ({ token: 'tok', expiresAt: Date.now() + 3_600_000 }),
   email = 'ana@example.com',
   authFails = false,
@@ -42,7 +53,7 @@ function setup({
     sessionStorage: storage(),
     localStorage: storage(),
   });
-  const log = { signIns: [], revoked: [], cells: [], tokens: [] };
+  const log = { signIns: [], revoked: [], cells: [], values: [], tokens: [] };
   const auth = {
     signIn: (options) => {
       log.signIns.push(options);
@@ -67,6 +78,10 @@ function setup({
         log.cells.push({ spreadsheetId, range });
         log.tokens.push(getToken());
         return cell(range);
+      },
+      getValues: async (range, options) => {
+        log.values.push({ spreadsheetId, range, options });
+        return movements(range);
       },
     }),
   });
@@ -108,7 +123,14 @@ test('a person with access sees the total after sign-in', async () => {
 
   assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Sheet1!A1' }]);
   assert.deepEqual(log.tokens, ['tok']);
-  assert.deepEqual(last(), { screen: 'main', text: 'Buy milk' });
+  assert.deepEqual(log.values, [
+    { spreadsheetId: 'sheet-1', range: 'Sheet2!B:E', options: { raw: true } },
+  ]);
+  assert.deepEqual(last(), {
+    screen: 'main',
+    text: 'Buy milk',
+    goal: { amount: 12.5, level: 'ok' },
+  });
 });
 
 test('the app shows that it is checking access while it waits for the sheet', async () => {
@@ -154,6 +176,21 @@ test('a person without access is signed out and told why', async () => {
   assert.deepEqual(log.revoked, ['tok']);
   assert.equal(session.getToken(), null);
   assert.equal(session.getHint(), null);
+  assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
+});
+
+test('a person who cannot read the movements is signed out too', async () => {
+  const { app, handlers, session, log, last } = setup({
+    movements: async () => {
+      throw new NoAccessError();
+    },
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.revoked, ['tok']);
+  assert.equal(session.getToken(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
 });
 

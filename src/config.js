@@ -13,6 +13,32 @@ export const config = {
   // The cell with the Total, which the app shows after sign-in.
   totalCell: 'Briefing!B3',
 
+  // The spending goal shown below the Total.
+  goal: {
+    // The movements: date, category, description and amount, one movement per row.
+    movements: 'Movements!B:E',
+    // The first and the last day that count.
+    from: '2026-10-01',
+    to: '2026-12-31',
+    // Spending over this amount shows in red.
+    limit: 4000,
+    // Movements that do not count.
+    skip: {
+      categories: ['Whitening', 'Salary', 'Mortgage'],
+      house: {
+        category: 'House',
+        descriptions: [
+          'Seguro hogar BBVA',
+          'Pepephone - Internet',
+          'Impuesto vivienda',
+          'Comunidad',
+          'Luz - Endesa',
+          'Gas - Endesa',
+        ],
+      },
+    },
+  },
+
   // What the app asks Google for. Today it only reads. When the app can add and change data,
   // the first one becomes "https://www.googleapis.com/auth/spreadsheets".
   scopes: [

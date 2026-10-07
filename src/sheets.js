@@ -51,8 +51,14 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
   }
 
   // Returns the rows of a range, for example "Sheet1!A1:C5". Empty cells at the end are left out.
-  async function getValues(range) {
-    const data = await request(`/values/${encodeURIComponent(range)}`);
+  // Normally each cell comes as the text the sheet shows (for example "-12,50 €").
+  // With raw, numbers come as plain numbers (-12.5) and dates as day numbers (days since
+  // 30 December 1899), the same whatever the sheet's number and date format is.
+  async function getValues(range, { raw = false } = {}) {
+    const query = raw
+      ? '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER'
+      : '';
+    const data = await request(`/values/${encodeURIComponent(range)}${query}`);
     return data.values ?? [];
   }
 

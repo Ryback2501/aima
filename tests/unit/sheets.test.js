@@ -43,6 +43,19 @@ test('getValues encodes sheet names with spaces and other special characters', a
   assert.match(calls[0].url, /\/values\/My%20sheet's%2Fdata!A1$/);
 });
 
+test('getValues with raw asks for plain numbers and dates instead of formatted text', async () => {
+  const { fetch, calls } = fakeFetch(200, { values: [[46310, -12.5]] });
+
+  const rows = await client(fetch).getValues('Sheet1!B:E', { raw: true });
+
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Sheet1!B%3AE' +
+      '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+  );
+  assert.deepEqual(rows, [[46310, -12.5]]);
+});
+
 test('getValues returns the rows of the range', async () => {
   const { fetch } = fakeFetch(200, { values: [['a', 'b'], ['c']] });
 

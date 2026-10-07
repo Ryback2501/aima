@@ -46,8 +46,17 @@ export function createView(document, t) {
     card.prepend(badge);
   }
 
+  // The page is hidden while the app gets ready. After the first screen is chosen, and the
+  // font has loaded, we show it: people see the final look straight away.
+  let shown = false;
+  function show() {
+    shown = true;
+    document.fonts.ready.then(() => document.documentElement.classList.remove('loading'));
+  }
+
   function render(state) {
     for (const screen of screens) screen.hidden = screen.id !== state.screen;
+    if (!shown) show();
 
     if (state.screen === 'login') {
       signInButton.disabled = Boolean(state.disabled);

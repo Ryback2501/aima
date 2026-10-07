@@ -56,6 +56,37 @@ async function expectCardFollowsSettings(card, name) {
   expect(look.iconPath).toBe(ICONS[settings.icon].path);
 }
 
+test.describe('loading', () => {
+  test('the app stays hidden until its code has run', async ({ page }) => {
+    await setUp(page);
+    await page.route('**/main.js', (route) => route.abort());
+    await page.goto('./');
+
+    await expect(page.locator('html')).toHaveClass(/loading/);
+    await expect(page.locator('main')).toBeHidden();
+  });
+
+  test('if the code never runs, the page still shows after a few seconds', async ({ page }) => {
+    await setUp(page);
+    await page.route('**/main.js', (route) => route.abort());
+    await page.goto('./');
+
+    await expect(page.locator('main')).toBeHidden();
+    await expect(page.locator('main')).toBeVisible({ timeout: 6000 });
+  });
+
+  test('the app appears with its final look', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    await expect(signInButton(page)).toBeVisible();
+    await expect(page.locator('html')).not.toHaveClass(/loading/);
+    // Already when it appears: the card follows its settings and the font is loaded.
+    await expectCardFollowsSettings(signInButton(page), 'signIn');
+    expect(await page.evaluate(() => document.fonts.check('16px Sol'))).toBe(true);
+  });
+});
+
 test('each card follows its settings', async ({ page }) => {
   await setUp(page);
   await page.goto('./');

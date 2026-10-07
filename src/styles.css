@@ -61,6 +61,20 @@ body {
   user-select: none;
 }
 
+/* While the app gets ready (cards, words in the right language, font), it stays hidden, so
+   people never see it change. The app removes the "loading" class when it is ready. If that
+   never happens (for example a script fails to load), the page shows after 4 seconds anyway. */
+html.loading main {
+  visibility: hidden;
+  animation: show-anyway 0s 4s forwards;
+}
+
+@keyframes show-anyway {
+  to {
+    visibility: visible;
+  }
+}
+
 main {
   min-height: 100%;
   display: grid;

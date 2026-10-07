@@ -108,7 +108,7 @@ test('a person with access sees the total after sign-in', async () => {
 
   assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Sheet1!A1' }]);
   assert.deepEqual(log.tokens, ['tok']);
-  assert.deepEqual(last(), { screen: 'main', text: 'Buy milk', email: 'ana@example.com' });
+  assert.deepEqual(last(), { screen: 'main', text: 'Buy milk' });
 });
 
 test('the app shows that it is checking access while it waits for the sheet', async () => {
@@ -279,15 +279,14 @@ test('sign-in still works when the browser blocks storage', async () => {
   assert.equal(last().screen, 'main');
 });
 
-test('after sign-in the app shows the account the person really chose', async () => {
+test('after sign-in the app remembers the account the person really chose', async () => {
   // Google suggested Ana's account, but the person chose Bob's account.
-  const { app, handlers, session, last } = setup({ email: 'bob@example.com' });
+  const { app, handlers, session } = setup({ email: 'bob@example.com' });
   session.saveHint('ana@example.com');
   await app.start();
 
   await handlers.signIn();
 
-  assert.equal(last().email, 'bob@example.com');
   assert.equal(session.getHint(), 'bob@example.com');
 });
 

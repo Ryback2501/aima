@@ -110,7 +110,8 @@ test.describe('sign-in', () => {
     await signInButton(page).click();
 
     await expect(page.locator('#total-value')).toHaveText('Pay the rent on Friday');
-    await expect(page.getByText('Signed in as ana@example.com')).toBeVisible();
+    // The account email is not shown.
+    await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
     expect(sheetRequests).toEqual([
       {

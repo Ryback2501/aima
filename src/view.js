@@ -7,7 +7,6 @@ export function createView(document, t) {
   const signOutButton = element('sign-out');
   const loginMessage = element('login-message');
   const totalValue = element('total-value');
-  const signedInAs = element('signed-in-as');
 
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -25,7 +24,6 @@ export function createView(document, t) {
     if (state.screen === 'main') {
       // textContent shows the cell as plain text, never as page code.
       totalValue.textContent = state.text;
-      signedInAs.textContent = state.email ? t('signedInAs', { email: state.email }) : '';
     }
   }
 

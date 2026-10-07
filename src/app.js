@@ -42,12 +42,12 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     view.render({ screen: 'checking' });
     try {
       const text = await sheets.getCell(config.totalCell);
-      let email = fresh ? null : session.getHint();
-      if (!email) {
-        email = (await (await loadedAuth())?.getEmail(token)) ?? null;
+      // We keep the account email only so the next sign-in can be one tap.
+      if (fresh || !session.getHint()) {
+        const email = await (await loadedAuth())?.getEmail(token);
         if (email) session.saveHint(email);
       }
-      view.render({ screen: 'main', text: text || t('empty'), email });
+      view.render({ screen: 'main', text: text || t('empty') });
     } catch (error) {
       if (error instanceof NoAccessError) {
         // This person cannot open the sheet, so we sign them out completely.

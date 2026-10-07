@@ -13,7 +13,6 @@ export const STRINGS = {
     error: 'Something went wrong. Please try again.',
     notConfigured: 'This app is not set up yet.',
     signedOut: 'You have signed out.',
-    signedInAs: 'Signed in as {email}',
     signOut: 'Sign out',
     empty: 'There is no total yet.',
   },
@@ -28,7 +27,6 @@ export const STRINGS = {
     error: 'Algo salió mal. Inténtalo de nuevo.',
     notConfigured: 'Esta aplicación aún no está configurada.',
     signedOut: 'Has cerrado sesión.',
-    signedInAs: 'Sesión iniciada como {email}',
     signOut: 'Cerrar sesión',
     empty: 'Todavía no hay ningún total.',
   },
@@ -43,7 +41,6 @@ export const STRINGS = {
     error: 'Что-то пошло не так. Попробуйте ещё раз.',
     notConfigured: 'Это приложение ещё не настроено.',
     signedOut: 'Вы вышли из аккаунта.',
-    signedInAs: 'Вы вошли как {email}',
     signOut: 'Выйти',
     empty: 'Итога пока нет.',
   },
@@ -71,11 +68,7 @@ export function browserLanguages(navigator) {
 }
 
 // Returns a function that gives the text for a message key, for example t("signOut").
-// Values like {email} are filled in from the second argument.
 export function createTranslator(language) {
   const strings = STRINGS[language] ?? STRINGS[FALLBACK];
-  return (key, values = {}) => {
-    const text = strings[key] ?? STRINGS[FALLBACK][key] ?? key;
-    return text.replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
-  };
+  return (key) => strings[key] ?? STRINGS[FALLBACK][key] ?? key;
 }

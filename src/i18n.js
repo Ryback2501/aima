@@ -72,3 +72,15 @@ export function createTranslator(language) {
   const strings = STRINGS[language] ?? STRINGS[FALLBACK];
   return (key) => strings[key] ?? STRINGS[FALLBACK][key] ?? key;
 }
+
+// Returns a function that writes an amount of euros the way the language does, for example
+// 1234.5 → "€1,234.50" in English and "1.234,50 €" in Spanish. "always" adds the thousands
+// mark also to 4-digit amounts, which Spanish would otherwise leave out.
+export function createMoneyFormatter(language) {
+  const format = new Intl.NumberFormat(language, {
+    style: 'currency',
+    currency: 'EUR',
+    useGrouping: 'always',
+  });
+  return (amount) => format.format(amount);
+}

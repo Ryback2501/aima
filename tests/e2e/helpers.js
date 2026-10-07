@@ -31,7 +31,7 @@ export async function setUp(
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
       .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
-      .replace(/briefingCell: '[^']*'/, `briefingCell: '${FAKE_CELL}'`);
+      .replace(/totalCell: '[^']*'/, `totalCell: '${FAKE_CELL}'`);
     await route.fulfill({ response, body });
   });
 

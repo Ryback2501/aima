@@ -4,7 +4,7 @@
 // Screens:
 //   login     - logo, name and the "Login with Google" button, maybe with a message
 //   checking  - we ask the sheet if this person may see it
-//   briefing  - the text of the cell named in the config
+//   main      - the Total: the text of the cell named in the config
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
@@ -41,13 +41,13 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
   async function check(token, { fresh = false } = {}) {
     view.render({ screen: 'checking' });
     try {
-      const text = await sheets.getCell(config.briefingCell);
+      const text = await sheets.getCell(config.totalCell);
       let email = fresh ? null : session.getHint();
       if (!email) {
         email = (await (await loadedAuth())?.getEmail(token)) ?? null;
         if (email) session.saveHint(email);
       }
-      view.render({ screen: 'briefing', text: text || t('empty'), email });
+      view.render({ screen: 'main', text: text || t('empty'), email });
     } catch (error) {
       if (error instanceof NoAccessError) {
         // This person cannot open the sheet, so we sign them out completely.

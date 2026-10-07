@@ -15,7 +15,7 @@ export const STRINGS = {
     signedOut: 'You have signed out.',
     signedInAs: 'Signed in as {email}',
     signOut: 'Sign out',
-    empty: 'There is no briefing yet.',
+    empty: 'There is no total yet.',
   },
   es: {
     signIn: 'Iniciar sesión con Google',
@@ -30,7 +30,7 @@ export const STRINGS = {
     signedOut: 'Has cerrado sesión.',
     signedInAs: 'Sesión iniciada como {email}',
     signOut: 'Cerrar sesión',
-    empty: 'Todavía no hay ningún resumen.',
+    empty: 'Todavía no hay ningún total.',
   },
   ru: {
     signIn: 'Войти через Google',
@@ -45,7 +45,7 @@ export const STRINGS = {
     signedOut: 'Вы вышли из аккаунта.',
     signedInAs: 'Вы вошли как {email}',
     signOut: 'Выйти',
-    empty: 'Сводки пока нет.',
+    empty: 'Итога пока нет.',
   },
 };
 

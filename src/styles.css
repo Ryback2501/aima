@@ -109,7 +109,7 @@ main {
   line-height: 1.5;
 }
 
-#briefing {
+#main {
   justify-content: space-between;
 }
 
@@ -198,7 +198,7 @@ main {
   cursor: default;
 }
 
-.briefing {
+.total-value {
   margin: 0;
   font-size: clamp(1.5rem, 6vw, 2.75rem);
   font-weight: 600;

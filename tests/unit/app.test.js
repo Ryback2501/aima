@@ -9,7 +9,7 @@ import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 const config = {
   googleClientId: 'client-1.apps.googleusercontent.com',
   spreadsheetId: 'sheet-1',
-  briefingCell: 'Sheet1!A1',
+  totalCell: 'Sheet1!A1',
 };
 
 function memoryStorage() {
@@ -100,7 +100,7 @@ test('with the example IDs still in the config, the app says it is not set up', 
   assert.deepEqual(last(), { screen: 'login', message: 'notConfigured', disabled: true });
 });
 
-test('a person with access sees the briefing text after sign-in', async () => {
+test('a person with access sees the total after sign-in', async () => {
   const { app, handlers, log, last } = setup();
   await app.start();
 
@@ -108,7 +108,7 @@ test('a person with access sees the briefing text after sign-in', async () => {
 
   assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Sheet1!A1' }]);
   assert.deepEqual(log.tokens, ['tok']);
-  assert.deepEqual(last(), { screen: 'briefing', text: 'Buy milk', email: 'ana@example.com' });
+  assert.deepEqual(last(), { screen: 'main', text: 'Buy milk', email: 'ana@example.com' });
 });
 
 test('the app shows that it is checking access while it waits for the sheet', async () => {
@@ -120,7 +120,7 @@ test('the app shows that it is checking access while it waits for the sheet', as
   assert.deepEqual(screens.at(-2), { screen: 'checking' });
 });
 
-test('an empty briefing cell shows a friendly message', async () => {
+test('an empty total cell shows a friendly message', async () => {
   const { app, handlers, last } = setup({ cell: async () => '' });
   await app.start();
 
@@ -240,7 +240,7 @@ test('a token from earlier in this visit is used again without a new sign-in', a
 
   assert.deepEqual(log.signIns, []);
   assert.deepEqual(log.tokens, ['old-tok']);
-  assert.equal(last().screen, 'briefing');
+  assert.equal(last().screen, 'main');
 });
 
 test('signing out cancels the token, forgets the person and shows the login page', async () => {
@@ -276,7 +276,7 @@ test('sign-in still works when the browser blocks storage', async () => {
   await handlers.signIn();
 
   assert.deepEqual(log.tokens, ['tok']);
-  assert.equal(last().screen, 'briefing');
+  assert.equal(last().screen, 'main');
 });
 
 test('after sign-in the app shows the account the person really chose', async () => {
@@ -325,7 +325,7 @@ test('after a network problem, the next tap tries again with the same sign-in', 
 
   assert.equal(log.signIns.length, 1);
   assert.deepEqual(log.tokens, ['tok', 'tok']);
-  assert.equal(last().screen, 'briefing');
+  assert.equal(last().screen, 'main');
 });
 
 test('a quick double tap opens only one Google sign-in window', async () => {

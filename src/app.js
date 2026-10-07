@@ -4,10 +4,11 @@
 // Screens:
 //   login     - logo, name and the "Login with Google" button, maybe with a message
 //   checking  - we ask the sheet if this person may see it
-//   main      - the Total: the text of the cell named in the config
+//   main      - the Total (the text of the cell named in the config) and the spending goal
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
+import { goalStatus } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 
 export function createApp({ config, view, session, t, loadAuth, createSheets }) {
@@ -36,18 +37,26 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     return auth ?? (await getAuth().catch(() => null));
   }
 
-  // Asks the sheet for the text to show. Google answers only if this person may open the sheet.
+  // Asks the sheet for the Total and the movements, both at the same time.
+  // Google answers only if this person may open the sheet.
   // "fresh" means the person just signed in, so we ask Google which account they chose.
   async function check(token, { fresh = false } = {}) {
     view.render({ screen: 'checking' });
     try {
-      const text = await sheets.getCell(config.totalCell);
+      const [text, movements] = await Promise.all([
+        sheets.getCell(config.totalCell),
+        sheets.getValues(config.goal.movements, { raw: true }),
+      ]);
       // We keep the account email only so the next sign-in can be one tap.
       if (fresh || !session.getHint()) {
         const email = await (await loadedAuth())?.getEmail(token);
         if (email) session.saveHint(email);
       }
-      view.render({ screen: 'main', text: text || t('empty') });
+      view.render({
+        screen: 'main',
+        text: text || t('empty'),
+        goal: goalStatus(movements, config.goal),
+      });
     } catch (error) {
       if (error instanceof NoAccessError) {
         // This person cannot open the sheet, so we sign them out completely.

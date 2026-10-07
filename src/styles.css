@@ -16,6 +16,8 @@
   --accent: #0f766e;
   --label-background: #ffffff;
   --label-shadow: rgba(28, 35, 33, 0.25);
+  --goal-over: #dc2626;
+  --goal-close: #b45309;
   color-scheme: light dark;
 }
 
@@ -27,6 +29,8 @@
     --accent: #5eead4;
     --label-background: #1b2220;
     --label-shadow: rgba(0, 0, 0, 0.6);
+    --goal-over: #f87171;
+    --goal-close: #facc15;
   }
 }
 
@@ -125,6 +129,16 @@ main {
   justify-content: space-between;
 }
 
+/* The Total and the spending goal: one group, in the middle of the free space. */
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  margin: auto 0;
+}
+
 /* A card, like the cards in the iisu app. The card is painted with its border gradient, and
    an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
    shows the same gradient as the border: one surface, with no edge between them.
@@ -149,7 +163,7 @@ main {
   justify-content: center;
   width: min(100%, var(--width));
   min-height: var(--height);
-  margin: auto 0;
+  margin: 0;
   padding: var(--pad-y) var(--pad-x);
   border: var(--border) solid transparent;
   border-radius: var(--radius);
@@ -221,4 +235,13 @@ main {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+/* The spending goal is red when it is over the limit, and yellow when it gets close. */
+.goal-value[data-level='over'] {
+  color: var(--goal-over);
+}
+
+.goal-value[data-level='close'] {
+  color: var(--goal-close);
 }

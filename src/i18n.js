@@ -13,7 +13,7 @@ export const STRINGS = {
     error: 'Something went wrong. Please try again.',
     notConfigured: 'This app is not set up yet.',
     signedOut: 'You have signed out.',
-    signOut: 'Sign out',
+    signOut: 'Log out',
     empty: 'There is no total yet.',
   },
   es: {

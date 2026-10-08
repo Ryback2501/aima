@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CARDS, cardStyle, hasCornerIcon, PILLS, pillStyle } from '../../src/components.js';
+import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from '../../src/components.js';
 import { config } from '../../src/config.js';
 import { ICONS } from '../../src/icons.js';
 
@@ -50,9 +50,9 @@ test('one color gives a plain border', () => {
 });
 
 test('a card has a corner icon only when it sets both the icon and its size', () => {
-  assert.equal(hasCornerIcon(card), true);
-  assert.equal(hasCornerIcon({ ...card, icon: undefined }), false);
-  assert.equal(hasCornerIcon({ ...card, iconSize: undefined }), false);
+  assert.equal(hasIcon(card), true);
+  assert.equal(hasIcon({ ...card, icon: undefined }), false);
+  assert.equal(hasIcon({ ...card, iconSize: undefined }), false);
 });
 
 test('every card has all its settings, and its corner icon exists', () => {
@@ -60,7 +60,7 @@ test('every card has all its settings, and its corner icon exists', () => {
     for (const key of ['width', 'height', 'border', 'radius']) {
       assert.equal(typeof settings[key], 'number', `${name}.${key}`);
     }
-    if (hasCornerIcon(settings)) {
+    if (hasIcon(settings)) {
       assert.ok(ICONS[settings.icon], `${name} uses an unknown icon`);
       assert.equal(typeof settings.iconSize, 'number', `${name}.iconSize`);
     }
@@ -72,7 +72,7 @@ test('every card has all its settings, and its corner icon exists', () => {
 
 test('the back button is a card without a corner icon', () => {
   assert.ok(CARDS.back);
-  assert.equal(hasCornerIcon(CARDS.back), false);
+  assert.equal(hasIcon(CARDS.back), false);
 });
 
 const pill = {
@@ -114,4 +114,12 @@ test('every pill has all its settings', () => {
 
 test('every part of the Total in the config has a pill', () => {
   for (const { name } of config.pills) assert.ok(PILLS[name], `no pill called "${name}"`);
+});
+
+test('every pill shows an icon that exists in icons.js, with a size', () => {
+  for (const [name, settings] of Object.entries(PILLS)) {
+    assert.ok(hasIcon(settings), `${name} has no icon`);
+    assert.ok(ICONS[settings.icon], `${name} uses an unknown icon`);
+    assert.equal(typeof settings.iconSize, 'number', `${name}.iconSize`);
+  }
 });

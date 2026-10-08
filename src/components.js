@@ -75,8 +75,8 @@ export const CARDS = {
 
 const px = (value) => `${value}px`;
 
-// True when the card shows an icon in its top-left corner: it needs both the icon and its size.
-export const hasCornerIcon = ({ icon, iconSize }) => Boolean(icon && iconSize);
+// True when a card or pill shows an icon: it needs both the icon and its size.
+export const hasIcon = ({ icon, iconSize }) => Boolean(icon && iconSize);
 
 // Turns one card's settings into the CSS variables that the card styles (styles.css) use.
 export function cardStyle({ width, height, border, radius, badge = radius * 2, colors, padding }) {
@@ -103,7 +103,9 @@ export function cardStyle({ width, height, border, radius, badge = radius * 2, c
 // - colors: the dark part of the pill when it is switched on and when it is switched off.
 // - valueWidth: the width of the white part with the value, on the right. It is the same
 //   whatever the value is.
-// - padding: the room left of the name (x), and around the white value part (y).
+// - icon, iconSize: the icon left of the name (a name from icons.js) and how big it is. It has
+//   the same color as the name. Without one of them the pill has no icon.
+// - padding: the room left of the icon or name (x), and around the white value part (y).
 
 const pill = {
   width: 360,
@@ -111,15 +113,15 @@ const pill = {
   border: 3,
   borderColor: '#e5e7eb',
   colors: { on: '#000000', off: '#6b7280' },
-  valueWidth: 180,
+  valueWidth: 160,
   padding: { x: 20, y: 4 },
 };
 
 export const PILLS = {
-  bank: { ...pill },
-  cards: { ...pill },
-  provisioned: { ...pill },
-  cash: { ...pill },
+  bank: { ...pill, icon: 'bank', iconSize: 20 },
+  cards: { ...pill, icon: 'card', iconSize: 20 },
+  provisioned: { ...pill, icon: 'piggyBank', iconSize: 20 },
+  cash: { ...pill, icon: 'cash', iconSize: 20 },
 };
 
 // Turns one pill's settings into the CSS variables that the pill styles (styles.css) use.

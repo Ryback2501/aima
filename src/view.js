@@ -1,6 +1,6 @@
 // Shows the screens on the page. This is the only file that changes the page itself.
 
-import { CARDS, cardStyle, hasCornerIcon, PILLS, pillStyle } from './components.js';
+import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from './components.js';
 import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -46,7 +46,7 @@ export function createView(document, t, formatMoney) {
     for (const [name, value] of Object.entries(cardStyle(settings))) {
       card.style.setProperty(name, value);
     }
-    if (hasCornerIcon(settings)) {
+    if (hasIcon(settings)) {
       const badge = document.createElement('span');
       badge.className = 'label-badge';
       badge.append(createIcon(settings.icon, settings.iconSize));
@@ -67,6 +67,11 @@ export function createView(document, t, formatMoney) {
     }
     for (const [name, value] of Object.entries(pillStyle(settings))) {
       pill.style.setProperty(name, value);
+    }
+    if (hasIcon(settings)) {
+      const icon = createIcon(settings.icon, settings.iconSize);
+      icon.classList.add('pill-icon');
+      pill.querySelector('.pill-name').before(icon);
     }
   }
 

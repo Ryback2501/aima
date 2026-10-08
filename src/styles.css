@@ -212,8 +212,8 @@ main {
 
 .label {
   /* How long one card takes, and the wait before the next card starts. */
-  --rise-time: 500ms;
-  --rise-step: 150ms;
+  --rise-time: 250ms;
+  --rise-step: 75ms;
   /* The card's place in the line: 0 starts first. */
   --card-order: 0;
 }

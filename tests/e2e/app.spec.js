@@ -571,8 +571,8 @@ test.describe('cards rise into view', () => {
     const goal = page.locator('#main .label:has(#goal-value)');
     const logOut = page.getByRole('button', { name: 'Log out' });
     expect(await look(total)).toMatchObject({ name: 'card-rise', delay: '0s' });
-    expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
-    expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.3s' });
+    expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.075s' });
+    expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
   });
 
   test('taps are ignored until the cards have risen', async ({ page }) => {

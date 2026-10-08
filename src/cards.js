@@ -24,7 +24,7 @@ export const CARDS = {
     radius: 24,
     icon: 'star',
     iconSize: 26,
-    colors: ['#14b8a6', '#ec4899'],
+    colors: ['#fde68a', '#b8860b'],
     padding: { x: 24, y: 48 },
   },
   // The spending goal, below the Total.
@@ -35,7 +35,7 @@ export const CARDS = {
     radius: 24,
     icon: 'flag',
     iconSize: 26,
-    colors: ['#14b8a6', '#ec4899'],
+    colors: ['#86efac', '#15803d'],
     padding: { x: 24, y: 48 },
   },
   // The "Login with Google" button.
@@ -57,7 +57,7 @@ export const CARDS = {
     radius: 20,
     icon: 'logout',
     iconSize: 22,
-    colors: ['#14b8a6', '#ec4899'],
+    colors: ['#fca5a5', '#b91c1c'],
     padding: { x: 52, y: 12 },
   },
 };

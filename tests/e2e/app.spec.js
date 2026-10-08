@@ -9,7 +9,7 @@ import {
   FAKE_CELL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS } from '../../src/cards.js';
+import { CARDS, hasCornerIcon } from '../../src/cards.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -38,6 +38,7 @@ async function expectCardFollowsSettings(card, name) {
     const css = getComputedStyle(node);
     const icon = node.querySelector('.label-badge svg');
     return {
+      hasBadge: Boolean(icon),
       width: node.getBoundingClientRect().width,
       height: node.getBoundingClientRect().height,
       room: node.parentElement.clientWidth,
@@ -46,9 +47,9 @@ async function expectCardFollowsSettings(card, name) {
       radius: css.borderTopLeftRadius,
       padX: css.paddingLeft,
       padY: css.paddingTop,
-      iconWidth: icon.getAttribute('width'),
-      iconHeight: icon.getAttribute('height'),
-      iconPath: icon.querySelector('path').getAttribute('d'),
+      iconWidth: icon?.getAttribute('width'),
+      iconHeight: icon?.getAttribute('height'),
+      iconPath: icon?.querySelector('path').getAttribute('d'),
     };
   });
   // As wide as set, unless the screen is narrower.
@@ -59,10 +60,26 @@ async function expectCardFollowsSettings(card, name) {
   expect(look.radius).toBe(`${settings.radius}px`);
   expect(look.padX).toBe(`${settings.padding.x}px`);
   expect(look.padY).toBe(`${settings.padding.y}px`);
+  expect(look.hasBadge).toBe(hasCornerIcon(settings));
+  if (!look.hasBadge) return;
   expect(look.iconWidth).toBe(String(settings.iconSize));
   expect(look.iconHeight).toBe(String(settings.iconSize));
   expect(look.iconPath).toBe(ICONS[settings.icon].path);
 }
+
+test('a card without corner icon settings has no corner icon area, and icons can be content', async ({
+  page,
+}) => {
+  await setUp(page);
+  await page.goto('./');
+
+  const back = page.locator('#back');
+  await expect(back).toHaveAttribute('data-badge', 'none');
+  await expect(back.locator('.label-badge')).toHaveCount(0);
+  const icon = back.locator('[data-icon="back"] svg');
+  await expect(icon).toHaveAttribute('width', '24');
+  await expect(icon.locator('path')).toHaveAttribute('d', ICONS.back.path);
+});
 
 test.describe('loading', () => {
   test('the app stays hidden until its code has run', async ({ page }) => {
@@ -571,8 +588,8 @@ test.describe('cards rise into view', () => {
     const goal = page.locator('#main .label:has(#goal-value)');
     const logOut = page.getByRole('button', { name: 'Log out' });
     expect(await look(total)).toMatchObject({ name: 'card-rise', delay: '0s' });
-    expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
-    expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.3s' });
+    expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.075s' });
+    expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
   });
 
   test('taps are ignored until the cards have risen', async ({ page }) => {
@@ -613,4 +630,115 @@ test('with "reduce motion" on the phone, cards show at once and taps work', asyn
     'none',
   );
   await expect.poll(() => page.locator('#login').evaluate((node) => node.inert)).toBe(false);
+});
+
+test.describe('open a card full screen', () => {
+  const cardOf = (page, name) => page.locator(`#main [data-card="${name}"]`);
+  const box = (locator) => locator.boundingBox();
+  const near = (a, b) => expect(Math.abs(a - b)).toBeLessThan(1);
+
+  async function openMain(page) {
+    await setUp(page);
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect.poll(() => page.locator('#main').evaluate((node) => node.inert)).toBe(false);
+  }
+
+  for (const name of ['total', 'goal']) {
+    test(`tapping the ${name} card opens it full screen, and back puts it back`, async ({
+      page,
+    }) => {
+      await openMain(page);
+      const card = cardOf(page, name);
+      const before = await box(card);
+      const screen = page.viewportSize();
+
+      await card.click();
+
+      const back = page.locator('#back');
+      await expect(back).toBeVisible();
+      await expect(card).toHaveAttribute('aria-expanded', 'true');
+      const open = await box(card);
+      near(open.x, 0);
+      near(open.y, 0);
+      near(open.width, screen.width);
+      near(open.height, screen.height);
+      // Everything else is black.
+      const backdrop = page.locator('#backdrop');
+      await expect(backdrop).toBeVisible();
+      expect(
+        await backdrop.evaluate((node) => [
+          getComputedStyle(node).opacity,
+          getComputedStyle(node).backgroundColor,
+        ]),
+      ).toEqual(['1', 'rgb(0, 0, 0)']);
+      // The back button: bottom-left, a card from its settings, with the back arrow inside.
+      const backBox = await box(back);
+      expect(backBox.x).toBeLessThan(40);
+      expect(backBox.y + backBox.height).toBeGreaterThan(screen.height - 40);
+      await expectCardFollowsSettings(back, 'back');
+      await expect(back.locator('[data-icon="back"] svg path')).toHaveAttribute(
+        'd',
+        ICONS.back.path,
+      );
+      // Log out is covered: a tap there does nothing.
+      const logOut = await box(page.getByRole('button', { name: 'Log out' }));
+      await page.mouse.click(logOut.x + logOut.width / 2, logOut.y + logOut.height / 2);
+      await expect(back).toBeVisible();
+      expect(await page.locator('#sign-out').evaluate((node) => node.inert)).toBe(true);
+
+      await back.click();
+
+      await expect(back).toBeHidden();
+      await expect(backdrop).toBeHidden();
+      await expect(card).toHaveAttribute('aria-expanded', 'false');
+      const after = await box(card);
+      near(after.x, before.x);
+      near(after.y, before.y);
+      near(after.width, before.width);
+      near(after.height, before.height);
+      expect(await page.locator('#sign-out').evaluate((node) => node.inert)).toBe(false);
+    });
+  }
+
+  test('a card also opens with the Enter key', async ({ page }) => {
+    await openMain(page);
+
+    await cardOf(page, 'total').focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.locator('#back')).toBeVisible();
+  });
+
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    test('the card grows while taps are ignored, then the back button rises in', async ({
+      page,
+    }) => {
+      await openMain(page);
+      const card = cardOf(page, 'total');
+      const before = await box(card);
+
+      await card.click();
+      expect(await page.locator('#main').evaluate((node) => node.inert)).toBe(true);
+      // Stop the growing halfway to measure it.
+      const half = await card.evaluate((node) => {
+        const grow = node.getAnimations().find((animation) => !('animationName' in animation));
+        grow.pause();
+        grow.currentTime = grow.effect.getTiming().duration / 2;
+        const rect = node.getBoundingClientRect();
+        grow.play();
+        return { width: rect.width, height: rect.height };
+      });
+      expect(half.height).toBeGreaterThan(before.height);
+      expect(half.height).toBeLessThan(page.viewportSize().height);
+
+      await expect(page.locator('#back')).toBeVisible();
+      await expect.poll(() => page.locator('#main').evaluate((node) => node.inert)).toBe(false);
+      await page.locator('#back').click();
+      await expect(page.locator('#backdrop')).toBeHidden();
+    });
+  });
 });

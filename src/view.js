@@ -1,6 +1,6 @@
 // Shows the screens on the page. This is the only file that changes the page itself.
 
-import { CARDS, cardStyle } from './cards.js';
+import { CARDS, cardStyle, hasCornerIcon } from './cards.js';
 import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -17,6 +17,10 @@ export function createView(document, t, formatMoney) {
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
     node.textContent = t(node.dataset.i18n);
+  }
+  // The same for names that screen readers say, for buttons that show only an icon.
+  for (const node of document.querySelectorAll('[data-i18n-label]')) {
+    node.setAttribute('aria-label', t(node.dataset.i18nLabel));
   }
 
   // Builds an icon from icons.js, the given number of pixels wide and high.
@@ -41,10 +45,20 @@ export function createView(document, t, formatMoney) {
     for (const [name, value] of Object.entries(cardStyle(settings))) {
       card.style.setProperty(name, value);
     }
-    const badge = document.createElement('span');
-    badge.className = 'label-badge';
-    badge.append(createIcon(settings.icon, settings.iconSize));
-    card.prepend(badge);
+    if (hasCornerIcon(settings)) {
+      const badge = document.createElement('span');
+      badge.className = 'label-badge';
+      badge.append(createIcon(settings.icon, settings.iconSize));
+      card.prepend(badge);
+    } else {
+      card.dataset.badge = 'none';
+    }
+  }
+
+  // Any element can show an icon from icons.js as its content:
+  // <span data-icon="back" data-icon-size="24"></span>
+  for (const node of document.querySelectorAll('[data-icon]')) {
+    node.append(createIcon(node.dataset.icon, Number(node.dataset.iconSize)));
   }
 
   // The page is hidden while the app gets ready. After the first screen is chosen, and the
@@ -66,7 +80,113 @@ export function createView(document, t, formatMoney) {
     });
   }
 
+  // Opening a card full screen, and closing it again.
+  const mainScreen = element('main');
+  const backdrop = element('backdrop');
+  const backButton = element('back');
+  const window = document.defaultView;
+  let openCard = null;
+  let placeholder = null;
+  let moving = false;
+
+  // How long a card takes to open or close. No time when the phone asks for less motion.
+  function moveTime(card) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+    return parseFloat(window.getComputedStyle(card).getPropertyValue('--expand-time')) || 0;
+  }
+
+  // Moves the card from one place and size on the screen to another, and fades the black
+  // backdrop at the same time. Both stay at their end state until we take the animations off.
+  async function move(card, from, to, black) {
+    const timing = { duration: moveTime(card), easing: 'ease-in-out', fill: 'forwards' };
+    const place = ({ top, left, width, height }) => ({
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+    const animations = [
+      card.animate([place(from), place(to)], timing),
+      backdrop.animate([{ opacity: black[0] }, { opacity: black[1] }], timing),
+    ];
+    await Promise.allSettled(animations.map((animation) => animation.finished));
+    return animations;
+  }
+
+  // While a card is open, only the card and the back button react.
+  function coverTheRest(covered) {
+    for (const node of mainScreen.querySelectorAll('[data-card]')) {
+      node.inert = covered && node !== openCard && node !== backButton;
+    }
+  }
+
+  async function open(card) {
+    if (openCard || moving) return;
+    moving = true;
+    mainScreen.inert = true;
+    const from = card.getBoundingClientRect();
+    placeholder = document.createElement('div');
+    placeholder.className = 'card-placeholder';
+    placeholder.style.width = `${from.width}px`;
+    placeholder.style.height = `${from.height}px`;
+    card.before(placeholder);
+    openCard = card;
+    card.classList.add('open');
+    card.setAttribute('aria-expanded', 'true');
+    backdrop.hidden = false;
+    const to = card.getBoundingClientRect();
+    const animations = await move(card, from, to, [0, 1]);
+    for (const animation of animations) animation.cancel();
+    coverTheRest(true);
+    backButton.hidden = false;
+    // The back button rises in like every card. Taps wait until it is there.
+    await Promise.allSettled(backButton.getAnimations().map((animation) => animation.finished));
+    moving = false;
+    mainScreen.inert = false;
+    backButton.focus();
+  }
+
+  // Puts the open card back at once, without animation (used when the screen changes).
+  function putBack() {
+    openCard.classList.remove('open');
+    openCard.setAttribute('aria-expanded', 'false');
+    placeholder.remove();
+    backdrop.hidden = true;
+    backButton.hidden = true;
+    coverTheRest(false);
+    const card = openCard;
+    openCard = null;
+    placeholder = null;
+    return card;
+  }
+
+  async function close() {
+    if (!openCard || moving) return;
+    moving = true;
+    mainScreen.inert = true;
+    backButton.hidden = true;
+    const from = openCard.getBoundingClientRect();
+    const to = placeholder.getBoundingClientRect();
+    const animations = await move(openCard, from, to, [1, 0]);
+    const card = putBack();
+    for (const animation of animations) animation.cancel();
+    moving = false;
+    mainScreen.inert = false;
+    card.focus();
+  }
+
+  for (const card of document.querySelectorAll('[data-expandable]')) {
+    card.addEventListener('click', () => open(card));
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      open(card);
+    });
+  }
+  backButton.addEventListener('click', () => close());
+
   function render(state) {
+    if (openCard && state.screen !== 'main') putBack();
     for (const screen of screens) screen.hidden = screen.id !== state.screen;
     if (!visible) show();
     const screen = screens.find(({ id }) => id === state.screen);

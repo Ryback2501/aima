@@ -46,15 +46,45 @@
       <section id="main" class="screen" hidden>
         <!-- The Total and the spending goal, kept together in the middle of the screen. -->
         <div class="card-stack">
-          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
-          <div class="label" data-card="total">
+          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js.
+               data-expandable: a tap opens it full screen. -->
+          <div
+            class="label"
+            data-card="total"
+            data-expandable
+            role="button"
+            tabindex="0"
+            aria-expanded="false"
+          >
             <p id="total-value" class="total-value"></p>
           </div>
-          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
-          <div class="label" data-card="goal">
+          <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js.
+               data-expandable: a tap opens it full screen. -->
+          <div
+            class="label"
+            data-card="goal"
+            data-expandable
+            role="button"
+            tabindex="0"
+            aria-expanded="false"
+          >
             <p id="goal-value" class="total-value goal-value"></p>
           </div>
         </div>
+        <!-- Covers everything behind an open card in black. -->
+        <div id="backdrop" hidden></div>
+        <!-- Closes an open card. A card without a corner icon: its content is the back icon. -->
+        <button
+          id="back"
+          class="label card-button"
+          data-card="back"
+          data-i18n-label="back"
+          aria-label="Back"
+          type="button"
+          hidden
+        >
+          <span data-icon="back" data-icon-size="24"></span>
+        </button>
         <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
         <button id="sign-out" class="label card-button" data-card="logOut" type="button">
           <span data-i18n="signOut">Log out</span>

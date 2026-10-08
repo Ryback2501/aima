@@ -18,6 +18,11 @@ export const ICONS = {
     viewBox: '0 0 24 24',
     path: 'M4 2h2v20H4z M6 3h3v3H6z M12 3h3v3h-3z M9 6h3v3H9z M15 6h3v3h-3z M6 9h3v3H6z M12 9h3v3h-3z M6 3h12v.75H6z M17.25 3H18v9h-.75z M6 11.25h12V12H6z',
   },
+  // An arrow pointing left: go back.
+  back: {
+    viewBox: '0 0 24 24',
+    path: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+  },
   // A door with an arrow going out.
   logout: {
     viewBox: '0 0 24 24',

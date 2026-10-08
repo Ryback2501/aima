@@ -3,9 +3,11 @@
 //   about one hour. There is no server, so the app cannot renew it alone.
 // - The Google account email is kept longer (localStorage). Next time, Google can sign the
 //   same person in with one tap, without asking which account to use.
+// - The parts of the Total that the person switched off are kept on this phone (localStorage).
 
 const TOKEN_KEY = 'aima.token';
 const HINT_KEY = 'aima.hint';
+const OFF_KEY = 'aima.off';
 
 // We stop using a token one minute before it expires, so it cannot expire in the middle of a request.
 const SAFETY_MARGIN_MS = 60_000;
@@ -78,6 +80,20 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
 
     getHint() {
       return long.get(HINT_KEY);
+    },
+
+    // The names of the parts of the Total that are switched off, for example ["cash"].
+    getSwitchedOff() {
+      try {
+        const names = JSON.parse(long.get(OFF_KEY));
+        return Array.isArray(names) ? names.filter((name) => typeof name === 'string') : [];
+      } catch {
+        return []; // Damaged data: nothing is switched off.
+      }
+    },
+
+    saveSwitchedOff(names) {
+      long.set(OFF_KEY, JSON.stringify(names));
     },
 
     // Forgets everything, for example when the person signs out.

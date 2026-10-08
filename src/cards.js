@@ -21,22 +21,22 @@ export const CARDS = {
   total: {
     width: 544,
     height: 136,
-    border: 3,
+    border: 6,
     radius: 24,
     icon: 'star',
     iconSize: 26,
-    colors: ['#fde68a', '#b8860b'],
+    colors: ['#b8860b', '#fde68a'],
     padding: { x: 24, y: 48 },
   },
   // The spending goal, below the Total.
   goal: {
     width: 544,
     height: 136,
-    border: 3,
+    border: 6,
     radius: 24,
     icon: 'flag',
     iconSize: 26,
-    colors: ['#86efac', '#15803d'],
+    colors: ['#15803d', '#86efac'],
     padding: { x: 24, y: 48 },
   },
   // The "Login with Google" button.
@@ -56,7 +56,7 @@ export const CARDS = {
     height: 56,
     border: 3,
     radius: 16,
-    colors: ['#e5e7eb', '#6b7280'],
+    colors: ['#6b7280', '#e5e7eb'],
     padding: { x: 0, y: 0 },
   },
   // The "Log out" button.
@@ -67,7 +67,7 @@ export const CARDS = {
     radius: 20,
     icon: 'logout',
     iconSize: 22,
-    colors: ['#fca5a5', '#b91c1c'],
+    colors: ['#b91c1c', '#fca5a5'],
     padding: { x: 52, y: 12 },
   },
 };

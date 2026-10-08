@@ -15,7 +15,11 @@ export const STRINGS = {
     signedOut: 'You have signed out.',
     signOut: 'Log out',
     back: 'Back',
-    empty: 'There is no total yet.',
+    total: 'Total',
+    bank: 'Bank',
+    cards: 'Cards',
+    provisioned: 'Provisioned',
+    cash: 'Cash',
   },
   es: {
     signIn: 'Iniciar sesión con Google',
@@ -30,7 +34,11 @@ export const STRINGS = {
     signedOut: 'Has cerrado sesión.',
     signOut: 'Cerrar sesión',
     back: 'Volver',
-    empty: 'Todavía no hay ningún total.',
+    total: 'Total',
+    bank: 'Banco',
+    cards: 'Tarjetas',
+    provisioned: 'Provisionado',
+    cash: 'Efectivo',
   },
   ru: {
     signIn: 'Войти через Google',
@@ -45,7 +53,11 @@ export const STRINGS = {
     signedOut: 'Вы вышли из аккаунта.',
     signOut: 'Выйти',
     back: 'Назад',
-    empty: 'Итога пока нет.',
+    total: 'Итого',
+    bank: 'Банк',
+    cards: 'Карты',
+    provisioned: 'Резерв',
+    cash: 'Наличные',
   },
 };
 

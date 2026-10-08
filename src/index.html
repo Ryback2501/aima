@@ -56,7 +56,35 @@
             tabindex="0"
             aria-expanded="false"
           >
-            <p id="total-value" class="total-value"></p>
+            <!-- When the card is open: the header with a caption, and the parts of the Total. -->
+            <div class="total-header">
+              <span class="total-caption rise-in" data-i18n="total">Total</span>
+              <p id="total-value" class="total-value"></p>
+            </div>
+            <!-- A tap on a pill switches that part of the Total on or off. -->
+            <div class="pills">
+              <button class="pill rise-in" data-pill="bank" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="bank">Bank</span>
+                <span class="pill-value"></span>
+              </button>
+              <button class="pill rise-in" data-pill="cards" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="cards">Cards</span>
+                <span class="pill-value"></span>
+              </button>
+              <button
+                class="pill rise-in"
+                data-pill="provisioned"
+                type="button"
+                aria-pressed="true"
+              >
+                <span class="pill-name" data-i18n="provisioned">Provisioned</span>
+                <span class="pill-value"></span>
+              </button>
+              <button class="pill rise-in" data-pill="cash" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="cash">Cash</span>
+                <span class="pill-value"></span>
+              </button>
+            </div>
           </div>
           <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js.
                data-expandable: a tap opens it full screen. -->

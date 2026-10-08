@@ -143,3 +143,30 @@ test('a token kept only in memory also expires', () => {
 
   assert.equal(session.getToken(), null);
 });
+
+test('nothing is switched off at first', () => {
+  const session = createSession({ sessionStorage: memoryStorage(), localStorage: memoryStorage() });
+
+  assert.deepEqual(session.getSwitchedOff(), []);
+});
+
+test('the parts of the Total that are switched off are remembered for the next visit', () => {
+  const localStorage = memoryStorage();
+  createSession({ sessionStorage: memoryStorage(), localStorage }).saveSwitchedOff(['cash']);
+
+  const next = createSession({ sessionStorage: memoryStorage(), localStorage });
+
+  assert.deepEqual(next.getSwitchedOff(), ['cash']);
+});
+
+test('damaged or blocked storage for the switched-off parts gives an empty list', () => {
+  const damaged = memoryStorage();
+  damaged.setItem('aima.off', '{not a list');
+  assert.deepEqual(
+    createSession({ sessionStorage: memoryStorage(), localStorage: damaged }).getSwitchedOff(),
+    [],
+  );
+  const blocked = createSession({ sessionStorage: brokenStorage, localStorage: brokenStorage });
+  blocked.saveSwitchedOff(['bank']);
+  assert.deepEqual(blocked.getSwitchedOff(), []);
+});

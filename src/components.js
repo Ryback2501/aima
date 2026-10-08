@@ -1,6 +1,7 @@
-// How each card looks. A card in the page says which settings it uses with
+// How the app's components look: cards and pills. All sizes are in pixels.
+//
+// CARDS: how each card looks. A card in the page says which settings it uses with
 // data-card="<name>", for example <div class="label" data-card="total">.
-// All sizes are in pixels.
 //
 // - width, height: the outer size of the card, border included. On a narrow screen the card
 //   gets narrower so it always fits. The height is the smallest height: the card grows taller
@@ -89,5 +90,49 @@ export function cardStyle({ width, height, border, radius, badge = radius * 2, c
     '--pad-x': px(padding.x),
     '--pad-y': px(padding.y),
     '--label-border': `linear-gradient(to bottom right, ${stops.join(', ')})`,
+  };
+}
+
+// PILLS: how each pill looks. A pill in the page says which settings it uses with
+// data-pill="<name>", for example <button class="pill" data-pill="bank">. Which cell a pill
+// reads, and how it counts in the Total, is in config.js.
+//
+// - width, height: the outer size of the pill, border included. On a narrow screen the pill
+//   gets narrower so it always fits.
+// - border, borderColor: how thick the thin light border is, and its color.
+// - colors: the dark part of the pill when it is switched on and when it is switched off.
+// - valueWidth: the width of the white part with the value, on the right. It is the same
+//   whatever the value is.
+// - padding: the room left of the name (x), and around the white value part (y).
+
+const pill = {
+  width: 360,
+  height: 48,
+  border: 3,
+  borderColor: '#e5e7eb',
+  colors: { on: '#000000', off: '#6b7280' },
+  valueWidth: 180,
+  padding: { x: 20, y: 4 },
+};
+
+export const PILLS = {
+  bank: { ...pill },
+  cards: { ...pill },
+  provisioned: { ...pill },
+  cash: { ...pill },
+};
+
+// Turns one pill's settings into the CSS variables that the pill styles (styles.css) use.
+export function pillStyle({ width, height, border, borderColor, colors, valueWidth, padding }) {
+  return {
+    '--pill-width': px(width),
+    '--pill-height': px(height),
+    '--pill-border': px(border),
+    '--pill-border-color': borderColor,
+    '--pill-on': colors.on,
+    '--pill-off': colors.off,
+    '--pill-value-width': px(valueWidth),
+    '--pill-pad-x': px(padding.x),
+    '--pill-pad-y': px(padding.y),
   };
 }

@@ -10,7 +10,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasCornerIcon } from '../../src/components.js';
+import { CARDS, hasCornerIcon, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -806,6 +806,30 @@ test.describe('the open Total card', () => {
     await expect(pill(page, 'bank')).toBeHidden();
     const after = await page.locator('#total-value').boundingBox();
     expect(Math.abs(after.y - closed.y)).toBeLessThan(1);
+  });
+
+  test('each pill follows its settings, and its value part has a fixed width', async ({ page }) => {
+    await openMain(page);
+    await openTotal(page);
+
+    for (const name of names) {
+      const settings = PILLS[name];
+      const look = await pill(page, name).evaluate((node) => {
+        const css = getComputedStyle(node);
+        return {
+          width: node.getBoundingClientRect().width,
+          height: node.getBoundingClientRect().height,
+          room: node.parentElement.clientWidth,
+          border: css.borderTopWidth,
+          borderColor: css.borderTopColor,
+          valueWidth: node.querySelector('.pill-value').getBoundingClientRect().width,
+        };
+      });
+      expect(Math.abs(look.width - Math.min(settings.width, look.room))).toBeLessThan(1);
+      expect(look.height).toBe(settings.height);
+      expect(look.border).toBe(`${settings.border}px`);
+      expect(look.valueWidth).toBe(settings.valueWidth);
+    }
   });
 
   test('a tap on a pill switches it off and takes it out of the Total; it is remembered', async ({

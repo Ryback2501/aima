@@ -10,7 +10,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasCornerIcon } from '../../src/cards.js';
+import { CARDS, hasCornerIcon } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });

@@ -146,7 +146,7 @@ main {
 /* A card, like the cards in the iisu app. The card is painted with its border gradient, and
    an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
    shows the same gradient as the border: one surface, with no edge between them.
-   Each card's sizes and colors come from cards.js. The values here are only a fallback. */
+   Each card's sizes and colors come from components.js. The values here are only a fallback. */
 .label {
   --width: 34rem;
   --height: 0px;

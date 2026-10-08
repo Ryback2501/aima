@@ -1,6 +1,6 @@
 // Shows the screens on the page. This is the only file that changes the page itself.
 
-import { CARDS, cardStyle, hasCornerIcon } from './cards.js';
+import { CARDS, cardStyle, hasCornerIcon } from './components.js';
 import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -38,10 +38,11 @@ export function createView(document, t, formatMoney) {
     return svg;
   }
 
-  // Give every card the look set in cards.js: sizes, colors and the icon in its corner.
+  // Give every card the look set in components.js: sizes, colors and the icon in its corner.
   for (const card of document.querySelectorAll('[data-card]')) {
     const settings = CARDS[card.dataset.card];
-    if (!settings) throw new Error(`There is no card called "${card.dataset.card}" in cards.js.`);
+    if (!settings)
+      throw new Error(`There is no card called "${card.dataset.card}" in components.js.`);
     for (const [name, value] of Object.entries(cardStyle(settings))) {
       card.style.setProperty(name, value);
     }

@@ -111,3 +111,32 @@ test('a network failure becomes a SheetsError', async () => {
 
   await assert.rejects(client(fetch).getCell('Sheet1!A1'), SheetsError);
 });
+
+test('getCells reads several cells in one request, as plain numbers', async () => {
+  const { fetch, calls } = fakeFetch(200, {
+    valueRanges: [{ values: [[1200.5]] }, { values: [[-30]] }],
+  });
+
+  const values = await client(fetch).getCells(['Sheet1!A1', 'Other sheet!B2']);
+
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values:batchGet' +
+      '?ranges=Sheet1!A1&ranges=Other%20sheet!B2' +
+      '&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+  );
+  assert.deepEqual(values, [1200.5, -30]);
+});
+
+test('getCells gives an empty text for an empty cell', async () => {
+  const { fetch } = fakeFetch(200, { valueRanges: [{ values: [[5]] }, {}] });
+
+  assert.deepEqual(await client(fetch).getCells(['Sheet1!A1', 'Sheet1!A2']), [5, '']);
+});
+
+test('getCells also tells when the person cannot open the sheet', async () => {
+  const { fetch } = fakeFetch(403);
+
+  await assert.rejects(client(fetch).getCells(['Sheet1!A1']), NoAccessError);
+});

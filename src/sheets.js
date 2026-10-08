@@ -4,6 +4,8 @@
 // Later, the same client will also add and change data in the sheet.
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets';
+// Asks for plain numbers and dates instead of the text the sheet shows (see getValues).
+const RAW = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
 
 // The person's Google account cannot open the sheet.
 export class NoAccessError extends Error {
@@ -55,9 +57,7 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
   // With raw, numbers come as plain numbers (-12.5) and dates as day numbers (days since
   // 30 December 1899), the same whatever the sheet's number and date format is.
   async function getValues(range, { raw = false } = {}) {
-    const query = raw
-      ? '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER'
-      : '';
+    const query = raw ? `?${RAW}` : '';
     const data = await request(`/values/${encodeURIComponent(range)}${query}`);
     return data.values ?? [];
   }
@@ -68,5 +68,13 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return rows[0]?.[0] ?? '';
   }
 
-  return { getValues, getCell };
+  // Reads several single cells in one request, for example ["Sheet1!A1", "Sheet1!B7"].
+  // Returns one value per cell, in the same order: numbers as plain numbers, '' when empty.
+  async function getCells(ranges) {
+    const list = ranges.map((range) => `ranges=${encodeURIComponent(range)}`).join('&');
+    const data = await request(`/values:batchGet?${list}&${RAW}`);
+    return ranges.map((range, index) => data.valueRanges?.[index]?.values?.[0]?.[0] ?? '');
+  }
+
+  return { getValues, getCell, getCells };
 }

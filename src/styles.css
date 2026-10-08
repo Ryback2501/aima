@@ -18,6 +18,10 @@
   --label-shadow: rgba(28, 35, 33, 0.25);
   --goal-over: #dc2626;
   --goal-close: #b45309;
+  /* The dark part of a pill when it is on and off, and how long the change takes. */
+  --pill-on: #000000;
+  --pill-off: #6b7280;
+  --pill-fade: 250ms;
   color-scheme: light dark;
 }
 
@@ -347,4 +351,117 @@ html:not(.loading) .label {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
   left: calc(env(safe-area-inset-left, 0px) + 20px);
   z-index: 30;
+}
+
+/* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
+   set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
+   they sink away in the reverse order (--sink-order): the same movement, backwards. */
+@keyframes card-sink {
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+    box-shadow: 0 0 0 var(--label-shadow);
+  }
+}
+
+.label.open:not(.settled) .rise-in {
+  visibility: hidden;
+}
+
+.label.open.settled .rise-in {
+  animation: card-rise var(--rise-time) ease-out calc(var(--rise-order) * var(--rise-step))
+    backwards;
+}
+
+.label.open.settled.closing .rise-in,
+#back.sinking {
+  animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label.open.settled .rise-in,
+  .label.open.settled.closing .rise-in,
+  #back.sinking {
+    animation: none;
+  }
+}
+
+/* The open Total card: the number at the top as a header, with a small caption above it,
+   and the parts of the Total below it as pills. They only show while the card is open. */
+.label.open[data-card='total'] {
+  justify-content: flex-start;
+}
+
+.total-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.total-caption {
+  display: none;
+  color: var(--text-soft);
+  font-size: clamp(0.875rem, 3vw, 1.375rem);
+}
+
+.pills {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 360px);
+  margin-top: 32px;
+}
+
+.label.open .total-caption {
+  display: block;
+}
+
+.label.open .pills {
+  display: flex;
+}
+
+/* A pill, like the "Playtime" pill in the iisu app: a dark outer part with a thin light
+   border and the name in white, and a white inner part with the value. Black when the part
+   counts in the Total (on), grey when it does not (off). It casts the same shadow as cards. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  padding: 4px 4px 4px 20px;
+  border: 3px solid #e5e7eb;
+  border-radius: 999px;
+  background-color: var(--pill-on);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 10px 12px 24px var(--label-shadow);
+  transition: background-color var(--pill-fade) ease-in-out;
+}
+
+.pill[aria-pressed='false'] {
+  background-color: var(--pill-off);
+}
+
+.pill-name::after {
+  content: ':';
+}
+
+.pill-value {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  align-self: stretch;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1c2321;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill {
+    transition: none;
+  }
 }

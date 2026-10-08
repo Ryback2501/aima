@@ -68,36 +68,56 @@ export function createView(document, t, formatMoney) {
     visible = document.fonts.ready.then(() => document.documentElement.classList.remove('loading'));
   }
 
-  // A screen that has just appeared ignores taps (inert) until its cards have risen into
-  // view (see "card-rise" in styles.css). Then it reacts again, if it is still on show.
+  const window = document.defaultView;
+  const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nextFrame = () => new Promise((done) => window.requestAnimationFrame(() => done()));
+
+  // Every animation blocks taps while it plays: the whole app is "inert" until all the work
+  // given to lockWhile is done. Several animations can overlap; taps come back after the last.
+  const page = document.querySelector('main');
+  let locks = 0;
+  async function lockWhile(work) {
+    locks += 1;
+    page.inert = true;
+    try {
+      return await work;
+    } finally {
+      locks -= 1;
+      if (locks === 0) page.inert = false;
+    }
+  }
+
+  // Waits until every animation on these elements (and inside them) has finished.
+  async function still(...elements) {
+    const animations = elements.flatMap((node) => node.getAnimations({ subtree: true }));
+    await Promise.allSettled(animations.map((animation) => animation.finished));
+  }
+
+  // A screen that has just appeared waits until its cards have risen into view.
   let current = null;
   function settle(screen) {
-    screen.inert = true;
-    visible.then(async () => {
-      const rising = screen.getAnimations({ subtree: true });
-      await Promise.allSettled(rising.map((animation) => animation.finished));
-      if (current === screen) screen.inert = false;
-    });
+    lockWhile(visible.then(() => still(screen)));
   }
 
   // Opening a card full screen, and closing it again.
   const mainScreen = element('main');
   const backdrop = element('backdrop');
   const backButton = element('back');
-  const window = document.defaultView;
   let openCard = null;
   let placeholder = null;
   let moving = false;
+  // How far the number moves when the Total card opens (see moveNumber).
+  let numberShift = 0;
 
   // How long a card takes to open or close. No time when the phone asks for less motion.
   function moveTime(card) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+    if (reduceMotion()) return 0;
     return parseFloat(window.getComputedStyle(card).getPropertyValue('--expand-time')) || 0;
   }
 
   // Moves the card from one place and size on the screen to another, and fades the black
   // backdrop at the same time. Both stay at their end state until we take the animations off.
-  async function move(card, from, to, black) {
+  function move(card, from, to, black) {
     const timing = { duration: moveTime(card), easing: 'ease-in-out', fill: 'forwards' };
     const place = ({ top, left, width, height }) => ({
       top: `${top}px`,
@@ -105,12 +125,31 @@ export function createView(document, t, formatMoney) {
       width: `${width}px`,
       height: `${height}px`,
     });
-    const animations = [
+    return [
       card.animate([place(from), place(to)], timing),
       backdrop.animate([{ opacity: black[0] }, { opacity: black[1] }], timing),
     ];
-    await Promise.allSettled(animations.map((animation) => animation.finished));
-    return animations;
+  }
+
+  // In the open Total card the number sits at the top. While the card grows, the number glides
+  // from where it was to the top, with the card's own timing. It starts "shift" pixels away from
+  // its place in the open layout, and goes to 0 (or the other way round when closing).
+  function moveNumber(card, from, to) {
+    const timing = { duration: moveTime(card), easing: 'ease-in-out', fill: 'forwards' };
+    const at = (shift) => ({ transform: `translateY(${shift}px)` });
+    return [totalValue.animate([at(from), at(to)], timing)];
+  }
+
+  // The parts of an open card that rise in one after the other, then the back button.
+  // Closing uses the reverse order: the back button first, the first part last.
+  function lineUp(card) {
+    const parts = [...card.querySelectorAll('.rise-in')];
+    parts.forEach((part, index) => {
+      part.style.setProperty('--rise-order', String(index));
+      part.style.setProperty('--sink-order', String(parts.length - index));
+    });
+    backButton.style.setProperty('--card-order', String(parts.length));
+    backButton.style.setProperty('--sink-order', '0');
   }
 
   // While a card is open, only the card and the back button react.
@@ -123,36 +162,48 @@ export function createView(document, t, formatMoney) {
   async function open(card) {
     if (openCard || moving) return;
     moving = true;
-    mainScreen.inert = true;
-    const from = card.getBoundingClientRect();
-    placeholder = document.createElement('div');
-    placeholder.className = 'card-placeholder';
-    placeholder.style.width = `${from.width}px`;
-    placeholder.style.height = `${from.height}px`;
-    card.before(placeholder);
-    openCard = card;
-    card.classList.add('open');
-    card.setAttribute('aria-expanded', 'true');
-    backdrop.hidden = false;
-    const to = card.getBoundingClientRect();
-    const animations = await move(card, from, to, [0, 1]);
-    for (const animation of animations) animation.cancel();
-    coverTheRest(true);
-    backButton.hidden = false;
-    // The back button rises in like every card. Taps wait until it is there.
-    await Promise.allSettled(backButton.getAnimations().map((animation) => animation.finished));
+    await lockWhile(
+      (async () => {
+        const from = card.getBoundingClientRect();
+        const numberFrom = totalValue.getBoundingClientRect().top - from.top;
+        placeholder = document.createElement('div');
+        placeholder.className = 'card-placeholder';
+        placeholder.style.width = `${from.width}px`;
+        placeholder.style.height = `${from.height}px`;
+        card.before(placeholder);
+        openCard = card;
+        lineUp(card);
+        card.classList.add('open');
+        card.setAttribute('aria-expanded', 'true');
+        backdrop.hidden = false;
+        // Measure the open layout before anything moves.
+        const to = card.getBoundingClientRect();
+        const hasNumber = card.contains(totalValue);
+        if (hasNumber) numberShift = numberFrom - (totalValue.getBoundingClientRect().top - to.top);
+        const animations = move(card, from, to, [0, 1]);
+        if (hasNumber) animations.push(...moveNumber(card, numberShift, 0));
+        await Promise.allSettled(animations.map((animation) => animation.finished));
+        for (const animation of animations) animation.cancel();
+        coverTheRest(true);
+        // Now the parts rise in, one after the other, and the back button last.
+        card.classList.add('settled');
+        backButton.hidden = false;
+        await still(card, backButton);
+      })(),
+    );
     moving = false;
-    mainScreen.inert = false;
     backButton.focus();
   }
 
-  // Puts the open card back at once, without animation (used when the screen changes).
+  // Puts the open card back at once, without animation (used when the screen changes, and at
+  // the end of closing).
   function putBack() {
-    openCard.classList.remove('open');
+    openCard.classList.remove('open', 'settled', 'closing');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
     backButton.hidden = true;
+    backButton.classList.remove('sinking');
     coverTheRest(false);
     const card = openCard;
     openCard = null;
@@ -163,32 +214,78 @@ export function createView(document, t, formatMoney) {
   async function close() {
     if (!openCard || moving) return;
     moving = true;
-    mainScreen.inert = true;
-    backButton.hidden = true;
-    const from = openCard.getBoundingClientRect();
-    const to = placeholder.getBoundingClientRect();
-    const animations = await move(openCard, from, to, [1, 0]);
-    const card = putBack();
-    for (const animation of animations) animation.cancel();
+    const card = await lockWhile(
+      (async () => {
+        // First the back button and the parts sink away, in the reverse order.
+        openCard.classList.add('closing');
+        backButton.classList.add('sinking');
+        await still(openCard, backButton);
+        backButton.hidden = true;
+        // Then the card shrinks back to its place, and the number glides back down.
+        const from = openCard.getBoundingClientRect();
+        const to = placeholder.getBoundingClientRect();
+        const animations = move(openCard, from, to, [1, 0]);
+        if (openCard.contains(totalValue)) animations.push(...moveNumber(openCard, 0, numberShift));
+        await Promise.allSettled(animations.map((animation) => animation.finished));
+        const closed = putBack();
+        for (const animation of animations) animation.cancel();
+        return closed;
+      })(),
+    );
     moving = false;
-    mainScreen.inert = false;
     card.focus();
   }
 
   for (const card of document.querySelectorAll('[data-expandable]')) {
     card.addEventListener('click', () => open(card));
     card.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
+      // Only keys on the card itself: the pills inside it handle their own keys.
+      if (event.target !== card || (event.key !== 'Enter' && event.key !== ' ')) return;
       event.preventDefault();
       open(card);
     });
   }
   backButton.addEventListener('click', () => close());
 
+  // Shows the Total as money. After a tap on a pill, the number counts from the old Total to
+  // the new one while the pill changes color. A small animation with the pill's timing is the
+  // clock: at every frame we write the value for the time gone by.
+  let shownTotal = null;
+  let counting = false;
+  function showTotal(total) {
+    const start = shownTotal;
+    shownTotal = total;
+    if (!counting || start === null || start === total || reduceMotion()) {
+      totalValue.textContent = formatMoney(total);
+      return Promise.resolve();
+    }
+    const pillFade = window.getComputedStyle(page).getPropertyValue('--pill-fade');
+    const clock = totalValue.animate([{}, {}], {
+      duration: parseFloat(pillFade) || 0,
+      easing: 'ease-in-out',
+    });
+    const tick = () => {
+      if (shownTotal !== total) return; // A newer Total took over.
+      const progress = clock.effect.getComputedTiming().progress ?? 1;
+      totalValue.textContent = formatMoney(start + (total - start) * progress);
+      if (clock.playState !== 'finished') window.requestAnimationFrame(tick);
+    };
+    tick();
+    return clock.finished.then(
+      () => shownTotal === total && (totalValue.textContent = formatMoney(total)),
+    );
+  }
+
   // A tap on a pill switches that part of the Total on or off (the app decides what happens).
+  // Taps wait until the pill has changed color and the Total has finished counting.
   let togglePill = () => {};
   for (const pill of document.querySelectorAll('[data-pill]')) {
-    pill.addEventListener('click', () => togglePill(pill.dataset.pill));
+    pill.addEventListener('click', () => {
+      counting = true;
+      togglePill(pill.dataset.pill);
+      counting = false;
+      lockWhile(nextFrame().then(() => still(pill, totalValue)));
+    });
   }
 
   function render(state) {
@@ -207,7 +304,12 @@ export function createView(document, t, formatMoney) {
       loginMessage.hidden = !state.message;
     }
     if (state.screen === 'main') {
-      totalValue.textContent = formatMoney(state.total);
+      showTotal(state.total);
+      for (const { name, amount, on } of state.pills) {
+        const pill = document.querySelector(`[data-pill="${name}"]`);
+        pill.setAttribute('aria-pressed', String(on));
+        pill.querySelector('.pill-value').textContent = formatMoney(amount);
+      }
       // The color comes from the level: "over" is red, "close" is yellow (see styles.css).
       goalValue.textContent = formatMoney(state.goal.amount);
       goalValue.dataset.level = state.goal.level;

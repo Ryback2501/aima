@@ -32,6 +32,9 @@ async function expectBadgeShowsBorder(label) {
   expect(paint.fillMask).toContain('radial-gradient');
 }
 
+// True while the app ignores taps, because an animation is playing.
+const locked = (page) => page.evaluate(() => document.querySelector('main').inert);
+
 // Checks that a card on the page follows its settings in CARDS.
 async function expectCardFollowsSettings(card, name) {
   const settings = CARDS[name];
@@ -572,14 +575,13 @@ test.describe('cards rise into view', () => {
         shadow: css.boxShadow,
       };
     });
-  const inert = (page, id) => page.locator(`#${id}`).evaluate((node) => node.inert);
 
   test('every card rises; on the main screen one after the other', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
     expect(await look(signInButton(page))).toMatchObject({ name: 'card-rise', delay: '0s' });
 
-    await expect.poll(() => inert(page, 'login')).toBe(false);
+    await expect.poll(() => locked(page)).toBe(false);
     await signInButton(page).click();
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
@@ -594,12 +596,12 @@ test.describe('cards rise into view', () => {
   test('taps are ignored until the cards have risen', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
-    await expect.poll(() => inert(page, 'login')).toBe(false);
+    await expect.poll(() => locked(page)).toBe(false);
     await signInButton(page).click();
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
-    expect(await inert(page, 'main')).toBe(true);
-    await expect.poll(() => inert(page, 'main')).toBe(false);
+    expect(await locked(page)).toBe(true);
+    await expect.poll(() => locked(page)).toBe(false);
 
     await page.getByRole('button', { name: 'Log out' }).click();
     await expect(signInButton(page)).toBeVisible();
@@ -608,7 +610,7 @@ test.describe('cards rise into view', () => {
   test('at the end each card has its normal look', async ({ page }) => {
     await setUp(page, { configured: false });
     await page.goto('./');
-    await expect.poll(() => inert(page, 'login')).toBe(false);
+    await expect.poll(() => locked(page)).toBe(false);
 
     const end = await look(signInButton(page));
     // The button stays disabled here, so it ends faded, as a disabled button should.
@@ -628,7 +630,7 @@ test('with "reduce motion" on the phone, cards show at once and taps work', asyn
   expect(await signInButton(page).evaluate((node) => getComputedStyle(node).animationName)).toBe(
     'none',
   );
-  await expect.poll(() => page.locator('#login').evaluate((node) => node.inert)).toBe(false);
+  await expect.poll(() => locked(page)).toBe(false);
 });
 
 test.describe('open a card full screen', () => {
@@ -641,7 +643,7 @@ test.describe('open a card full screen', () => {
     await page.goto('./');
     await signInButton(page).click();
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
-    await expect.poll(() => page.locator('#main').evaluate((node) => node.inert)).toBe(false);
+    await expect.poll(() => locked(page)).toBe(false);
   }
 
   for (const name of ['total', 'goal']) {
@@ -721,7 +723,7 @@ test.describe('open a card full screen', () => {
       const before = await box(card);
 
       await card.click();
-      expect(await page.locator('#main').evaluate((node) => node.inert)).toBe(true);
+      expect(await locked(page)).toBe(true);
       // Stop the growing halfway to measure it.
       const half = await card.evaluate((node) => {
         const grow = node.getAnimations().find((animation) => !('animationName' in animation));
@@ -735,9 +737,208 @@ test.describe('open a card full screen', () => {
       expect(half.height).toBeLessThan(page.viewportSize().height);
 
       await expect(page.locator('#back')).toBeVisible();
-      await expect.poll(() => page.locator('#main').evaluate((node) => node.inert)).toBe(false);
+      await expect.poll(() => locked(page)).toBe(false);
       await page.locator('#back').click();
       await expect(page.locator('#backdrop')).toBeHidden();
+    });
+  });
+});
+
+test.describe('the open Total card', () => {
+  const totalCard = (page) => page.locator('#main [data-card="total"]');
+  const pill = (page, name) => page.locator(`[data-pill="${name}"]`);
+  const names = ['bank', 'cards', 'provisioned', 'cash'];
+
+  async function openMain(page) {
+    await setUp(page);
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    await expect.poll(() => locked(page)).toBe(false);
+  }
+
+  async function openTotal(page) {
+    await totalCard(page).click();
+    await expect(page.locator('#back')).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+  }
+
+  test('shows the Total at the top with its caption, and the four parts as pills', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const closed = await page.locator('#total-value').boundingBox();
+
+    await openTotal(page);
+
+    const caption = page.locator('.total-caption');
+    await expect(caption).toHaveText('Total');
+    const number = await page.locator('#total-value').boundingBox();
+    expect(number.y).toBeLessThan(closed.y);
+    expect(number.y).toBeLessThan(160);
+    expect((await caption.boundingBox()).y).toBeLessThan(number.y);
+
+    const boxes = [];
+    for (const name of names) {
+      await expect(pill(page, name)).toBeVisible();
+      boxes.push(await pill(page, name).boundingBox());
+    }
+    // In a column below the number, in order, all the same width.
+    expect(boxes[0].y).toBeGreaterThan(number.y + number.height);
+    for (let i = 1; i < boxes.length; i++) {
+      expect(boxes[i].y).toBeGreaterThan(boxes[i - 1].y);
+      expect(Math.abs(boxes[i].width - boxes[0].width)).toBeLessThan(1);
+    }
+    await expect(pill(page, 'bank').locator('.pill-name')).toHaveText('Bank');
+    await expect(pill(page, 'bank').locator('.pill-value')).toHaveText('€1,000.00');
+    await expect(pill(page, 'cards').locator('.pill-value')).toHaveText('-€200.50');
+    await expect(pill(page, 'provisioned').locator('.pill-value')).toHaveText('€300.00');
+    await expect(pill(page, 'cash').locator('.pill-value')).toHaveText('€50.00');
+    // Pills cast the same shadow as the cards.
+    const shadow = await pill(page, 'bank').evaluate((node) => getComputedStyle(node).boxShadow);
+    const [x, y] = shadow.match(/-?[\d.]+px/g).map(parseFloat);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+
+    await page.locator('#back').click();
+
+    await expect(caption).toBeHidden();
+    await expect(pill(page, 'bank')).toBeHidden();
+    const after = await page.locator('#total-value').boundingBox();
+    expect(Math.abs(after.y - closed.y)).toBeLessThan(1);
+  });
+
+  test('a tap on a pill switches it off and takes it out of the Total; it is remembered', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await openTotal(page);
+    const dark = (name) =>
+      pill(page, name).evaluate((node) => getComputedStyle(node).backgroundColor);
+    expect(await dark('cash')).toBe('rgb(0, 0, 0)');
+
+    await pill(page, 'cash').click();
+
+    await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
+    expect(await dark('cash')).toBe('rgb(107, 114, 128)');
+    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+
+    await page.reload();
+    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+    await expect.poll(() => locked(page)).toBe(false);
+    await openTotal(page);
+    await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
+
+    await pill(page, 'cash').click();
+
+    await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'true');
+    expect(await dark('cash')).toBe('rgb(0, 0, 0)');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+  });
+
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    const delayOf = (locator) =>
+      locator.evaluate((node) => {
+        const css = getComputedStyle(node);
+        return `${css.animationName} ${css.animationDelay}`;
+      });
+
+    test('the number glides up while the card grows', async ({ page }) => {
+      await openMain(page);
+      const closed = await page.locator('#total-value').boundingBox();
+
+      await totalCard(page).click();
+      const half = await page.evaluate(() => {
+        const grows = document
+          .getAnimations()
+          .filter((animation) => !('animationName' in animation));
+        for (const animation of grows) {
+          animation.pause();
+          animation.currentTime = animation.effect.getTiming().duration / 2;
+        }
+        const y = document.getElementById('total-value').getBoundingClientRect().y;
+        for (const animation of grows) animation.play();
+        return y;
+      });
+      await expect.poll(() => locked(page)).toBe(false);
+      const open = await page.locator('#total-value').boundingBox();
+
+      expect(half).toBeLessThan(closed.y);
+      expect(half).toBeGreaterThan(open.y);
+    });
+
+    test('caption, pills and back button rise in one after the other', async ({ page }) => {
+      await openMain(page);
+
+      await totalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+      expect(await locked(page)).toBe(true);
+
+      expect(await delayOf(page.locator('.total-caption'))).toBe('card-rise 0s');
+      expect(await delayOf(pill(page, 'bank'))).toBe('card-rise 0.075s');
+      expect(await delayOf(pill(page, 'cash'))).toBe('card-rise 0.3s');
+      expect(await delayOf(page.locator('#back'))).toBe('card-rise 0.375s');
+      await expect.poll(() => locked(page)).toBe(false);
+    });
+
+    test('closing plays it all backwards and in reverse order, then the card shrinks', async ({
+      page,
+    }) => {
+      await openMain(page);
+      await openTotal(page);
+      const open = await totalCard(page).boundingBox();
+
+      await page.locator('#back').click();
+
+      expect(await locked(page)).toBe(true);
+      expect(await delayOf(page.locator('#back'))).toBe('card-sink 0s');
+      expect(await delayOf(pill(page, 'cash'))).toBe('card-sink 0.075s');
+      expect(await delayOf(pill(page, 'bank'))).toBe('card-sink 0.3s');
+      expect(await delayOf(page.locator('.total-caption'))).toBe('card-sink 0.375s');
+      // The card waits for them before it shrinks.
+      const stillOpen = await totalCard(page).boundingBox();
+      expect(stillOpen.height).toBe(open.height);
+
+      await expect(page.locator('#backdrop')).toBeHidden();
+      await expect.poll(() => locked(page)).toBe(false);
+    });
+
+    test('the Total counts to its new value while a pill fades, and taps wait', async ({
+      page,
+    }) => {
+      await openMain(page);
+      await openTotal(page);
+
+      await pill(page, 'bank').click();
+      expect(await locked(page)).toBe(true);
+      // Stop the counting halfway and read the number.
+      await page.evaluate(() => {
+        for (const animation of document.getElementById('total-value').getAnimations()) {
+          animation.pause();
+          animation.currentTime = animation.effect.getTiming().duration / 2;
+        }
+      });
+      await page.evaluate(
+        () =>
+          new Promise((done) =>
+            window.requestAnimationFrame(() => window.requestAnimationFrame(done)),
+          ),
+      );
+      const halfway = Number(
+        (await page.locator('#total-value').textContent()).replace(/[^\d.]/g, ''),
+      );
+      expect(halfway).toBeGreaterThan(149.5);
+      expect(halfway).toBeLessThan(1149.5);
+      await page.evaluate(() => {
+        for (const animation of document.getElementById('total-value').getAnimations()) {
+          animation.play();
+        }
+      });
+
+      await expect(page.locator('#total-value')).toHaveText('€149.50');
+      await expect.poll(() => locked(page)).toBe(false);
     });
   });
 });

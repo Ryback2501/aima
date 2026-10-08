@@ -1,6 +1,6 @@
 // Shows the screens on the page. This is the only file that changes the page itself.
 
-import { CARDS, cardStyle, hasCornerIcon } from './cards.js';
+import { CARDS, cardStyle, hasCornerIcon, PILLS, pillStyle } from './components.js';
 import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -38,10 +38,11 @@ export function createView(document, t, formatMoney) {
     return svg;
   }
 
-  // Give every card the look set in cards.js: sizes, colors and the icon in its corner.
+  // Give every card the look set in components.js: sizes, colors and the icon in its corner.
   for (const card of document.querySelectorAll('[data-card]')) {
     const settings = CARDS[card.dataset.card];
-    if (!settings) throw new Error(`There is no card called "${card.dataset.card}" in cards.js.`);
+    if (!settings)
+      throw new Error(`There is no card called "${card.dataset.card}" in components.js.`);
     for (const [name, value] of Object.entries(cardStyle(settings))) {
       card.style.setProperty(name, value);
     }
@@ -52,6 +53,20 @@ export function createView(document, t, formatMoney) {
       card.prepend(badge);
     } else {
       card.dataset.badge = 'none';
+    }
+  }
+
+  // Open cards keep room at the bottom for the back button, so styles.css needs its height.
+  document.documentElement.style.setProperty('--back-size', `${CARDS.back.height}px`);
+
+  // Give every pill the look set in components.js.
+  for (const pill of document.querySelectorAll('[data-pill]')) {
+    const settings = PILLS[pill.dataset.pill];
+    if (!settings) {
+      throw new Error(`There is no pill called "${pill.dataset.pill}" in components.js.`);
+    }
+    for (const [name, value] of Object.entries(pillStyle(settings))) {
+      pill.style.setProperty(name, value);
     }
   }
 
@@ -251,12 +266,17 @@ export function createView(document, t, formatMoney) {
   // the new one while the pill changes color. A small animation with the pill's timing is the
   // clock: at every frame we write the value for the time gone by.
   let shownTotal = null;
+  // Writes a Total. Below 0 it is red (see styles.css), also while it counts.
+  function writeTotal(value) {
+    totalValue.textContent = formatMoney(value);
+    totalValue.toggleAttribute('data-negative', value < 0);
+  }
   let counting = false;
   function showTotal(total) {
     const start = shownTotal;
     shownTotal = total;
     if (!counting || start === null || start === total || reduceMotion()) {
-      totalValue.textContent = formatMoney(total);
+      writeTotal(total);
       return Promise.resolve();
     }
     const pillFade = window.getComputedStyle(page).getPropertyValue('--pill-fade');
@@ -267,13 +287,11 @@ export function createView(document, t, formatMoney) {
     const tick = () => {
       if (shownTotal !== total) return; // A newer Total took over.
       const progress = clock.effect.getComputedTiming().progress ?? 1;
-      totalValue.textContent = formatMoney(start + (total - start) * progress);
+      writeTotal(start + (total - start) * progress);
       if (clock.playState !== 'finished') window.requestAnimationFrame(tick);
     };
     tick();
-    return clock.finished.then(
-      () => shownTotal === total && (totalValue.textContent = formatMoney(total)),
-    );
+    return clock.finished.then(() => shownTotal === total && writeTotal(total));
   }
 
   // A tap on a pill switches that part of the Total on or off (the app decides what happens).

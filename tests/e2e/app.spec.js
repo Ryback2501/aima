@@ -10,7 +10,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasCornerIcon } from '../../src/cards.js';
+import { CARDS, hasCornerIcon, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -329,7 +329,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.locator('#total-value')).toHaveText('€5.50');
+    await expect(page.locator('#total-value')).toHaveText('€1.50');
     await expect(page.locator('img[src="x"]')).toHaveCount(0);
     expect(await page.evaluate(() => window.hacked)).toBeUndefined();
   });
@@ -808,6 +808,67 @@ test.describe('the open Total card', () => {
     expect(Math.abs(after.y - closed.y)).toBeLessThan(1);
   });
 
+  test('the pills have the same space above (to the number) and below (to the back button)', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await openTotal(page);
+
+    const number = await page.locator('#total-value').boundingBox();
+    const first = await pill(page, 'bank').boundingBox();
+    const last = await pill(page, 'cash').boundingBox();
+    const back = await page.locator('#back').boundingBox();
+    const above = first.y - (number.y + number.height);
+    const below = back.y - (last.y + last.height);
+
+    expect(above).toBeGreaterThan(0);
+    expect(Math.abs(above - below)).toBeLessThan(1);
+  });
+
+  test('a negative Total is red; a positive one has the normal text color', async ({ page }) => {
+    const colorOf = (selector) =>
+      page.locator(selector).evaluate((node) => getComputedStyle(node).color);
+    await openMain(page);
+    const normal = await colorOf('#goal-value');
+    expect(await colorOf('#total-value')).toBe(normal);
+    await openTotal(page);
+
+    // Without the bank, the Total is 549.50 - 1000 = -450.50.
+    await pill(page, 'bank').click();
+
+    await expect(page.locator('#total-value')).toHaveText('-€450.50');
+    expect(await colorOf('#total-value')).toBe('rgb(220, 38, 38)');
+
+    await pill(page, 'bank').click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await colorOf('#total-value')).toBe(normal);
+  });
+
+  test('each pill follows its settings, and its value part has a fixed width', async ({ page }) => {
+    await openMain(page);
+    await openTotal(page);
+
+    for (const name of names) {
+      const settings = PILLS[name];
+      const look = await pill(page, name).evaluate((node) => {
+        const css = getComputedStyle(node);
+        return {
+          width: node.getBoundingClientRect().width,
+          height: node.getBoundingClientRect().height,
+          room: node.parentElement.clientWidth,
+          border: css.borderTopWidth,
+          borderColor: css.borderTopColor,
+          valueWidth: node.querySelector('.pill-value').getBoundingClientRect().width,
+        };
+      });
+      expect(Math.abs(look.width - Math.min(settings.width, look.room))).toBeLessThan(1);
+      expect(look.height).toBe(settings.height);
+      expect(look.border).toBe(`${settings.border}px`);
+      expect(look.valueWidth).toBe(settings.valueWidth);
+    }
+  });
+
   test('a tap on a pill switches it off and takes it out of the Total; it is remembered', async ({
     page,
   }) => {
@@ -821,10 +882,10 @@ test.describe('the open Total card', () => {
 
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
     expect(await dark('cash')).toBe('rgb(107, 114, 128)');
-    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+    await expect(page.locator('#total-value')).toHaveText('€499.50');
 
     await page.reload();
-    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+    await expect(page.locator('#total-value')).toHaveText('€499.50');
     await expect.poll(() => locked(page)).toBe(false);
     await openTotal(page);
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
@@ -927,17 +988,17 @@ test.describe('the open Total card', () => {
           ),
       );
       const halfway = Number(
-        (await page.locator('#total-value').textContent()).replace(/[^\d.]/g, ''),
+        (await page.locator('#total-value').textContent()).replace(/[^\d.-]/g, ''),
       );
-      expect(halfway).toBeGreaterThan(149.5);
-      expect(halfway).toBeLessThan(1149.5);
+      expect(halfway).toBeGreaterThan(-450.5);
+      expect(halfway).toBeLessThan(549.5);
       await page.evaluate(() => {
         for (const animation of document.getElementById('total-value').getAnimations()) {
           animation.play();
         }
       });
 
-      await expect(page.locator('#total-value')).toHaveText('€149.50');
+      await expect(page.locator('#total-value')).toHaveText('-€450.50');
       await expect.poll(() => locked(page)).toBe(false);
     });
   });

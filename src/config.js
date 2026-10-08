@@ -10,12 +10,13 @@ export const config = {
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
   spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',
 
-  // The parts of the Total, each read from one cell. The Total is the sum of the parts that
-  // are switched on. Each part shows as a pill when the Total card is open.
+  // The parts of the Total, each read from one cell. The Total adds up the parts that are
+  // switched on; a part with "subtract" is taken away instead. Each part shows as a pill when
+  // the Total card is open.
   pills: [
     { name: 'bank', cell: 'Briefing!E7' },
     { name: 'cards', cell: 'Briefing!E10' },
-    { name: 'provisioned', cell: 'Briefing!I7' },
+    { name: 'provisioned', cell: 'Briefing!I7', subtract: true },
     { name: 'cash', cell: 'Briefing!K7' },
   ],
 

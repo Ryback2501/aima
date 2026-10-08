@@ -12,7 +12,7 @@ const config = {
   pills: [
     { name: 'bank', cell: 'Sheet1!A1' },
     { name: 'cards', cell: 'Sheet1!A2' },
-    { name: 'provisioned', cell: 'Sheet1!A3' },
+    { name: 'provisioned', cell: 'Sheet1!A3', subtract: true },
     { name: 'cash', cell: 'Sheet1!A4' },
   ],
   goal: {
@@ -135,7 +135,8 @@ test('a person with access sees the total after sign-in', async () => {
   ]);
   assert.deepEqual(last(), {
     screen: 'main',
-    total: 1149.5,
+    // 1000 - 200.50 - 300 (provisioned is taken away) + 50
+    total: 549.5,
     pills: [
       { name: 'bank', amount: 1000, on: true },
       { name: 'cards', amount: -200.5, on: true },
@@ -153,14 +154,24 @@ test('switching a part of the Total off takes it out of the Total, and it is rem
 
   handlers.togglePill('cash');
 
-  assert.equal(last().total, 1099.5);
+  assert.equal(last().total, 499.5);
   assert.deepEqual(last().pills.at(-1), { name: 'cash', amount: 50, on: false });
   assert.deepEqual(session.getSwitchedOff(), ['cash']);
 
   handlers.togglePill('cash');
 
-  assert.equal(last().total, 1149.5);
+  assert.equal(last().total, 549.5);
   assert.deepEqual(session.getSwitchedOff(), []);
+});
+
+test('switching off a part that is taken away adds it back to the Total', async () => {
+  const { app, handlers, last } = setup();
+  await app.start();
+  await handlers.signIn();
+
+  handlers.togglePill('provisioned');
+
+  assert.equal(last().total, 849.5);
 });
 
 test('parts switched off on an earlier visit stay off', async () => {
@@ -170,7 +181,7 @@ test('parts switched off on an earlier visit stay off', async () => {
 
   await handlers.signIn();
 
-  assert.equal(last().total, 99.5);
+  assert.equal(last().total, -500.5);
   assert.deepEqual(
     last().pills.map(({ on }) => on),
     [false, true, true, false],

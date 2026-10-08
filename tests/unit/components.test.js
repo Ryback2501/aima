@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CARDS, cardStyle, hasCornerIcon } from '../../src/cards.js';
+import { CARDS, cardStyle, hasCornerIcon, PILLS, pillStyle } from '../../src/components.js';
+import { config } from '../../src/config.js';
 import { ICONS } from '../../src/icons.js';
 
 const card = {
@@ -72,4 +73,45 @@ test('every card has all its settings, and its corner icon exists', () => {
 test('the back button is a card without a corner icon', () => {
   assert.ok(CARDS.back);
   assert.equal(hasCornerIcon(CARDS.back), false);
+});
+
+const pill = {
+  width: 360,
+  height: 48,
+  border: 3,
+  borderColor: '#e5e7eb',
+  colors: { on: '#000000', off: '#6b7280' },
+  valueWidth: 180,
+  padding: { x: 20, y: 4 },
+};
+
+test('pillStyle turns the settings into the variables the pill styles use', () => {
+  assert.deepEqual(pillStyle(pill), {
+    '--pill-width': '360px',
+    '--pill-height': '48px',
+    '--pill-border': '3px',
+    '--pill-border-color': '#e5e7eb',
+    '--pill-on': '#000000',
+    '--pill-off': '#6b7280',
+    '--pill-value-width': '180px',
+    '--pill-pad-x': '20px',
+    '--pill-pad-y': '4px',
+  });
+});
+
+test('every pill has all its settings', () => {
+  for (const [name, settings] of Object.entries(PILLS)) {
+    for (const key of ['width', 'height', 'border', 'valueWidth']) {
+      assert.equal(typeof settings[key], 'number', `${name}.${key}`);
+    }
+    assert.equal(typeof settings.borderColor, 'string', `${name}.borderColor`);
+    assert.equal(typeof settings.colors.on, 'string', `${name}.colors.on`);
+    assert.equal(typeof settings.colors.off, 'string', `${name}.colors.off`);
+    assert.equal(typeof settings.padding.x, 'number', `${name}.padding.x`);
+    assert.equal(typeof settings.padding.y, 'number', `${name}.padding.y`);
+  }
+});
+
+test('every part of the Total in the config has a pill', () => {
+  for (const { name } of config.pills) assert.ok(PILLS[name], `no pill called "${name}"`);
 });

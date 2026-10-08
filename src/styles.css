@@ -16,11 +16,11 @@
   --accent: #0f766e;
   --label-background: #ffffff;
   --label-shadow: rgba(28, 35, 33, 0.25);
-  --goal-over: #dc2626;
-  --goal-close: #b45309;
-  /* The dark part of a pill when it is on and off, and how long the change takes. */
-  --pill-on: #000000;
-  --pill-off: #6b7280;
+  --red: #dc2626;
+  --yellow: #b45309;
+  /* How far the back button of an open card is from the screen edges. */
+  --back-gap: 20px;
+  /* How long a pill takes to change color when it is switched on or off. */
   --pill-fade: 250ms;
   color-scheme: light dark;
 }
@@ -33,8 +33,8 @@
     --accent: #5eead4;
     --label-background: #1b2220;
     --label-shadow: rgba(0, 0, 0, 0.6);
-    --goal-over: #f87171;
-    --goal-close: #facc15;
+    --red: #f87171;
+    --yellow: #facc15;
   }
 }
 
@@ -146,7 +146,7 @@ main {
 /* A card, like the cards in the iisu app. The card is painted with its border gradient, and
    an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
    shows the same gradient as the border: one surface, with no edge between them.
-   Each card's sizes and colors come from cards.js. The values here are only a fallback. */
+   Each card's sizes and colors come from components.js. The values here are only a fallback. */
 .label {
   --width: 34rem;
   --height: 0px;
@@ -301,12 +301,17 @@ html:not(.loading) .label {
 }
 
 /* The spending goal is red when it is over the limit, and yellow when it gets close. */
+/* A Total below 0 is red. */
+.total-value[data-negative] {
+  color: var(--red);
+}
+
 .goal-value[data-level='over'] {
-  color: var(--goal-over);
+  color: var(--red);
 }
 
 .goal-value[data-level='close'] {
-  color: var(--goal-close);
+  color: var(--yellow);
 }
 
 /* A tap on an expandable card opens it full screen (see view.js). It grows from its place to
@@ -348,8 +353,8 @@ html:not(.loading) .label {
 /* The back button of an open card, in the bottom-left corner, above the card. */
 #back {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  left: calc(env(safe-area-inset-left, 0px) + 20px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(env(safe-area-inset-left, 0px) + var(--back-gap));
   z-index: 30;
 }
 
@@ -390,6 +395,14 @@ html:not(.loading) .label {
    and the parts of the Total below it as pills. They only show while the card is open. */
 .label.open[data-card='total'] {
   justify-content: flex-start;
+  /* Room at the bottom for the back button (its height, --back-size, is set by view.js). */
+  padding-bottom: calc(var(--back-gap) + var(--back-size) - var(--border));
+}
+
+/* The pills sit in the middle of the free space between the number and the back button,
+   so the space above them and below them is the same. */
+.label.open .pills {
+  margin: auto 0;
 }
 
 .total-header {
@@ -408,8 +421,9 @@ html:not(.loading) .label {
 .pills {
   display: none;
   flex-direction: column;
+  align-items: center;
   gap: 14px;
-  width: min(100%, 360px);
+  width: 100%;
   margin-top: 32px;
 }
 
@@ -423,15 +437,16 @@ html:not(.loading) .label {
 
 /* A pill, like the "Playtime" pill in the iisu app: a dark outer part with a thin light
    border and the name in white, and a white inner part with the value. Black when the part
-   counts in the Total (on), grey when it does not (off). It casts the same shadow as cards. */
+   counts in the Total (on), grey when it does not (off). It casts the same shadow as cards.
+   Each pill's sizes and colors come from components.js. */
 .pill {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  height: 48px;
-  padding: 4px 4px 4px 20px;
-  border: 3px solid #e5e7eb;
+  width: min(100%, var(--pill-width));
+  height: var(--pill-height);
+  padding: var(--pill-pad-y) var(--pill-pad-y) var(--pill-pad-y) var(--pill-pad-x);
+  border: var(--pill-border) solid var(--pill-border-color);
   border-radius: 999px;
   background-color: var(--pill-on);
   color: #ffffff;
@@ -446,13 +461,22 @@ html:not(.loading) .label {
   background-color: var(--pill-off);
 }
 
+.pill-name {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pill-name::after {
   content: ':';
 }
 
 .pill-value {
   display: grid;
-  flex: 1;
+  flex: none;
+  width: var(--pill-value-width);
   place-items: center;
   align-self: stretch;
   border-radius: 999px;

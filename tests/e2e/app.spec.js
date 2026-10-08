@@ -329,7 +329,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.locator('#total-value')).toHaveText('€5.50');
+    await expect(page.locator('#total-value')).toHaveText('€1.50');
     await expect(page.locator('img[src="x"]')).toHaveCount(0);
     expect(await page.evaluate(() => window.hacked)).toBeUndefined();
   });
@@ -862,10 +862,10 @@ test.describe('the open Total card', () => {
 
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
     expect(await dark('cash')).toBe('rgb(107, 114, 128)');
-    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+    await expect(page.locator('#total-value')).toHaveText('€499.50');
 
     await page.reload();
-    await expect(page.locator('#total-value')).toHaveText('€1,099.50');
+    await expect(page.locator('#total-value')).toHaveText('€499.50');
     await expect.poll(() => locked(page)).toBe(false);
     await openTotal(page);
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
@@ -968,17 +968,17 @@ test.describe('the open Total card', () => {
           ),
       );
       const halfway = Number(
-        (await page.locator('#total-value').textContent()).replace(/[^\d.]/g, ''),
+        (await page.locator('#total-value').textContent()).replace(/[^\d.-]/g, ''),
       );
-      expect(halfway).toBeGreaterThan(149.5);
-      expect(halfway).toBeLessThan(1149.5);
+      expect(halfway).toBeGreaterThan(-450.5);
+      expect(halfway).toBeLessThan(549.5);
       await page.evaluate(() => {
         for (const animation of document.getElementById('total-value').getAnimations()) {
           animation.play();
         }
       });
 
-      await expect(page.locator('#total-value')).toHaveText('€149.50');
+      await expect(page.locator('#total-value')).toHaveText('-€450.50');
       await expect.poll(() => locked(page)).toBe(false);
     });
   });

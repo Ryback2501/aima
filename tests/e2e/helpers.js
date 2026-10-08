@@ -8,7 +8,8 @@ export const FAKE_SHEET_ID = 'test-sheet-id';
 export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 // The default amounts of those parts, and their sum as the app writes it in English.
 export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
-export const FAKE_TOTAL = '€1,149.50';
+// 1000 - 200.50 - 300 (Provisioned is taken away) + 50
+export const FAKE_TOTAL = '€549.50';
 export const FAKE_MOVEMENTS = 'Sheet2!B:E';
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.

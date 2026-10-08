@@ -40,11 +40,15 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
     return auth ?? (await getAuth().catch(() => null));
   }
 
-  // Shows the main screen. The Total is the sum of the parts that are switched on.
+  // Shows the main screen. The Total adds up the parts that are switched on, and takes away
+  // the ones marked "subtract" in the config.
   function showMain() {
     const off = session.getSwitchedOff();
     const pills = parts.map(({ name, amount }) => ({ name, amount, on: !off.includes(name) }));
-    const total = pills.reduce((sum, { amount, on }) => (on ? sum + amount : sum), 0);
+    const total = parts.reduce((sum, { name, amount, subtract }) => {
+      if (off.includes(name)) return sum;
+      return subtract ? sum - amount : sum + amount;
+    }, 0);
     // Round to cents, so sums like 0.1 + 0.2 show as 0.30.
     view.render({ screen: 'main', total: Math.round(total * 100) / 100, pills, goal });
   }
@@ -72,8 +76,9 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
         if (email) session.saveHint(email);
       }
       // A cell that is empty or not a number counts as 0.
-      parts = config.pills.map(({ name }, index) => ({
+      parts = config.pills.map(({ name, subtract = false }, index) => ({
         name,
+        subtract,
         amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
       }));
       goal = goalStatus(movements, config.goal);

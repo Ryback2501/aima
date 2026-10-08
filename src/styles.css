@@ -461,6 +461,12 @@ html:not(.loading) .label {
   background-color: var(--pill-off);
 }
 
+/* The pill's icon, left of the name, in the same color as the name. */
+.pill-icon {
+  flex: none;
+  fill: currentColor;
+}
+
 .pill-name {
   flex: 1;
   overflow: hidden;

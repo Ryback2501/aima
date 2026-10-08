@@ -15,7 +15,7 @@ export const config = {
   // the Total card is open.
   pills: [
     { name: 'bank', cell: 'Briefing!E7' },
-    { name: 'cards', cell: 'Briefing!E10' },
+    { name: 'cards', cell: 'Briefing!B10' },
     { name: 'provisioned', cell: 'Briefing!I7', subtract: true },
     { name: 'cash', cell: 'Briefing!K7' },
   ],

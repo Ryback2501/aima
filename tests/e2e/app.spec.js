@@ -10,7 +10,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasCornerIcon, PILLS } from '../../src/components.js';
+import { CARDS, hasIcon, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -64,7 +64,7 @@ async function expectCardFollowsSettings(card, name) {
   expect(look.radius).toBe(`${settings.radius}px`);
   expect(look.padX).toBe(`${settings.padding.x}px`);
   expect(look.padY).toBe(`${settings.padding.y}px`);
-  expect(look.hasBadge).toBe(hasCornerIcon(settings));
+  expect(look.hasBadge).toBe(hasIcon(settings));
   if (!look.hasBadge) return;
   expect(look.iconWidth).toBe(String(settings.iconSize));
   expect(look.iconHeight).toBe(String(settings.iconSize));
@@ -866,6 +866,31 @@ test.describe('the open Total card', () => {
       expect(look.height).toBe(settings.height);
       expect(look.border).toBe(`${settings.border}px`);
       expect(look.valueWidth).toBe(settings.valueWidth);
+    }
+  });
+
+  test('each pill shows its icon left of its name, in the same color as the name', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await openTotal(page);
+
+    for (const name of names) {
+      const icon = pill(page, name).locator('.pill-icon');
+      await expect(icon).toBeVisible();
+      await expect(icon).toHaveAttribute('width', String(PILLS[name].iconSize));
+      await expect(icon.locator('path')).toHaveAttribute('d', ICONS[PILLS[name].icon].path);
+      const iconBox = await icon.boundingBox();
+      const nameBox = await pill(page, name).locator('.pill-name').boundingBox();
+      expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(nameBox.x);
+      const colors = await pill(page, name).evaluate((node) => [
+        getComputedStyle(node.querySelector('.pill-icon')).fill,
+        getComputedStyle(node.querySelector('.pill-name')).color,
+      ]);
+      expect(colors[0]).toBe(colors[1]);
+      // The name is never cut off.
+      const nameNode = pill(page, name).locator('.pill-name');
+      expect(await nameNode.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     }
   });
 

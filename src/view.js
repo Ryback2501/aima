@@ -56,6 +56,9 @@ export function createView(document, t, formatMoney) {
     }
   }
 
+  // Open cards keep room at the bottom for the back button, so styles.css needs its height.
+  document.documentElement.style.setProperty('--back-size', `${CARDS.back.height}px`);
+
   // Give every pill the look set in components.js.
   for (const pill of document.querySelectorAll('[data-pill]')) {
     const settings = PILLS[pill.dataset.pill];

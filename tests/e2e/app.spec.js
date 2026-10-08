@@ -808,6 +808,23 @@ test.describe('the open Total card', () => {
     expect(Math.abs(after.y - closed.y)).toBeLessThan(1);
   });
 
+  test('the pills have the same space above (to the number) and below (to the back button)', async ({
+    page,
+  }) => {
+    await openMain(page);
+    await openTotal(page);
+
+    const number = await page.locator('#total-value').boundingBox();
+    const first = await pill(page, 'bank').boundingBox();
+    const last = await pill(page, 'cash').boundingBox();
+    const back = await page.locator('#back').boundingBox();
+    const above = first.y - (number.y + number.height);
+    const below = back.y - (last.y + last.height);
+
+    expect(above).toBeGreaterThan(0);
+    expect(Math.abs(above - below)).toBeLessThan(1);
+  });
+
   test('each pill follows its settings, and its value part has a fixed width', async ({ page }) => {
     await openMain(page);
     await openTotal(page);

@@ -18,6 +18,8 @@
   --label-shadow: rgba(28, 35, 33, 0.25);
   --goal-over: #dc2626;
   --goal-close: #b45309;
+  /* How far the back button of an open card is from the screen edges. */
+  --back-gap: 20px;
   /* How long a pill takes to change color when it is switched on or off. */
   --pill-fade: 250ms;
   color-scheme: light dark;
@@ -346,8 +348,8 @@ html:not(.loading) .label {
 /* The back button of an open card, in the bottom-left corner, above the card. */
 #back {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  left: calc(env(safe-area-inset-left, 0px) + 20px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(env(safe-area-inset-left, 0px) + var(--back-gap));
   z-index: 30;
 }
 
@@ -388,6 +390,14 @@ html:not(.loading) .label {
    and the parts of the Total below it as pills. They only show while the card is open. */
 .label.open[data-card='total'] {
   justify-content: flex-start;
+  /* Room at the bottom for the back button (its height, --back-size, is set by view.js). */
+  padding-bottom: calc(var(--back-gap) + var(--back-size) - var(--border));
+}
+
+/* The pills sit in the middle of the free space between the number and the back button,
+   so the space above them and below them is the same. */
+.label.open .pills {
+  margin: auto 0;
 }
 
 .total-header {

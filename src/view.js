@@ -185,8 +185,11 @@ export function createView(document, t, formatMoney) {
   }
   backButton.addEventListener('click', () => close());
 
-  // What a tap on a pill does (set by the app).
+  // A tap on a pill switches that part of the Total on or off (the app decides what happens).
   let togglePill = () => {};
+  for (const pill of document.querySelectorAll('[data-pill]')) {
+    pill.addEventListener('click', () => togglePill(pill.dataset.pill));
+  }
 
   function render(state) {
     if (openCard && state.screen !== 'main') putBack();

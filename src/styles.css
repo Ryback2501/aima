@@ -304,3 +304,47 @@ html:not(.loading) .label {
 .goal-value[data-level='close'] {
   color: var(--goal-close);
 }
+
+/* A tap on an expandable card opens it full screen (see view.js). It grows from its place to
+   the whole screen, above everything, while everything else fades to black. */
+.label {
+  /* How long opening and closing take. */
+  --expand-time: 400ms;
+}
+
+.label[data-expandable] {
+  cursor: pointer;
+}
+
+.label.open {
+  position: fixed;
+  /* The whole screen, but not under the phone's notch or rounded screen corners. */
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  z-index: 20;
+  width: auto;
+  height: auto;
+  cursor: default;
+}
+
+/* Keeps the open card's place, so the other cards do not move. */
+.card-placeholder {
+  flex: none;
+}
+
+#backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+}
+
+/* The back button of an open card, in the bottom-left corner, above the card. */
+#back {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  left: calc(env(safe-area-inset-left, 0px) + 20px);
+  z-index: 30;
+}

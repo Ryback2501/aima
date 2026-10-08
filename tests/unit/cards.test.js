@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CARDS, cardStyle } from '../../src/cards.js';
+import { CARDS, cardStyle, hasCornerIcon } from '../../src/cards.js';
 import { ICONS } from '../../src/icons.js';
 
 const card = {
@@ -48,14 +48,28 @@ test('one color gives a plain border', () => {
   );
 });
 
-test('every card has all its settings and uses an icon that exists', () => {
+test('a card has a corner icon only when it sets both the icon and its size', () => {
+  assert.equal(hasCornerIcon(card), true);
+  assert.equal(hasCornerIcon({ ...card, icon: undefined }), false);
+  assert.equal(hasCornerIcon({ ...card, iconSize: undefined }), false);
+});
+
+test('every card has all its settings, and its corner icon exists', () => {
   for (const [name, settings] of Object.entries(CARDS)) {
-    for (const key of ['width', 'height', 'border', 'radius', 'iconSize']) {
+    for (const key of ['width', 'height', 'border', 'radius']) {
       assert.equal(typeof settings[key], 'number', `${name}.${key}`);
     }
-    assert.ok(ICONS[settings.icon], `${name} uses an unknown icon`);
+    if (hasCornerIcon(settings)) {
+      assert.ok(ICONS[settings.icon], `${name} uses an unknown icon`);
+      assert.equal(typeof settings.iconSize, 'number', `${name}.iconSize`);
+    }
     assert.ok(settings.colors.length > 0, `${name} has no colors`);
     assert.equal(typeof settings.padding.x, 'number', `${name}.padding.x`);
     assert.equal(typeof settings.padding.y, 'number', `${name}.padding.y`);
   }
+});
+
+test('the back button is a card without a corner icon', () => {
+  assert.ok(CARDS.back);
+  assert.equal(hasCornerIcon(CARDS.back), false);
 });

@@ -1,6 +1,6 @@
 // Shows the screens on the page. This is the only file that changes the page itself.
 
-import { CARDS, cardStyle } from './cards.js';
+import { CARDS, cardStyle, hasCornerIcon } from './cards.js';
 import { ICONS } from './icons.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -17,6 +17,10 @@ export function createView(document, t, formatMoney) {
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
     node.textContent = t(node.dataset.i18n);
+  }
+  // The same for names that screen readers say, for buttons that show only an icon.
+  for (const node of document.querySelectorAll('[data-i18n-label]')) {
+    node.setAttribute('aria-label', t(node.dataset.i18nLabel));
   }
 
   // Builds an icon from icons.js, the given number of pixels wide and high.
@@ -41,10 +45,20 @@ export function createView(document, t, formatMoney) {
     for (const [name, value] of Object.entries(cardStyle(settings))) {
       card.style.setProperty(name, value);
     }
-    const badge = document.createElement('span');
-    badge.className = 'label-badge';
-    badge.append(createIcon(settings.icon, settings.iconSize));
-    card.prepend(badge);
+    if (hasCornerIcon(settings)) {
+      const badge = document.createElement('span');
+      badge.className = 'label-badge';
+      badge.append(createIcon(settings.icon, settings.iconSize));
+      card.prepend(badge);
+    } else {
+      card.dataset.badge = 'none';
+    }
+  }
+
+  // Any element can show an icon from icons.js as its content:
+  // <span data-icon="back" data-icon-size="24"></span>
+  for (const node of document.querySelectorAll('[data-icon]')) {
+    node.append(createIcon(node.dataset.icon, Number(node.dataset.iconSize)));
   }
 
   // The page is hidden while the app gets ready. After the first screen is chosen, and the

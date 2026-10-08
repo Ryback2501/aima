@@ -9,6 +9,7 @@
 // - radius: how round the corners are. The same size is used for the round corner of the
 //   icon area in the top-left corner.
 // - icon, iconSize: the icon in the top-left corner (a name from icons.js) and how big it is.
+//   Without one of them the card has no corner icon area.
 // - badge (optional): the size of the icon area. Without it, it is twice the radius.
 // - colors: the border colors, from the top-left corner to the bottom-right corner. One color
 //   gives a plain border.
@@ -49,6 +50,15 @@ export const CARDS = {
     colors: ['#4285f4', '#ea4335', '#fbbc05', '#34a853'],
     padding: { x: 52, y: 12 },
   },
+  // The back button of an open card. It has no corner icon: its content is the back icon.
+  back: {
+    width: 56,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#e5e7eb', '#6b7280'],
+    padding: { x: 0, y: 0 },
+  },
   // The "Log out" button.
   logOut: {
     width: 544,
@@ -63,6 +73,9 @@ export const CARDS = {
 };
 
 const px = (value) => `${value}px`;
+
+// True when the card shows an icon in its top-left corner: it needs both the icon and its size.
+export const hasCornerIcon = ({ icon, iconSize }) => Boolean(icon && iconSize);
 
 // Turns one card's settings into the CSS variables that the card styles (styles.css) use.
 export function cardStyle({ width, height, border, radius, badge = radius * 2, colors, padding }) {

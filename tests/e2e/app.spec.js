@@ -64,6 +64,20 @@ async function expectCardFollowsSettings(card, name) {
   expect(look.iconPath).toBe(ICONS[settings.icon].path);
 }
 
+test('a card without corner icon settings has no corner icon area, and icons can be content', async ({
+  page,
+}) => {
+  await setUp(page);
+  await page.goto('./');
+
+  const back = page.locator('#back');
+  await expect(back).toHaveAttribute('data-badge', 'none');
+  await expect(back.locator('.label-badge')).toHaveCount(0);
+  const icon = back.locator('[data-icon="back"] svg');
+  await expect(icon).toHaveAttribute('width', '24');
+  await expect(icon.locator('path')).toHaveAttribute('d', ICONS.back.path);
+});
+
 test.describe('loading', () => {
   test('the app stays hidden until its code has run', async ({ page }) => {
     await setUp(page);

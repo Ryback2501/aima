@@ -14,6 +14,7 @@ export const STRINGS = {
     notConfigured: 'This app is not set up yet.',
     signedOut: 'You have signed out.',
     signOut: 'Log out',
+    back: 'Back',
     empty: 'There is no total yet.',
   },
   es: {
@@ -28,6 +29,7 @@ export const STRINGS = {
     notConfigured: 'Esta aplicación aún no está configurada.',
     signedOut: 'Has cerrado sesión.',
     signOut: 'Cerrar sesión',
+    back: 'Volver',
     empty: 'Todavía no hay ningún total.',
   },
   ru: {
@@ -42,6 +44,7 @@ export const STRINGS = {
     notConfigured: 'Это приложение ещё не настроено.',
     signedOut: 'Вы вышли из аккаунта.',
     signOut: 'Выйти',
+    back: 'Назад',
     empty: 'Итога пока нет.',
   },
 };

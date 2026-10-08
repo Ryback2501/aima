@@ -240,6 +240,22 @@ html:not(.loading) .label {
   }
 }
 
+/* A card without a corner icon has no hole in its fill. */
+.label[data-badge='none']::before {
+  mask: none;
+}
+
+/* Cards are flex boxes, so "hidden" needs saying again for them. */
+.label[hidden] {
+  display: none;
+}
+
+/* An icon used as content takes the color of the text around it. */
+[data-icon] svg {
+  display: block;
+  fill: currentColor;
+}
+
 /* The badge only holds the icon. Its color comes from the card's border gradient. */
 .label-badge {
   position: absolute;

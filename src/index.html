@@ -55,6 +55,18 @@
             <p id="goal-value" class="total-value goal-value"></p>
           </div>
         </div>
+        <!-- Closes an open card. A card without a corner icon: its content is the back icon. -->
+        <button
+          id="back"
+          class="label card-button"
+          data-card="back"
+          data-i18n-label="back"
+          aria-label="Back"
+          type="button"
+          hidden
+        >
+          <span data-icon="back" data-icon-size="24"></span>
+        </button>
         <!-- A card. Its look (sizes, colors, corner icon) is set in cards.js. -->
         <button id="sign-out" class="label card-button" data-card="logOut" type="button">
           <span data-i18n="signOut">Log out</span>

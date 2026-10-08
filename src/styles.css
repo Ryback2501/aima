@@ -197,6 +197,49 @@ main {
       var(--corner-start) var(--corner-start) / var(--corner-piece) var(--corner-piece) no-repeat;
 }
 
+/* Cards rise into view when their screen appears: the card and its shadow fade in from the
+   background, the card moves up a little, and the shadow moves away from it to the
+   bottom-right. There is only a start ("from"): each card ends at its own normal look.
+   The browser plays it again every time a screen appears. While the app is still loading
+   (html.loading) nothing plays, so the cards rise once people can see them. */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    box-shadow: 0 0 0 var(--label-shadow);
+  }
+}
+
+.label {
+  /* How long one card takes, and the wait before the next card starts. */
+  --rise-time: 500ms;
+  --rise-step: 150ms;
+  /* The card's place in the line: 0 starts first. */
+  --card-order: 0;
+}
+
+html:not(.loading) .label {
+  /* "backwards": a card waiting for its turn stays invisible. */
+  animation: card-rise var(--rise-time) ease-out calc(var(--card-order) * var(--rise-step))
+    backwards;
+}
+
+/* On the main screen the cards rise one after the other, from the top down. */
+#main [data-card='goal'] {
+  --card-order: 1;
+}
+
+#main [data-card='logOut'] {
+  --card-order: 2;
+}
+
+/* People who asked their phone to reduce motion get the cards at once, without movement. */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.loading) .label {
+    animation: none;
+  }
+}
+
 /* The badge only holds the icon. Its color comes from the card's border gradient. */
 .label-badge {
   position: absolute;

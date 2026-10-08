@@ -16,6 +16,9 @@ export default defineConfig({
     // One test turns it back on to check it.
     serviceWorkers: 'block',
     trace: 'retain-on-failure',
+    // Cards rise into view with a short animation. Most tests turn it off, as phones do with
+    // "reduce motion", so they never measure a card while it moves. The animation tests turn it on.
+    reducedMotion: 'reduce',
   },
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'] } },

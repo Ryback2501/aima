@@ -9,7 +9,12 @@ import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 const config = {
   googleClientId: 'client-1.apps.googleusercontent.com',
   spreadsheetId: 'sheet-1',
-  totalCell: 'Sheet1!A1',
+  pills: [
+    { name: 'bank', cell: 'Sheet1!A1' },
+    { name: 'cards', cell: 'Sheet1!A2' },
+    { name: 'provisioned', cell: 'Sheet1!A3' },
+    { name: 'cash', cell: 'Sheet1!A4' },
+  ],
   goal: {
     movements: 'Sheet2!B:E',
     from: '2026-10-01',
@@ -33,7 +38,7 @@ function memoryStorage() {
 
 // Builds the app with fakes. Each test changes only what it needs.
 function setup({
-  cell = async () => 'Buy milk',
+  cells = async () => [1000, -200.5, 300, 50],
   movements = async () => [[OCTOBER_5, 'Food', 'Shop', -12.5]],
   signIn = async () => ({ token: 'tok', expiresAt: Date.now() + 3_600_000 }),
   email = 'ana@example.com',
@@ -48,6 +53,7 @@ function setup({
     render: (state) => screens.push(state),
     onSignIn: (handler) => (handlers.signIn = handler),
     onSignOut: (handler) => (handlers.signOut = handler),
+    onTogglePill: (handler) => (handlers.togglePill = handler),
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -66,7 +72,6 @@ function setup({
     config: appConfig,
     view,
     session,
-    t: (key, values) => (values ? `${key}:${JSON.stringify(values)}` : key),
     loadAuth: loadAuth
       ? () => loadAuth(auth)
       : async () => {
@@ -74,10 +79,10 @@ function setup({
           return auth;
         },
     createSheets: ({ spreadsheetId, getToken }) => ({
-      getCell: async (range) => {
-        log.cells.push({ spreadsheetId, range });
+      getCells: async (ranges) => {
+        log.cells.push({ spreadsheetId, ranges });
         log.tokens.push(getToken());
-        return cell(range);
+        return cells(ranges);
       },
       getValues: async (range, options) => {
         log.values.push({ spreadsheetId, range, options });
@@ -121,16 +126,55 @@ test('a person with access sees the total after sign-in', async () => {
 
   await handlers.signIn();
 
-  assert.deepEqual(log.cells, [{ spreadsheetId: 'sheet-1', range: 'Sheet1!A1' }]);
+  assert.deepEqual(log.cells, [
+    { spreadsheetId: 'sheet-1', ranges: ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'] },
+  ]);
   assert.deepEqual(log.tokens, ['tok']);
   assert.deepEqual(log.values, [
     { spreadsheetId: 'sheet-1', range: 'Sheet2!B:E', options: { raw: true } },
   ]);
   assert.deepEqual(last(), {
     screen: 'main',
-    text: 'Buy milk',
+    total: 1149.5,
+    pills: [
+      { name: 'bank', amount: 1000, on: true },
+      { name: 'cards', amount: -200.5, on: true },
+      { name: 'provisioned', amount: 300, on: true },
+      { name: 'cash', amount: 50, on: true },
+    ],
     goal: { amount: 12.5, level: 'ok' },
   });
+});
+
+test('switching a part of the Total off takes it out of the Total, and it is remembered', async () => {
+  const { app, handlers, session, last } = setup();
+  await app.start();
+  await handlers.signIn();
+
+  handlers.togglePill('cash');
+
+  assert.equal(last().total, 1099.5);
+  assert.deepEqual(last().pills.at(-1), { name: 'cash', amount: 50, on: false });
+  assert.deepEqual(session.getSwitchedOff(), ['cash']);
+
+  handlers.togglePill('cash');
+
+  assert.equal(last().total, 1149.5);
+  assert.deepEqual(session.getSwitchedOff(), []);
+});
+
+test('parts switched off on an earlier visit stay off', async () => {
+  const { app, handlers, session, last } = setup();
+  session.saveSwitchedOff(['bank', 'cash']);
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().total, 99.5);
+  assert.deepEqual(
+    last().pills.map(({ on }) => on),
+    [false, true, true, false],
+  );
 });
 
 test('the app shows that it is checking access while it waits for the sheet', async () => {
@@ -142,13 +186,17 @@ test('the app shows that it is checking access while it waits for the sheet', as
   assert.deepEqual(screens.at(-2), { screen: 'checking' });
 });
 
-test('an empty total cell shows a friendly message', async () => {
-  const { app, handlers, last } = setup({ cell: async () => '' });
+test('a cell that is empty or not a number counts as 0', async () => {
+  const { app, handlers, last } = setup({ cells: async () => [100, '', 'n/a', 5] });
   await app.start();
 
   await handlers.signIn();
 
-  assert.equal(last().text, 'empty');
+  assert.equal(last().total, 105);
+  assert.deepEqual(
+    last().pills.map(({ amount }) => amount),
+    [100, 0, 0, 5],
+  );
 });
 
 test('after sign-in the email is remembered for a one-tap sign-in next time', async () => {
@@ -165,7 +213,7 @@ test('after sign-in the email is remembered for a one-tap sign-in next time', as
 
 test('a person without access is signed out and told why', async () => {
   const { app, handlers, session, log, last } = setup({
-    cell: async () => {
+    cells: async () => {
       throw new NoAccessError();
     },
   });
@@ -196,7 +244,7 @@ test('a person who cannot read the movements is signed out too', async () => {
 
 test('the email of a person without access is not remembered', async () => {
   const { app, handlers, session } = setup({
-    cell: async () => {
+    cells: async () => {
       throw new NoAccessError();
     },
   });
@@ -209,7 +257,7 @@ test('the email of a person without access is not remembered', async () => {
 
 test('an expired sign-in sends the person back to the login page', async () => {
   const { app, handlers, session, last } = setup({
-    cell: async () => {
+    cells: async () => {
       throw new SignInExpiredError();
     },
   });
@@ -223,7 +271,7 @@ test('an expired sign-in sends the person back to the login page', async () => {
 
 test('other problems show a general error and the person can try again', async () => {
   const { app, handlers, last } = setup({
-    cell: async () => {
+    cells: async () => {
       throw new SheetsError('down', { status: 500 });
     },
   });
@@ -347,9 +395,9 @@ test('signing out cancels the token even while Google sign-in is still loading',
 test('after a network problem, the next tap tries again with the same sign-in', async () => {
   let fails = true;
   const { app, handlers, log, last } = setup({
-    cell: async () => {
+    cells: async () => {
       if (fails) throw new SheetsError('offline');
-      return 'Buy milk';
+      return [1, 2, 3, 4];
     },
   });
   await app.start();

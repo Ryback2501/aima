@@ -31,7 +31,6 @@ const t = createTranslator(language);
 
 const app = createApp({
   config,
-  t,
   view: createView(document, t, createMoneyFormatter(language)),
   session: createSession({
     sessionStorage: storage('sessionStorage'),

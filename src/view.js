@@ -185,6 +185,9 @@ export function createView(document, t, formatMoney) {
   }
   backButton.addEventListener('click', () => close());
 
+  // What a tap on a pill does (set by the app).
+  let togglePill = () => {};
+
   function render(state) {
     if (openCard && state.screen !== 'main') putBack();
     for (const screen of screens) screen.hidden = screen.id !== state.screen;
@@ -201,8 +204,7 @@ export function createView(document, t, formatMoney) {
       loginMessage.hidden = !state.message;
     }
     if (state.screen === 'main') {
-      // textContent shows the cell as plain text, never as page code.
-      totalValue.textContent = state.text;
+      totalValue.textContent = formatMoney(state.total);
       // The color comes from the level: "over" is red, "close" is yellow (see styles.css).
       goalValue.textContent = formatMoney(state.goal.amount);
       goalValue.dataset.level = state.goal.level;
@@ -213,5 +215,6 @@ export function createView(document, t, formatMoney) {
     render,
     onSignIn: (handler) => signInButton.addEventListener('click', () => handler()),
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
+    onTogglePill: (handler) => (togglePill = handler),
   };
 }

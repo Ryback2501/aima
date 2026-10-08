@@ -4,16 +4,19 @@
 // Screens:
 //   login     - logo, name and the "Login with Google" button, maybe with a message
 //   checking  - we ask the sheet if this person may see it
-//   main      - the Total (the text of the cell named in the config) and the spending goal
+//   main      - the Total (the sum of its parts that are switched on) and the spending goal
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
 import { goalStatus } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 
-export function createApp({ config, view, session, t, loadAuth, createSheets }) {
+export function createApp({ config, view, session, loadAuth, createSheets }) {
   let auth = null;
   let authReady = null;
+  // What the main screen shows, kept so a tap on a pill can show it again with new totals.
+  let parts = [];
+  let goal = null;
 
   const sheets = createSheets({
     spreadsheetId: config.spreadsheetId,
@@ -37,14 +40,30 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     return auth ?? (await getAuth().catch(() => null));
   }
 
-  // Asks the sheet for the Total and the movements, both at the same time.
+  // Shows the main screen. The Total is the sum of the parts that are switched on.
+  function showMain() {
+    const off = session.getSwitchedOff();
+    const pills = parts.map(({ name, amount }) => ({ name, amount, on: !off.includes(name) }));
+    const total = pills.reduce((sum, { amount, on }) => (on ? sum + amount : sum), 0);
+    // Round to cents, so sums like 0.1 + 0.2 show as 0.30.
+    view.render({ screen: 'main', total: Math.round(total * 100) / 100, pills, goal });
+  }
+
+  // A tap on a pill switches that part of the Total on or off. The choice is remembered.
+  function togglePill(name) {
+    const off = session.getSwitchedOff();
+    session.saveSwitchedOff(off.includes(name) ? off.filter((n) => n !== name) : [...off, name]);
+    showMain();
+  }
+
+  // Asks the sheet for the parts of the Total and the movements, both at the same time.
   // Google answers only if this person may open the sheet.
   // "fresh" means the person just signed in, so we ask Google which account they chose.
   async function check(token, { fresh = false } = {}) {
     view.render({ screen: 'checking' });
     try {
-      const [text, movements] = await Promise.all([
-        sheets.getCell(config.totalCell),
+      const [amounts, movements] = await Promise.all([
+        sheets.getCells(config.pills.map(({ cell }) => cell)),
         sheets.getValues(config.goal.movements, { raw: true }),
       ]);
       // We keep the account email only so the next sign-in can be one tap.
@@ -52,11 +71,13 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
         const email = await (await loadedAuth())?.getEmail(token);
         if (email) session.saveHint(email);
       }
-      view.render({
-        screen: 'main',
-        text: text || t('empty'),
-        goal: goalStatus(movements, config.goal),
-      });
+      // A cell that is empty or not a number counts as 0.
+      parts = config.pills.map(({ name }, index) => ({
+        name,
+        amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
+      }));
+      goal = goalStatus(movements, config.goal);
+      showMain();
     } catch (error) {
       if (error instanceof NoAccessError) {
         // This person cannot open the sheet, so we sign them out completely.
@@ -126,6 +147,7 @@ export function createApp({ config, view, session, t, loadAuth, createSheets }) 
     }
     view.onSignIn(signIn);
     view.onSignOut(signOut);
+    view.onTogglePill(togglePill);
 
     const token = session.getToken();
     if (token) {

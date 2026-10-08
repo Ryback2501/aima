@@ -68,36 +68,24 @@ test('getValues returns no rows when the range is empty', async () => {
   assert.deepEqual(await client(fetch).getValues('Sheet1!A1'), []);
 });
 
-test('getCell returns the text of one cell', async () => {
-  const { fetch } = fakeFetch(200, { values: [['Buy milk']] });
-
-  assert.equal(await client(fetch).getCell('Sheet1!A1'), 'Buy milk');
-});
-
-test('getCell returns an empty text when the cell is empty', async () => {
-  const { fetch } = fakeFetch(200, {});
-
-  assert.equal(await client(fetch).getCell('Sheet1!A1'), '');
-});
-
 for (const status of [403, 404]) {
   test(`a ${status} answer means the person cannot open the sheet`, async () => {
     const { fetch } = fakeFetch(status, { error: { code: status } });
 
-    await assert.rejects(client(fetch).getCell('Sheet1!A1'), NoAccessError);
+    await assert.rejects(client(fetch).getValues('Sheet1!A1'), NoAccessError);
   });
 }
 
 test('a 401 answer means the sign-in has expired', async () => {
   const { fetch } = fakeFetch(401);
 
-  await assert.rejects(client(fetch).getCell('Sheet1!A1'), SignInExpiredError);
+  await assert.rejects(client(fetch).getValues('Sheet1!A1'), SignInExpiredError);
 });
 
 test('any other error answer becomes a SheetsError with the status', async () => {
   const { fetch } = fakeFetch(500);
 
-  await assert.rejects(client(fetch).getCell('Sheet1!A1'), (error) => {
+  await assert.rejects(client(fetch).getValues('Sheet1!A1'), (error) => {
     assert.ok(error instanceof SheetsError);
     assert.equal(error.status, 500);
     return true;
@@ -109,7 +97,7 @@ test('a network failure becomes a SheetsError', async () => {
     throw new TypeError('Failed to fetch');
   };
 
-  await assert.rejects(client(fetch).getCell('Sheet1!A1'), SheetsError);
+  await assert.rejects(client(fetch).getValues('Sheet1!A1'), SheetsError);
 });
 
 test('getCells reads several cells in one request, as plain numbers', async () => {

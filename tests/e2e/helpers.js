@@ -4,7 +4,11 @@ const fakeGsi = readFile(new URL('./fake-gsi.js', import.meta.url), 'utf8');
 
 export const FAKE_CLIENT_ID = 'test-client.apps.googleusercontent.com';
 export const FAKE_SHEET_ID = 'test-sheet-id';
-export const FAKE_CELL = 'Sheet1!A1';
+// Made-up cells for the four parts of the Total, in the order of config.pills.
+export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
+// The default amounts of those parts, and their sum as the app writes it in English.
+export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
+export const FAKE_TOTAL = '€1,149.50';
 export const FAKE_MOVEMENTS = 'Sheet2!B:E';
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
@@ -18,7 +22,8 @@ export async function setUp(
   {
     configured = true,
     sheetStatus = 200,
-    cell = 'Buy milk',
+    // The values of the four parts of the Total.
+    cells = FAKE_AMOUNTS,
     // Movement rows: date (sheetDay), category, description, amount.
     movements = [],
     email = 'ana@example.com',
@@ -35,10 +40,11 @@ export async function setUp(
     // values to test the "not set up yet" message.
     const clientId = configured ? FAKE_CLIENT_ID : 'REPLACE_WITH_GOOGLE_CLIENT_ID';
     const sheetId = configured ? FAKE_SHEET_ID : 'REPLACE_WITH_SPREADSHEET_ID';
+    let next = 0;
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
       .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
-      .replace(/totalCell: '[^']*'/, `totalCell: '${FAKE_CELL}'`)
+      .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
       .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`);
     await route.fulfill({ response, body });
   });
@@ -51,8 +57,10 @@ export async function setUp(
     const request = route.request();
     sheetRequests.push({ url: request.url(), authorization: request.headers().authorization });
     const askedForMovements = request.url().includes(encodeURIComponent(FAKE_MOVEMENTS));
-    const values = askedForMovements ? movements : cell ? [[cell]] : undefined;
-    const body = sheetStatus === 200 ? { values } : { error: {} };
+    const answer = askedForMovements
+      ? { values: movements }
+      : { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    const body = sheetStatus === 200 ? answer : { error: {} };
     await route.fulfill({ status: sheetStatus, json: body });
   });
 

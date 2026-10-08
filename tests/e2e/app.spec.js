@@ -6,7 +6,8 @@ import {
   sheetDay,
   FAKE_CLIENT_ID,
   FAKE_SHEET_ID,
-  FAKE_CELL,
+  FAKE_CELLS,
+  FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
 import { CARDS, hasCornerIcon } from '../../src/cards.js';
@@ -118,7 +119,7 @@ test('each card follows its settings', async ({ page }) => {
   await expectCardFollowsSettings(signInButton(page), 'signIn');
 
   await signInButton(page).click();
-  await expect(page.locator('#total-value')).toHaveText('Buy milk');
+  await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
   await expectCardFollowsSettings(page.locator('#main .label:has(#total-value)'), 'total');
   await expectCardFollowsSettings(page.locator('#main .label:has(#goal-value)'), 'goal');
@@ -208,12 +209,13 @@ test.describe('login page', () => {
 
 test.describe('sign-in', () => {
   test('a person with access sees the total in the middle', async ({ page }) => {
-    const sheetRequests = await setUp(page, { cell: 'Pay the rent on Friday' });
+    const sheetRequests = await setUp(page);
     await page.goto('./');
 
     await signInButton(page).click();
 
-    await expect(page.locator('#total-value')).toHaveText('Pay the rent on Friday');
+    // The Total is the sum of its four parts: 1000 - 200.50 + 300 + 50.
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
     // The account email is not shown.
     await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
@@ -221,7 +223,13 @@ test.describe('sign-in', () => {
     expect(sheetRequests).toHaveLength(2);
     expect(sheetRequests).toEqual(
       expect.arrayContaining([
-        { url: `${sheetUrl}/${FAKE_CELL}`, authorization: 'Bearer fake-token' },
+        {
+          url:
+            `${sheetUrl}:batchGet?` +
+            FAKE_CELLS.map((cell) => `ranges=${encodeURIComponent(cell)}`).join('&') +
+            '&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+          authorization: 'Bearer fake-token',
+        },
         {
           url:
             `${sheetUrl}/${encodeURIComponent(FAKE_MOVEMENTS)}` +
@@ -274,14 +282,14 @@ test.describe('sign-in', () => {
   });
 
   test('the text sits in a rounded label with a star badge', async ({ page }) => {
-    await setUp(page, { cell: 'Buy milk' });
+    await setUp(page);
     await page.goto('./');
 
     await signInButton(page).click();
 
     const label = page.locator('#main .label:has(#total-value)');
     const badge = label.locator('.label-badge');
-    await expect(label.locator('#total-value')).toHaveText('Buy milk');
+    await expect(label.locator('#total-value')).toHaveText(FAKE_TOTAL);
     await expect(badge).toBeVisible();
 
     // The badge sits in the label's top-left corner, on top of the border.
@@ -310,26 +318,17 @@ test.describe('sign-in', () => {
     expect(y).toBeGreaterThan(0);
   });
 
-  test('the cell is shown as plain text, never as page code', async ({ page }) => {
-    await setUp(page, { cell: '<img src=x onerror="window.hacked=1">Hello' });
+  test('a part that is not a number counts as 0 and is never shown as page code', async ({
+    page,
+  }) => {
+    await setUp(page, { cells: ['<img src=x onerror="window.hacked=1">', '', 2, 3.5] });
     await page.goto('./');
 
     await signInButton(page).click();
 
-    await expect(page.locator('#total-value')).toHaveText(
-      '<img src=x onerror="window.hacked=1">Hello',
-    );
-    await expect(page.locator('#total-value img')).toHaveCount(0);
+    await expect(page.locator('#total-value')).toHaveText('€5.50');
+    await expect(page.locator('img[src="x"]')).toHaveCount(0);
     expect(await page.evaluate(() => window.hacked)).toBeUndefined();
-  });
-
-  test('an empty cell shows a friendly message', async ({ page }) => {
-    await setUp(page, { cell: '' });
-    await page.goto('./');
-
-    await signInButton(page).click();
-
-    await expect(page.locator('#total-value')).toHaveText('There is no total yet.');
   });
 
   for (const status of [403, 404]) {
@@ -376,11 +375,11 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
     await page.reload();
 
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
     expect((await googleLog(page)).requests).toEqual([]);
   });
 
@@ -388,14 +387,14 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
     // A new visit: the token is gone, the remembered email stays.
     await page.evaluate(() => sessionStorage.clear());
 
     await page.reload();
     await signInButton(page).click();
 
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
     const { requests } = await googleLog(page);
     expect(requests[0]).toMatchObject({ prompt: '', login_hint: 'ana@example.com' });
   });
@@ -404,7 +403,7 @@ test.describe('sign-in', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
     await page.getByRole('button', { name: 'Log out' }).click();
 
@@ -508,7 +507,7 @@ test.describe('spending goal', () => {
     await setUp(page, { movements: rows });
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
   }
 
   test('a card with a flag below the Total shows the spending', async ({ page }) => {
@@ -582,7 +581,7 @@ test.describe('cards rise into view', () => {
 
     await expect.poll(() => inert(page, 'login')).toBe(false);
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
     const total = page.locator('#main .label:has(#total-value)');
     const goal = page.locator('#main .label:has(#goal-value)');
@@ -597,7 +596,7 @@ test.describe('cards rise into view', () => {
     await page.goto('./');
     await expect.poll(() => inert(page, 'login')).toBe(false);
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
 
     expect(await inert(page, 'main')).toBe(true);
     await expect.poll(() => inert(page, 'main')).toBe(false);
@@ -641,7 +640,7 @@ test.describe('open a card full screen', () => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
-    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
     await expect.poll(() => page.locator('#main').evaluate((node) => node.inert)).toBe(false);
   }
 

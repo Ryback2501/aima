@@ -62,12 +62,6 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return data.values ?? [];
   }
 
-  // Returns the text of one cell, for example "Sheet1!A1", or '' when the cell is empty.
-  async function getCell(range) {
-    const rows = await getValues(range);
-    return rows[0]?.[0] ?? '';
-  }
-
   // Reads several single cells in one request, for example ["Sheet1!A1", "Sheet1!B7"].
   // Returns one value per cell, in the same order: numbers as plain numbers, '' when empty.
   async function getCells(ranges) {
@@ -76,5 +70,5 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return ranges.map((range, index) => data.valueRanges?.[index]?.values?.[0]?.[0] ?? '');
   }
 
-  return { getValues, getCell, getCells };
+  return { getValues, getCells };
 }

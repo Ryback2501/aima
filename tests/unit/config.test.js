@@ -19,8 +19,12 @@ test('example values or empty values do not count as set up', () => {
   assert.equal(isConfigured({}), false);
 });
 
-test('the config names one cell to show after sign-in', () => {
-  assert.match(config.totalCell, /^.+![A-Z]+[0-9]+$/);
+test('the Total is made of four parts, each read from one cell', () => {
+  assert.deepEqual(
+    config.pills.map(({ name }) => name),
+    ['bank', 'cards', 'provisioned', 'cash'],
+  );
+  for (const { cell } of config.pills) assert.match(cell, /^.+![A-Z]+[0-9]+$/);
 });
 
 test('the permission to read sheets is required and asked for', () => {

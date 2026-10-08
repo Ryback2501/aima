@@ -16,8 +16,8 @@
   --accent: #0f766e;
   --label-background: #ffffff;
   --label-shadow: rgba(28, 35, 33, 0.25);
-  --goal-over: #dc2626;
-  --goal-close: #b45309;
+  --red: #dc2626;
+  --yellow: #b45309;
   /* How far the back button of an open card is from the screen edges. */
   --back-gap: 20px;
   /* How long a pill takes to change color when it is switched on or off. */
@@ -33,8 +33,8 @@
     --accent: #5eead4;
     --label-background: #1b2220;
     --label-shadow: rgba(0, 0, 0, 0.6);
-    --goal-over: #f87171;
-    --goal-close: #facc15;
+    --red: #f87171;
+    --yellow: #facc15;
   }
 }
 
@@ -301,12 +301,17 @@ html:not(.loading) .label {
 }
 
 /* The spending goal is red when it is over the limit, and yellow when it gets close. */
+/* A Total below 0 is red. */
+.total-value[data-negative] {
+  color: var(--red);
+}
+
 .goal-value[data-level='over'] {
-  color: var(--goal-over);
+  color: var(--red);
 }
 
 .goal-value[data-level='close'] {
-  color: var(--goal-close);
+  color: var(--yellow);
 }
 
 /* A tap on an expandable card opens it full screen (see view.js). It grows from its place to

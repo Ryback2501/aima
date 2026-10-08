@@ -266,12 +266,17 @@ export function createView(document, t, formatMoney) {
   // the new one while the pill changes color. A small animation with the pill's timing is the
   // clock: at every frame we write the value for the time gone by.
   let shownTotal = null;
+  // Writes a Total. Below 0 it is red (see styles.css), also while it counts.
+  function writeTotal(value) {
+    totalValue.textContent = formatMoney(value);
+    totalValue.toggleAttribute('data-negative', value < 0);
+  }
   let counting = false;
   function showTotal(total) {
     const start = shownTotal;
     shownTotal = total;
     if (!counting || start === null || start === total || reduceMotion()) {
-      totalValue.textContent = formatMoney(total);
+      writeTotal(total);
       return Promise.resolve();
     }
     const pillFade = window.getComputedStyle(page).getPropertyValue('--pill-fade');
@@ -282,13 +287,11 @@ export function createView(document, t, formatMoney) {
     const tick = () => {
       if (shownTotal !== total) return; // A newer Total took over.
       const progress = clock.effect.getComputedTiming().progress ?? 1;
-      totalValue.textContent = formatMoney(start + (total - start) * progress);
+      writeTotal(start + (total - start) * progress);
       if (clock.playState !== 'finished') window.requestAnimationFrame(tick);
     };
     tick();
-    return clock.finished.then(
-      () => shownTotal === total && (totalValue.textContent = formatMoney(total)),
-    );
+    return clock.finished.then(() => shownTotal === total && writeTotal(total));
   }
 
   // A tap on a pill switches that part of the Total on or off (the app decides what happens).

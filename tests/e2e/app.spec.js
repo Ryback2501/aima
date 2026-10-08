@@ -825,6 +825,26 @@ test.describe('the open Total card', () => {
     expect(Math.abs(above - below)).toBeLessThan(1);
   });
 
+  test('a negative Total is red; a positive one has the normal text color', async ({ page }) => {
+    const colorOf = (selector) =>
+      page.locator(selector).evaluate((node) => getComputedStyle(node).color);
+    await openMain(page);
+    const normal = await colorOf('#goal-value');
+    expect(await colorOf('#total-value')).toBe(normal);
+    await openTotal(page);
+
+    // Without the bank, the Total is 549.50 - 1000 = -450.50.
+    await pill(page, 'bank').click();
+
+    await expect(page.locator('#total-value')).toHaveText('-€450.50');
+    expect(await colorOf('#total-value')).toBe('rgb(220, 38, 38)');
+
+    await pill(page, 'bank').click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await colorOf('#total-value')).toBe(normal);
+  });
+
   test('each pill follows its settings, and its value part has a fixed width', async ({ page }) => {
     await openMain(page);
     await openTotal(page);

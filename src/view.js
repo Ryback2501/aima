@@ -49,15 +49,31 @@ export function createView(document, t, formatMoney) {
 
   // The page is hidden while the app gets ready. After the first screen is chosen, and the
   // font has loaded, we show it: people see the final look straight away.
-  let shown = false;
+  let visible = null;
   function show() {
-    shown = true;
-    document.fonts.ready.then(() => document.documentElement.classList.remove('loading'));
+    visible = document.fonts.ready.then(() => document.documentElement.classList.remove('loading'));
+  }
+
+  // A screen that has just appeared ignores taps (inert) until its cards have risen into
+  // view (see "card-rise" in styles.css). Then it reacts again, if it is still on show.
+  let current = null;
+  function settle(screen) {
+    screen.inert = true;
+    visible.then(async () => {
+      const rising = screen.getAnimations({ subtree: true });
+      await Promise.allSettled(rising.map((animation) => animation.finished));
+      if (current === screen) screen.inert = false;
+    });
   }
 
   function render(state) {
     for (const screen of screens) screen.hidden = screen.id !== state.screen;
-    if (!shown) show();
+    if (!visible) show();
+    const screen = screens.find(({ id }) => id === state.screen);
+    if (screen !== current) {
+      current = screen;
+      settle(screen);
+    }
 
     if (state.screen === 'login') {
       signInButton.disabled = Boolean(state.disabled);

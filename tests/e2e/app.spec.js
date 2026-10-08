@@ -542,3 +542,75 @@ test.describe('spending goal', () => {
     });
   });
 });
+
+test.describe('cards rise into view', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  const look = (locator) =>
+    locator.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return {
+        name: css.animationName,
+        delay: css.animationDelay,
+        opacity: css.opacity,
+        shadow: css.boxShadow,
+      };
+    });
+  const inert = (page, id) => page.locator(`#${id}`).evaluate((node) => node.inert);
+
+  test('every card rises; on the main screen one after the other', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+    expect(await look(signInButton(page))).toMatchObject({ name: 'card-rise', delay: '0s' });
+
+    await expect.poll(() => inert(page, 'login')).toBe(false);
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+
+    const total = page.locator('#main .label:has(#total-value)');
+    const goal = page.locator('#main .label:has(#goal-value)');
+    const logOut = page.getByRole('button', { name: 'Log out' });
+    expect(await look(total)).toMatchObject({ name: 'card-rise', delay: '0s' });
+    expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
+    expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.3s' });
+  });
+
+  test('taps are ignored until the cards have risen', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+    await expect.poll(() => inert(page, 'login')).toBe(false);
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText('Buy milk');
+
+    expect(await inert(page, 'main')).toBe(true);
+    await expect.poll(() => inert(page, 'main')).toBe(false);
+
+    await page.getByRole('button', { name: 'Log out' }).click();
+    await expect(signInButton(page)).toBeVisible();
+  });
+
+  test('at the end each card has its normal look', async ({ page }) => {
+    await setUp(page, { configured: false });
+    await page.goto('./');
+    await expect.poll(() => inert(page, 'login')).toBe(false);
+
+    const end = await look(signInButton(page));
+    // The button stays disabled here, so it ends faded, as a disabled button should.
+    expect(end.opacity).toBe('0.5');
+    const [x, y] = end.shadow.match(/-?[\d.]+px/g).map(parseFloat);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+  });
+});
+
+test('with "reduce motion" on the phone, cards show at once and taps work', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setUp(page);
+  await page.goto('./');
+  await expect(signInButton(page)).toBeVisible();
+
+  expect(await signInButton(page).evaluate((node) => getComputedStyle(node).animationName)).toBe(
+    'none',
+  );
+  await expect.poll(() => page.locator('#login').evaluate((node) => node.inert)).toBe(false);
+});

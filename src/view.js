@@ -1,11 +1,12 @@
-// Shows the screens on the page. This is the only file that changes the page itself.
+// Shows the screens on the page. Only this file and months-view.js (which it uses) change the page.
 
 import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from './components.js';
 import { ICONS } from './icons.js';
+import { createMonths } from './months-view.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-export function createView(document, t, formatMoney) {
+export function createView(document, t, formatMoney, monthName) {
   const element = (id) => document.getElementById(id);
   const screens = ['login', 'checking', 'main'].map((id) => element(id));
   const signInButton = element('sign-in');
@@ -13,6 +14,7 @@ export function createView(document, t, formatMoney) {
   const loginMessage = element('login-message');
   const totalValue = element('total-value');
   const goalValue = element('goal-value');
+  const goalTitle = element('goal-title');
 
   // Put the fixed words (button texts and so on) in the chosen language.
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -126,7 +128,7 @@ export function createView(document, t, formatMoney) {
   let openCard = null;
   let placeholder = null;
   let moving = false;
-  // How far the number moves when the Total card opens (see moveNumber).
+  // How far the number of the open card moves when it opens (see moveNumber).
   let numberShift = 0;
 
   // How long a card takes to open or close. No time when the phone asks for less motion.
@@ -151,13 +153,14 @@ export function createView(document, t, formatMoney) {
     ];
   }
 
-  // In the open Total card the number sits at the top. While the card grows, the number glides
-  // from where it was to the top, with the card's own timing. It starts "shift" pixels away from
-  // its place in the open layout, and goes to 0 (or the other way round when closing).
+  // In an open card the number sits at the top. While the card grows, the number glides from
+  // where it was to the top, with the card's own timing. It starts "shift" pixels away from its
+  // place in the open layout, and goes to 0 (or the other way round when closing).
+  const numberOf = (card) => card.querySelector('.total-value');
   function moveNumber(card, from, to) {
     const timing = { duration: moveTime(card), easing: 'ease-in-out', fill: 'forwards' };
     const at = (shift) => ({ transform: `translateY(${shift}px)` });
-    return [totalValue.animate([at(from), at(to)], timing)];
+    return [numberOf(card).animate([at(from), at(to)], timing)];
   }
 
   // The parts of an open card that rise in one after the other, then the back button.
@@ -185,7 +188,8 @@ export function createView(document, t, formatMoney) {
     await lockWhile(
       (async () => {
         const from = card.getBoundingClientRect();
-        const numberFrom = totalValue.getBoundingClientRect().top - from.top;
+        const number = numberOf(card);
+        const numberFrom = number ? number.getBoundingClientRect().top - from.top : 0;
         placeholder = document.createElement('div');
         placeholder.className = 'card-placeholder';
         placeholder.style.width = `${from.width}px`;
@@ -198,8 +202,8 @@ export function createView(document, t, formatMoney) {
         backdrop.hidden = false;
         // Measure the open layout before anything moves.
         const to = card.getBoundingClientRect();
-        const hasNumber = card.contains(totalValue);
-        if (hasNumber) numberShift = numberFrom - (totalValue.getBoundingClientRect().top - to.top);
+        const hasNumber = Boolean(number);
+        if (hasNumber) numberShift = numberFrom - (number.getBoundingClientRect().top - to.top);
         const animations = move(card, from, to, [0, 1]);
         if (hasNumber) animations.push(...moveNumber(card, numberShift, 0));
         await Promise.allSettled(animations.map((animation) => animation.finished));
@@ -218,6 +222,7 @@ export function createView(document, t, formatMoney) {
   // Puts the open card back at once, without animation (used when the screen changes, and at
   // the end of closing).
   function putBack() {
+    months.reset();
     openCard.classList.remove('open', 'settled', 'closing');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
@@ -245,7 +250,7 @@ export function createView(document, t, formatMoney) {
         const from = openCard.getBoundingClientRect();
         const to = placeholder.getBoundingClientRect();
         const animations = move(openCard, from, to, [1, 0]);
-        if (openCard.contains(totalValue)) animations.push(...moveNumber(openCard, 0, numberShift));
+        if (numberOf(openCard)) animations.push(...moveNumber(openCard, 0, numberShift));
         await Promise.allSettled(animations.map((animation) => animation.finished));
         const closed = putBack();
         for (const animation of animations) animation.cancel();
@@ -255,6 +260,17 @@ export function createView(document, t, formatMoney) {
     moving = false;
     card.focus();
   }
+
+  // The month items of the open goal card (see months-view.js).
+  const months = createMonths({
+    document,
+    room: document.querySelector('.month-room'),
+    createIcon,
+    formatMoney,
+    monthName,
+    lockWhile,
+    settled: (node) => nextFrame().then(() => still(node)),
+  });
 
   for (const card of document.querySelectorAll('[data-expandable]')) {
     card.addEventListener('click', () => open(card));
@@ -336,6 +352,9 @@ export function createView(document, t, formatMoney) {
       // The color comes from the level: "over" is red, "close" is yellow (see styles.css).
       goalValue.textContent = formatMoney(state.goal.amount);
       goalValue.dataset.level = state.goal.level;
+      // "Goal 4K": the word in the app's language and the limit in thousands.
+      goalTitle.textContent = `${t('goal')} ${state.goal.limit / 1000}K`;
+      months.render(state.goal.months);
     }
   }
 

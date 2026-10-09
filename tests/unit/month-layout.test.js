@@ -13,6 +13,8 @@ test('with nothing open, the months keep their place', () => {
     shift: 0,
     fadeTop: false,
     fadeBottom: false,
+    outTop: false,
+    outBottom: false,
   });
 });
 
@@ -22,6 +24,8 @@ test('an open month that fits with the others needs no shift and no fades', () =
     shift: 0,
     fadeTop: false,
     fadeBottom: false,
+    outTop: false,
+    outBottom: false,
   });
 });
 
@@ -32,6 +36,8 @@ test('months below the open one go out at the bottom first, under a fade', () =>
     shift: 0,
     fadeTop: false,
     fadeBottom: true,
+    outTop: false,
+    outBottom: true,
   });
 });
 
@@ -43,6 +49,8 @@ test('when the open month still does not fit, the months above go out at the top
     shift: 94,
     fadeTop: true,
     fadeBottom: false,
+    outTop: true,
+    outBottom: false,
   });
 });
 
@@ -53,6 +61,8 @@ test('an open month taller than the room fills it exactly, with no fade over it'
     shift: 72,
     fadeTop: false,
     fadeBottom: false,
+    outTop: true,
+    outBottom: true,
   });
 });
 
@@ -64,5 +74,7 @@ test('a month in the middle can push months out on both sides', () => {
     shift: 62,
     fadeTop: false,
     fadeBottom: false,
+    outTop: true,
+    outBottom: true,
   });
 });

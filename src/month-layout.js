@@ -13,6 +13,8 @@
 //   the top, just enough to show the whole open month.
 // - fadeTop, fadeBottom: true when a closed month is cut by that limit, so a soft fade covers it.
 //   Never over the open month.
+// - outTop, outBottom: true when any month goes past that limit. Only then must the room cut
+//   everything exactly at the limit; otherwise the shadows of the months may show past it.
 export function monthLayout({ heights, gap, open, openFull, room }) {
   const sizes = heights.map((height, index) =>
     index === open ? Math.min(openFull, room) : height,
@@ -30,5 +32,13 @@ export function monthLayout({ heights, gap, open, openFull, room }) {
   const cutAt = (line) =>
     sizes.some((size, index) => index !== open && tops[index] < line && tops[index] + size > line);
 
-  return { heights: sizes, shift, fadeTop: cutAt(shift), fadeBottom: cutAt(shift + room) };
+  const total = top - gap;
+  return {
+    heights: sizes,
+    shift,
+    fadeTop: cutAt(shift),
+    fadeBottom: cutAt(shift + room),
+    outTop: shift > 0,
+    outBottom: total - shift > room,
+  };
 }

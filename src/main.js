@@ -6,7 +6,13 @@ import { createView } from './view.js';
 import { createSession } from './session.js';
 import { createSheetsClient } from './sheets.js';
 import { createAuth, loadGoogleIdentity } from './auth.js';
-import { browserLanguages, createMoneyFormatter, createTranslator, pickLanguage } from './i18n.js';
+import {
+  browserLanguages,
+  createMoneyFormatter,
+  createMonthNamer,
+  createTranslator,
+  pickLanguage,
+} from './i18n.js';
 import { blockZoom } from './no-zoom.js';
 
 // Some browsers throw an error just for looking at storage (for example with cookies blocked).
@@ -31,7 +37,7 @@ const t = createTranslator(language);
 
 const app = createApp({
   config,
-  view: createView(document, t, createMoneyFormatter(language)),
+  view: createView(document, t, createMoneyFormatter(language), createMonthNamer(language)),
   session: createSession({
     sessionStorage: storage('sessionStorage'),
     localStorage: storage('localStorage'),

@@ -15,6 +15,7 @@ export const STRINGS = {
     signedOut: 'You have signed out.',
     signOut: 'Log out',
     back: 'Back',
+    goal: 'Goal',
     total: 'Total',
     bank: 'Bank',
     cards: 'Cards',
@@ -34,6 +35,7 @@ export const STRINGS = {
     signedOut: 'Has cerrado sesión.',
     signOut: 'Cerrar sesión',
     back: 'Volver',
+    goal: 'Objetivo',
     total: 'Total',
     bank: 'Banco',
     cards: 'Tarjetas',
@@ -53,6 +55,7 @@ export const STRINGS = {
     signedOut: 'Вы вышли из аккаунта.',
     signOut: 'Выйти',
     back: 'Назад',
+    goal: 'Цель',
     total: 'Итого',
     bank: 'Банк',
     cards: 'Карты',
@@ -98,4 +101,17 @@ export function createMoneyFormatter(language) {
     useGrouping: 'always',
   });
   return (amount) => format.format(amount);
+}
+
+// Returns a function that names a month in the language, starting with a capital letter,
+// for example (2026, 10) → "October" in English and "Octubre" in Spanish. month is 1 to 12.
+export function createMonthNamer(language) {
+  const format = new Intl.DateTimeFormat(language, {
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  return (year, month) => {
+    const name = format.format(Date.UTC(year, month - 1, 1));
+    return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
+  };
 }

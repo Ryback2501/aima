@@ -24,9 +24,10 @@ export function createMonths({
   lockWhile,
   settled,
 }) {
+  const window = document.defaultView;
   const column = room.querySelector('.month-column');
-  const fadeTop = room.querySelector('.month-fade-top');
-  const fadeBottom = room.querySelector('.month-fade-bottom');
+  const fadeTop = room.parentElement.querySelector('.month-fade-top');
+  const fadeBottom = room.parentElement.querySelector('.month-fade-bottom');
   let items = [];
   let shown = '';
   let open = null;
@@ -85,7 +86,7 @@ export function createMonths({
 
   // How tall a month is closed (header only) and open (with every movement).
   function sizes(item) {
-    const css = document.defaultView.getComputedStyle(item);
+    const css = window.getComputedStyle(item);
     const frame =
       parseFloat(css.paddingTop) +
       parseFloat(css.paddingBottom) +
@@ -93,7 +94,7 @@ export function createMonths({
       parseFloat(css.borderBottomWidth);
     const head = item.querySelector('.month-head').offsetHeight;
     const list = item.querySelector('.month-list');
-    const listGap = parseFloat(document.defaultView.getComputedStyle(list).marginTop);
+    const listGap = parseFloat(window.getComputedStyle(list).marginTop);
     return { closed: frame + head, full: frame + head + listGap + list.scrollHeight };
   }
 
@@ -112,10 +113,10 @@ export function createMonths({
     const measured = items.map(sizes);
     const layout = monthLayout({
       heights: measured.map(({ closed }) => closed),
-      gap: parseFloat(document.defaultView.getComputedStyle(column).rowGap) || 0,
+      gap: parseFloat(window.getComputedStyle(column).rowGap) || 0,
       open,
       openFull: open === null ? 0 : measured[open].full,
-      room: room.clientHeight,
+      room: space(),
     });
     items.forEach((item, i) => {
       item.style.height = `${layout.heights[i]}px`;
@@ -125,12 +126,37 @@ export function createMonths({
       if (i !== open) item.querySelector('.month-list').scrollTop = 0;
     });
     column.style.transform = `translateY(${-layout.shift}px)`;
-    fadeTop.classList.toggle('visible', layout.fadeTop);
-    fadeBottom.classList.toggle('visible', layout.fadeBottom);
-    room.classList.toggle('out-top', layout.outTop);
-    room.classList.toggle('out-bottom', layout.outBottom);
-    // Taps wait until the months have stopped moving.
+    // Taps wait until the months have stopped moving. The fades follow them on every frame.
     lockWhile(settled(room));
+    window.requestAnimationFrame(followFades);
+  }
+
+  // The height the months can use: the area without the room kept for the first month's shadow.
+  function space() {
+    return room.clientHeight - parseFloat(window.getComputedStyle(room).paddingTop);
+  }
+
+  // Shows a fade over a month that is cut at the top or the bottom edge of the area, as it is on
+  // the screen now. Never over the open month.
+  function updateFades() {
+    const { top, bottom } = room.getBoundingClientRect();
+    const cutAt = (line) =>
+      items.some((item, index) => {
+        if (index === open) return false;
+        const box = item.getBoundingClientRect();
+        return box.top < line - 0.5 && box.bottom > line + 0.5;
+      });
+    fadeTop.classList.toggle('visible', cutAt(top));
+    fadeBottom.classList.toggle('visible', cutAt(bottom));
+  }
+
+  // While the months move, the fades are checked on every frame, until the movement ends.
+  function followFades() {
+    updateFades();
+    const moving = room
+      .getAnimations({ subtree: true })
+      .some((animation) => animation.playState !== 'finished');
+    if (moving) window.requestAnimationFrame(followFades);
   }
 
   // Puts every month back to closed at once (when the goal card closes).
@@ -145,7 +171,6 @@ export function createMonths({
     column.style.transform = '';
     fadeTop.classList.remove('visible');
     fadeBottom.classList.remove('visible');
-    room.classList.remove('out-top', 'out-bottom');
   }
 
   return { render, reset };

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { goalStatus } from '../../src/goal.js';
+import { goalStatus, goalMonths } from '../../src/goal.js';
 import { config } from '../../src/config.js';
 
 // Made-up settings in the same shape as config.goal.
@@ -132,4 +132,61 @@ test('the real goal settings have every part the calculation needs', () => {
   assert.ok(Array.isArray(skip.categories));
   assert.equal(typeof skip.house.category, 'string');
   assert.ok(Array.isArray(skip.house.descriptions));
+});
+
+test('goalMonths gives one entry per month of the period, in order', () => {
+  const months = goalMonths([], goal);
+
+  assert.deepEqual(
+    months.map(({ year, month }) => [year, month]),
+    [
+      [2026, 10],
+      [2026, 11],
+      [2026, 12],
+    ],
+  );
+});
+
+test('a month without counted movements has no amount and no movements', () => {
+  const rows = [row('2026-11-03', -100, 'Pay'), row('2026-09-30', -5)];
+
+  assert.deepEqual(goalMonths(rows, goal)[1], {
+    year: 2026,
+    month: 11,
+    amount: null,
+    movements: [],
+  });
+  assert.equal(goalMonths(rows, goal)[0].amount, null);
+});
+
+test('each month adds up its own spending, with the same rules as the goal', () => {
+  const rows = [
+    row('2026-10-05', -100),
+    row('2026-10-31', -20.5, 'Home', 'New lamp'),
+    row('2026-10-12', -999, 'Home', 'Water'),
+    row('2026-11-01', -7),
+    row('2026-12-31', 15, 'Food', 'Refund'),
+  ];
+
+  const months = goalMonths(rows, goal);
+
+  assert.deepEqual(
+    months.map(({ amount }) => amount),
+    [120.5, 7, -15],
+  );
+});
+
+test('a month lists its movements as spending, newest first', () => {
+  const rows = [
+    row('2026-10-05', -100, 'Food', 'Market'),
+    [day('2026-10-20') + 0.5, 'Car', 'Petrol', -45.2],
+    row('2026-10-12', 10, 'Food', 'Refund'),
+    row('2026-10-15', -999, 'Pay', 'Salary'),
+  ];
+
+  assert.deepEqual(goalMonths(rows, goal)[0].movements, [
+    { category: 'Car', description: 'Petrol', amount: 45.2 },
+    { category: 'Food', description: 'Refund', amount: -10 },
+    { category: 'Food', description: 'Market', amount: 100 },
+  ]);
 });

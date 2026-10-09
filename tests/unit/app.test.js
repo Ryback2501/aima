@@ -143,7 +143,21 @@ test('a person with access sees the total after sign-in', async () => {
       { name: 'provisioned', amount: 300, on: true },
       { name: 'cash', amount: 50, on: true },
     ],
-    goal: { amount: 12.5, level: 'ok' },
+    goal: {
+      amount: 12.5,
+      level: 'ok',
+      limit: 3000,
+      months: [
+        {
+          year: 2026,
+          month: 10,
+          amount: 12.5,
+          movements: [{ category: 'Food', description: 'Shop', amount: 12.5 }],
+        },
+        { year: 2026, month: 11, amount: null, movements: [] },
+        { year: 2026, month: 12, amount: null, movements: [] },
+      ],
+    },
   });
 });
 

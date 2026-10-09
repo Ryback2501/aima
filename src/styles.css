@@ -550,8 +550,7 @@ html:not(.loading) .label {
   transition: height var(--expand-time) ease-in-out;
 }
 
-/* The header row: calendar with the month's letter, the month's spending, and the arrow. While
-   the month is open it casts a shadow on the list, so it is clear where the list starts. */
+/* The header row: calendar with the month's letter, the month's spending, and the arrow. */
 .month-head {
   position: relative;
   z-index: 1;
@@ -568,12 +567,6 @@ html:not(.loading) .label {
   font: inherit;
   font-size: 1.125rem;
   cursor: pointer;
-  box-shadow: none;
-  transition: box-shadow var(--expand-time) ease-in-out;
-}
-
-.month.open .month-head {
-  box-shadow: 0 6px 8px -4px rgba(0, 0, 0, 0.25);
 }
 
 .month-head:disabled {
@@ -697,7 +690,6 @@ html:not(.loading) .label {
 @media (prefers-reduced-motion: reduce) {
   .month-column,
   .month,
-  .month-head,
   .month-arrow,
   .month-fade {
     transition: none;

@@ -1124,13 +1124,12 @@ test.describe('the open goal card', () => {
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();
     expect(descriptionBox.y).toBeGreaterThan(amountBox.y);
-    // The open month's header casts a shadow on the list; a closed one does not.
+    // No shadow under the header row: the list is already separated from it.
     const shadowOf = (index) =>
       month(page, index)
         .locator('.month-head')
         .evaluate((n) => getComputedStyle(n).boxShadow);
-    expect(await shadowOf(0)).not.toBe('none');
-    expect(await shadowOf(2)).toBe('none');
+    expect(await shadowOf(0)).toBe('none');
 
     // Another month: the first one closes.
     await tapMonth(page, 2);

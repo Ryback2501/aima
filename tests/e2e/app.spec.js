@@ -1547,3 +1547,61 @@ test.describe('the open goal card', () => {
     });
   });
 });
+
+test.describe('privacy policy and terms of service', () => {
+  for (const { path, title } of [
+    { path: 'privacy', title: 'Privacy Policy' },
+    { path: 'terms', title: 'Terms of Service' },
+  ]) {
+    test(`${path}: a plain page with its own styles, reachable at /${path}`, async ({ page }) => {
+      const response = await page.goto(`./${path}`);
+
+      expect(response.ok()).toBe(true);
+      await expect(page).toHaveURL(new RegExp(`/${path}/$`));
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+      await expect(page).toHaveTitle(new RegExp(title));
+      // No JavaScript, and the styles are inside the page.
+      await expect(page.locator('script')).toHaveCount(0);
+      await expect(page.locator('link[rel="stylesheet"]')).toHaveCount(0);
+      await expect(page.locator('style')).toHaveCount(1);
+      // A way to reach the developer, and the date.
+      await expect(page.getByRole('link', { name: 'deiturbe@gmail.com' })).toHaveAttribute(
+        'href',
+        'mailto:deiturbe@gmail.com',
+      );
+      await expect(page.getByText(/9 October 2026/).first()).toBeVisible();
+      // The app's public address, and no mention of where the files are hosted.
+      await expect(
+        page.getByRole('link', { name: 'aima.davidentrena.com' }).first(),
+      ).toHaveAttribute('href', 'https://aima.davidentrena.com/');
+      expect(await page.content()).not.toMatch(/github/i);
+    });
+  }
+
+  test('the privacy policy says what Google data the app uses and how', async ({ page }) => {
+    await page.goto('./privacy/');
+
+    const text = await page.locator('main').textContent();
+    expect(text).toContain('Google API Services User Data Policy');
+    expect(text).toContain('Limited Use');
+    expect(text).toMatch(/email address/i);
+    expect(text).toMatch(/read-only/i);
+    expect(text).toContain('https://myaccount.google.com/permissions');
+  });
+
+  test('the terms name Spanish law and link to the privacy policy', async ({ page }) => {
+    await page.goto('./terms/');
+
+    expect(await page.locator('main').textContent()).toContain('laws of Spain');
+    await page.getByRole('link', { name: 'Privacy Policy', exact: true }).first().click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy Policy');
+  });
+
+  test('both pages lead back to the app', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./privacy/');
+    await page.getByRole('link', { name: 'Back to aima' }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(signInButton(page)).toBeVisible();
+  });
+});

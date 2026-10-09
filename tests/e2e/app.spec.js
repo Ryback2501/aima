@@ -771,7 +771,7 @@ test.describe('the open Total card', () => {
 
     await openTotal(page);
 
-    const caption = page.locator('.total-caption');
+    const caption = totalCard(page).locator('.total-caption');
     await expect(caption).toHaveText('Total');
     const number = await page.locator('#total-value').boundingBox();
     expect(number.y).toBeLessThan(closed.y);
@@ -962,7 +962,7 @@ test.describe('the open Total card', () => {
       await expect(page.locator('#back')).toBeVisible();
       expect(await locked(page)).toBe(true);
 
-      expect(await delayOf(page.locator('.total-caption'))).toBe('card-rise 0s');
+      expect(await delayOf(totalCard(page).locator('.total-caption'))).toBe('card-rise 0s');
       expect(await delayOf(pill(page, 'bank'))).toBe('card-rise 0.075s');
       expect(await delayOf(pill(page, 'cash'))).toBe('card-rise 0.3s');
       expect(await delayOf(page.locator('#back'))).toBe('card-rise 0.375s');
@@ -982,7 +982,7 @@ test.describe('the open Total card', () => {
       expect(await delayOf(page.locator('#back'))).toBe('card-sink 0s');
       expect(await delayOf(pill(page, 'cash'))).toBe('card-sink 0.075s');
       expect(await delayOf(pill(page, 'bank'))).toBe('card-sink 0.3s');
-      expect(await delayOf(page.locator('.total-caption'))).toBe('card-sink 0.375s');
+      expect(await delayOf(totalCard(page).locator('.total-caption'))).toBe('card-sink 0.375s');
       // The card waits for them before it shrinks.
       const stillOpen = await totalCard(page).boundingBox();
       expect(stillOpen.height).toBe(open.height);
@@ -1025,6 +1025,263 @@ test.describe('the open Total card', () => {
 
       await expect(page.locator('#total-value')).toHaveText('-€450.50');
       await expect.poll(() => locked(page)).toBe(false);
+    });
+  });
+});
+
+test.describe('the open goal card', () => {
+  const goalCard = (page) => page.locator('#main [data-card="goal"]');
+  const month = (page, index) => page.locator('.month').nth(index);
+
+  // October has three counted movements and one skipped (salary); November has none;
+  // December has one.
+  const movements = [
+    [sheetDay('2026-10-03'), 'General', 'Market', -100],
+    [sheetDay('2026-10-20'), 'Car', 'Petrol', -45.2],
+    [sheetDay('2026-10-12'), 'Leisure', 'Cinema refund', 10],
+    [sheetDay('2026-10-01'), 'Salary', 'October', 2500],
+    [sheetDay('2026-12-02'), 'Yoshi', 'Vet', -60],
+  ];
+
+  async function openGoal(page, rows = movements) {
+    await setUp(page, { movements: rows });
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    await expect.poll(() => locked(page)).toBe(false);
+    await goalCard(page).click();
+    await expect(page.locator('#back')).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+  }
+
+  async function tapMonth(page, index) {
+    await month(page, index).locator('.month-head').click();
+    await expect.poll(() => locked(page)).toBe(false);
+  }
+
+  test('shows "Goal 4K" above the number and the three months below it', async ({ page }) => {
+    await openGoal(page);
+
+    const title = goalCard(page).locator('.total-caption');
+    await expect(title).toHaveText('Goal 4K');
+    const number = await page.locator('#goal-value').boundingBox();
+    expect((await title.boundingBox()).y).toBeLessThan(number.y);
+    expect(number.y).toBeLessThan(160);
+
+    await expect(page.locator('.month')).toHaveCount(3);
+    await expect(month(page, 0).locator('.month-letter')).toHaveText('O');
+    await expect(month(page, 1).locator('.month-letter')).toHaveText('N');
+    await expect(month(page, 2).locator('.month-letter')).toHaveText('D');
+    await expect(month(page, 0).locator('.month-head')).toHaveAttribute('aria-label', /October/);
+    await expect(month(page, 0).locator('.month-amount')).toHaveText('€135.20');
+    await expect(month(page, 2).locator('.month-amount')).toHaveText('€60.00');
+    // The months start right below the number, 32px away, one under the other.
+    const first = await month(page, 0).boundingBox();
+    expect(Math.abs(first.y - (number.y + number.height) - 32)).toBeLessThan(1);
+    expect((await month(page, 1).boundingBox()).y).toBeGreaterThan(first.y);
+    // All months start closed: no movement shows.
+    for (const index of [0, 1, 2]) {
+      await expect(month(page, index).locator('.month-list')).toBeHidden();
+    }
+  });
+
+  test('a month without movements shows two lines in grey and does not open', async ({ page }) => {
+    await openGoal(page);
+
+    const november = month(page, 1);
+    await expect(november.locator('.month-amount')).toHaveText('--');
+    const grey = 'rgb(156, 163, 175)';
+    expect(await november.locator('.month-amount').evaluate((n) => getComputedStyle(n).color)).toBe(
+      grey,
+    );
+    expect(await november.locator('.month-arrow').evaluate((n) => getComputedStyle(n).fill)).toBe(
+      grey,
+    );
+    await expect(november.locator('.month-head')).toBeDisabled();
+  });
+
+  test('a tap opens a month: its movements, newest first, with icons and descriptions', async ({
+    page,
+  }) => {
+    await openGoal(page);
+
+    await tapMonth(page, 0);
+
+    const october = month(page, 0);
+    await expect(october.locator('.month-head')).toHaveAttribute('aria-expanded', 'true');
+    const rows = october.locator('.movement');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.locator('.movement-amount')).toHaveText(['€45.20', '-€10.00', '€100.00']);
+    await expect(rows.locator('.movement-description')).toHaveText([
+      'Petrol',
+      'Cinema refund',
+      'Market',
+    ]);
+    await expect(rows.nth(0).locator('svg path')).toHaveAttribute('d', ICONS.car.path);
+    await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.ticket.path);
+    await expect(rows.nth(2).locator('svg path')).toHaveAttribute('d', ICONS.moneyBag.path);
+    // The description is below the amount.
+    const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
+    const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();
+    expect(descriptionBox.y).toBeGreaterThan(amountBox.y);
+    // The open month's header casts a shadow on the list; a closed one does not.
+    const shadowOf = (index) =>
+      month(page, index)
+        .locator('.month-head')
+        .evaluate((n) => getComputedStyle(n).boxShadow);
+    expect(await shadowOf(0)).not.toBe('none');
+    expect(await shadowOf(2)).toBe('none');
+
+    // Another month: the first one closes.
+    await tapMonth(page, 2);
+    await expect(october.locator('.month-head')).toHaveAttribute('aria-expanded', 'false');
+    await expect(month(page, 2).locator('.movement-description')).toHaveText(['Vet']);
+    await expect(month(page, 2).locator('.movement svg path')).toHaveAttribute('d', ICONS.paw.path);
+
+    // The same month again: it closes.
+    await tapMonth(page, 2);
+    await expect(month(page, 2).locator('.month-head')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('with many movements the open month fills the room, and only its list scrolls', async ({
+    page,
+  }) => {
+    const many = Array.from({ length: 40 }, (_, index) => [
+      sheetDay('2026-11-01') + index / 100,
+      'General',
+      `Shop ${index}`,
+      -1,
+    ]);
+    await openGoal(page, many);
+    const room = await page.locator('.month-room').boundingBox();
+    const number = await page.locator('#goal-value').boundingBox();
+    const back = await page.locator('#back').boundingBox();
+    // The room starts 32px below the number and ends 32px above the back button.
+    expect(Math.abs(room.y - (number.y + number.height) - 32)).toBeLessThan(1);
+    expect(Math.abs(back.y - (room.y + room.height) - 32)).toBeLessThan(1);
+
+    await tapMonth(page, 1);
+
+    const november = await month(page, 1).boundingBox();
+    expect(Math.abs(november.y - room.y)).toBeLessThan(1);
+    expect(Math.abs(november.height - room.height)).toBeLessThan(1);
+    // October is pushed out above (nothing to fade over the open month at the top), December
+    // is pushed out below.
+    await expect(page.locator('.month-fade-top')).not.toHaveClass(/visible/);
+    await expect(page.locator('.month-fade-bottom')).not.toHaveClass(/visible/);
+
+    const list = month(page, 1).locator('.month-list');
+    const columnBefore = await page
+      .locator('.month-column')
+      .evaluate((n) => getComputedStyle(n).transform);
+    const listBox = await list.boundingBox();
+    await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + listBox.height / 2);
+    await page.mouse.wheel(0, 300);
+    await expect.poll(() => list.evaluate((n) => n.scrollTop)).toBeGreaterThan(0);
+    expect(await page.locator('.month-column').evaluate((n) => getComputedStyle(n).transform)).toBe(
+      columnBefore,
+    );
+  });
+
+  for (const count of [3, 6, 8]) {
+    test(`a fade shows exactly when a closed month is cut by a limit (${count} movements)`, async ({
+      page,
+    }) => {
+      const some = Array.from({ length: count }, (_, index) => [
+        sheetDay('2026-11-01') + index / 100,
+        'General',
+        `Shop ${index}`,
+        -1,
+      ]);
+      await openGoal(page, [...movements, ...some]);
+
+      for (const index of [0, 1]) {
+        await tapMonth(page, index);
+        const look = await page.evaluate(() => {
+          const room = document.querySelector('.month-room').getBoundingClientRect();
+          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
+            node.getBoundingClientRect(),
+          );
+          const cutAt = (line) =>
+            closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
+          return {
+            cutTop: cutAt(room.top),
+            cutBottom: cutAt(room.bottom),
+            fadeTop: document.querySelector('.month-fade-top').classList.contains('visible'),
+            fadeBottom: document.querySelector('.month-fade-bottom').classList.contains('visible'),
+          };
+        });
+        expect(look.fadeTop).toBe(look.cutTop);
+        expect(look.fadeBottom).toBe(look.cutBottom);
+      }
+    });
+  }
+
+  test.describe('in Spanish', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('the title and the month names are in Spanish', async ({ page }) => {
+      await setUp(page, { movements });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Iniciar sesión con Google' }).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await goalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+
+      await expect(goalCard(page).locator('.total-caption')).toHaveText('Objetivo 4K');
+      await expect(month(page, 0).locator('.month-head')).toHaveAttribute('aria-label', /Octubre/);
+    });
+  });
+
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    const delayOf = (locator) =>
+      locator.evaluate((node) => {
+        const css = getComputedStyle(node);
+        return `${css.animationName} ${css.animationDelay}`;
+      });
+
+    test('title, months one by one, then the back button rise in; closing reverses', async ({
+      page,
+    }) => {
+      await setUp(page, { movements });
+      await page.goto('./');
+      await signInButton(page).click();
+      await expect.poll(() => locked(page)).toBe(false);
+
+      await goalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+      expect(await delayOf(goalCard(page).locator('.total-caption'))).toBe('card-rise 0s');
+      expect(await delayOf(month(page, 0))).toBe('card-rise 0.075s');
+      expect(await delayOf(month(page, 2))).toBe('card-rise 0.225s');
+      expect(await delayOf(page.locator('#back'))).toBe('card-rise 0.3s');
+      await expect.poll(() => locked(page)).toBe(false);
+
+      await page.locator('#back').click();
+      expect(await delayOf(page.locator('#back'))).toBe('card-sink 0s');
+      expect(await delayOf(month(page, 2))).toBe('card-sink 0.075s');
+      expect(await delayOf(goalCard(page).locator('.total-caption'))).toBe('card-sink 0.3s');
+      await expect(page.locator('#backdrop')).toBeHidden();
+    });
+
+    test('opening a month moves smoothly and taps wait', async ({ page }) => {
+      await setUp(page, { movements });
+      await page.goto('./');
+      await signInButton(page).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await goalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+      const closedHeight = (await month(page, 0).boundingBox()).height;
+
+      await month(page, 0).locator('.month-head').click();
+
+      expect(await locked(page)).toBe(true);
+      const moving = await month(page, 0).evaluate((n) => n.getAnimations().length);
+      expect(moving).toBeGreaterThan(0);
+      await expect.poll(() => locked(page)).toBe(false);
+      expect((await month(page, 0).boundingBox()).height).toBeGreaterThan(closedHeight);
     });
   });
 });

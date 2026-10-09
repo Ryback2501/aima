@@ -1,7 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from '../../src/components.js';
+import {
+  CARDS,
+  cardStyle,
+  hasIcon,
+  PILLS,
+  pillStyle,
+  CATEGORY_ICONS,
+  categoryIcon,
+} from '../../src/components.js';
 import { config } from '../../src/config.js';
 import { ICONS } from '../../src/icons.js';
 
@@ -122,4 +130,22 @@ test('every pill shows an icon that exists in icons.js, with a size', () => {
     assert.ok(ICONS[settings.icon], `${name} uses an unknown icon`);
     assert.equal(typeof settings.iconSize, 'number', `${name}.iconSize`);
   }
+});
+
+test('every spending category has an icon that exists in icons.js', () => {
+  for (const [category, icon] of Object.entries(CATEGORY_ICONS)) {
+    assert.ok(ICONS[icon], `${category} uses an unknown icon`);
+    assert.equal(categoryIcon(category), icon);
+  }
+});
+
+test('a category without its own icon gets the money bag', () => {
+  assert.equal(categoryIcon('Something new'), 'moneyBag');
+  assert.equal(categoryIcon(''), 'moneyBag');
+  assert.ok(ICONS.moneyBag);
+});
+
+test('the month items have their icons', () => {
+  assert.ok(ICONS.calendar);
+  assert.ok(ICONS.chevron);
 });

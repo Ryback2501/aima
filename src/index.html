@@ -96,7 +96,18 @@
             tabindex="0"
             aria-expanded="false"
           >
-            <p id="goal-value" class="total-value goal-value"></p>
+            <!-- When the card is open: the header with a title, and the months of the goal. -->
+            <div class="total-header">
+              <span id="goal-title" class="total-caption rise-in"></span>
+              <p id="goal-value" class="total-value goal-value"></p>
+            </div>
+            <!-- The space between the number and the back button. The months are built by
+                 months-view.js. Nothing shows outside this space. -->
+            <div class="month-room">
+              <div class="month-column"></div>
+              <div class="month-fade month-fade-top"></div>
+              <div class="month-fade month-fade-bottom"></div>
+            </div>
           </div>
         </div>
         <!-- Covers everything behind an open card in black. -->

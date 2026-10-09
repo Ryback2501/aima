@@ -8,7 +8,7 @@
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
-import { goalStatus } from './goal.js';
+import { goalStatus, goalMonths } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 
 export function createApp({ config, view, session, loadAuth, createSheets }) {
@@ -81,7 +81,11 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
         subtract,
         amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
       }));
-      goal = goalStatus(movements, config.goal);
+      goal = {
+        ...goalStatus(movements, config.goal),
+        limit: config.goal.limit,
+        months: goalMonths(movements, config.goal),
+      };
       showMain();
     } catch (error) {
       if (error instanceof NoAccessError) {

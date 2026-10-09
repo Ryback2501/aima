@@ -6,6 +6,7 @@ import {
   browserLanguages,
   createTranslator,
   createMoneyFormatter,
+  createMonthNamer,
   STRINGS,
 } from '../../src/i18n.js';
 
@@ -75,4 +76,10 @@ test('money is written the way each language writes euros', () => {
 test('small amounts and zero always show two decimals', () => {
   assert.equal(plain(createMoneyFormatter('es')(0)), '0,00 €');
   assert.equal(plain(createMoneyFormatter('en')(7)), '€7.00');
+});
+
+test('month names are in the app language, starting with a capital letter', () => {
+  assert.equal(createMonthNamer('en')(2026, 10), 'October');
+  assert.equal(createMonthNamer('es')(2026, 10), 'Octubre');
+  assert.equal(createMonthNamer('ru')(2026, 12), 'Декабрь');
 });

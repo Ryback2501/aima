@@ -100,6 +100,9 @@ The app has no extra libraries at run time. The files in `src/` are the files pe
 | `src/main.js`          | Starts the app in the browser.                                  |
 | `src/app.js`           | Decides which screen to show and what each button does.        |
 | `src/view.js`          | Shows the screens on the page.                                  |
+| `src/months-view.js`   | Shows the months of the open goal card and opens their lists of movements. |
+| `src/month-layout.js`  | Works out where the months sit when one of them is open.        |
+| `src/goal.js`          | Works out the spending goal, in total and month by month.       |
 | `src/components.js`    | How each card and pill looks: size, border, corners, icon, colors, spacing. |
 | `src/icons.js`         | The shapes of the app's icons, with no size, so they can be used anywhere. |
 | `src/auth.js`          | Signs people in and out with Google.                            |

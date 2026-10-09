@@ -16,7 +16,7 @@ aima is a small web app. It shows information from a Google Sheet on your phone.
 
 The app has no server. It runs completely in your browser and talks directly to Google.
 
-Address: <https://ryback2501.github.io/aima/>
+Address: <https://aima.davidentrena.com/>
 
 ## Set up Google (one time)
 
@@ -38,7 +38,7 @@ settings, not by hiding these values.
 4. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**.
    - Application type: **Web application**.
    - Under **Authorized JavaScript origins**, add:
-     - `https://ryback2501.github.io`
+     - `https://aima.davidentrena.com`
      - `http://localhost:8082` (to try the app on your computer)
    - You do not need a redirect address.
 5. Copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
@@ -46,6 +46,29 @@ settings, not by hiding these values.
 Why "Testing" mode? Reading sheets is a sensitive permission. A public Google app with this
 permission needs a review by Google. In Testing mode there is no review, but only the test users
 can sign in (up to 100 people).
+
+### Own address (one time)
+
+The app is published at `https://aima.davidentrena.com`. The domain is managed at Porkbun.
+
+1. At **Porkbun → Domain Management → DNS** for `davidentrena.com`, add a record:
+   - Type: **CNAME**, Host: `aima`, Answer: `ryback2501.github.io`.
+2. In the GitHub repository, open **Settings → Pages**. Under **Custom domain**, enter
+   `aima.davidentrena.com` and save. When the check is green, turn on **Enforce HTTPS**.
+3. Recommended, so nobody else can use the domain: in your GitHub account, open
+   **Settings → Pages → Add a domain**, enter `davidentrena.com`, and add the TXT record it shows
+   at Porkbun.
+
+### Google verification (to leave "Testing")
+
+Google checks these pages before it verifies the app:
+
+- Privacy policy: `https://aima.davidentrena.com/privacy`
+- Terms of service: `https://aima.davidentrena.com/terms`
+
+In **Google Auth Platform → Branding**, set the app home page to `https://aima.davidentrena.com`,
+the two addresses above, and add `davidentrena.com` under **Authorized domains**. Google asks you
+to prove that you own the domain in [Google Search Console](https://search.google.com/search-console).
 
 ### 2. Find the Spreadsheet ID
 
@@ -113,6 +136,8 @@ The app has no extra libraries at run time. The files in `src/` are the files pe
 | `src/no-zoom.js`       | Stops two-finger zoom on phones.                                |
 | `src/sw.js`            | Lets phones install the app and keeps a copy of its files.      |
 | `src/manifest.webmanifest` | The app name, colors and icons for the home screen.       |
+| `src/privacy/index.html` | The privacy policy, at `<app address>/privacy`.          |
+| `src/terms/index.html` | The terms of service, at `<app address>/terms`.           |
 
 ## Releases
 

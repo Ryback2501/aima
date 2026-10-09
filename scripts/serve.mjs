@@ -1,7 +1,7 @@
 // A very small web server to try the app on this computer.
 // Use: node scripts/serve.mjs <folder> <port>
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const TYPES = {
@@ -26,6 +26,13 @@ createServer(async (request, response) => {
     const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
     // normalize() removes "../" so nobody can read files outside the folder.
     let file = join(folder, normalize(path));
+    // A folder without "/" at the end (for example /privacy) goes to the folder's page
+    // (/privacy/), like GitHub Pages does.
+    if (!path.endsWith('/') && (await stat(file).catch(() => null))?.isDirectory()) {
+      response.writeHead(301, { Location: `${path}/` });
+      response.end();
+      return;
+    }
     if (path.endsWith('/')) file = join(file, 'index.html');
     const body = await readFile(file);
     response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });

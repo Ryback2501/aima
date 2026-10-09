@@ -35,6 +35,26 @@ async function expectBadgeShowsBorder(label) {
 // True while the app ignores taps, because an animation is playing.
 const locked = (page) => page.evaluate(() => document.querySelector('main').inert);
 
+// Reads an element's shadow: how far it is moved right (x) and down (y), how soft it is (blur)
+// and how much bigger or smaller than the element it is (spread).
+const shadowOf = (locator) =>
+  locator.evaluate((node) => {
+    const [x, y, blur, spread = 0] = getComputedStyle(node)
+      .boxShadow.match(/-?[\d.]+px/g)
+      .map(parseFloat);
+    return {
+      x,
+      y,
+      blur,
+      spread,
+      // How far the visible shadow reaches past each side of the element.
+      top: blur - y + spread,
+      left: blur - x + spread,
+      right: x + spread + blur,
+      bottom: y + spread + blur,
+    };
+  });
+
 // Checks that a card on the page follows its settings in CARDS.
 async function expectCardFollowsSettings(card, name) {
   const settings = CARDS[name];
@@ -83,6 +103,38 @@ test('a card without corner icon settings has no corner icon area, and icons can
   const icon = back.locator('[data-icon="back"] svg');
   await expect(icon).toHaveAttribute('width', '24');
   await expect(icon.locator('path')).toHaveAttribute('d', ICONS.back.path);
+});
+
+test('no shadow in the app shows above or to the left of its item', async ({ page }) => {
+  const checked = [];
+  const check = async (locator) => {
+    const shadow = await shadowOf(locator);
+    expect(shadow.top).toBeLessThanOrEqual(0);
+    expect(shadow.left).toBeLessThanOrEqual(0);
+    checked.push(shadow);
+  };
+  await setUp(page, { movements: [[sheetDay('2026-10-03'), 'General', 'Market', -10]] });
+  await page.goto('./');
+  await expect.poll(() => locked(page)).toBe(false);
+  await check(signInButton(page));
+
+  await signInButton(page).click();
+  await expect.poll(() => locked(page)).toBe(false);
+  await check(page.locator('#main [data-card="total"]'));
+  await check(page.locator('#main [data-card="goal"]'));
+  await check(page.locator('#sign-out'));
+
+  await page.locator('#main [data-card="total"]').click();
+  await expect.poll(() => locked(page)).toBe(false);
+  await check(page.locator('[data-pill="bank"]'));
+  await check(page.locator('#back'));
+  await page.locator('#back').click();
+  await expect.poll(() => locked(page)).toBe(false);
+
+  await page.locator('#main [data-card="goal"]').click();
+  await expect.poll(() => locked(page)).toBe(false);
+  await check(page.locator('.month').first());
+  expect(checked).toHaveLength(7);
 });
 
 test.describe('loading', () => {
@@ -1085,6 +1137,20 @@ test.describe('the open goal card', () => {
     }
   });
 
+  test("a month's shadow ends where the next month starts, and is not cut on the right", async ({
+    page,
+  }) => {
+    await openGoal(page);
+
+    const shadow = await shadowOf(month(page, 0));
+    const first = await month(page, 0).boundingBox();
+    const second = await month(page, 1).boundingBox();
+    expect(shadow.bottom).toBe(second.y - (first.y + first.height));
+    // The area reaches 24px into the card's side padding: the shadow fits in it.
+    const area = await page.locator('.month-room').boundingBox();
+    expect(first.x + first.width + shadow.right).toBeLessThanOrEqual(area.x + area.width);
+  });
+
   test('a month without movements shows two lines in grey and does not open', async ({ page }) => {
     await openGoal(page);
 
@@ -1155,11 +1221,11 @@ test.describe('the open goal card', () => {
     const room = await page.locator('.month-room').boundingBox();
     const number = await page.locator('#goal-value').boundingBox();
     const back = await page.locator('#back').boundingBox();
-    // The months start 32px below the number; the area ends 32px above the back button. The
-    // area starts 12px higher than the months, to keep the first month's shadow inside it.
+    // The area, and the months in it, start 32px below the number; the area ends 32px above
+    // the back button.
     const first = await month(page, 0).boundingBox();
     expect(Math.abs(first.y - (number.y + number.height) - 32)).toBeLessThan(1);
-    expect(Math.abs(first.y - room.y - 12)).toBeLessThan(1);
+    expect(Math.abs(first.y - room.y)).toBeLessThan(1);
     expect(Math.abs(back.y - (room.y + room.height) - 32)).toBeLessThan(1);
 
     await tapMonth(page, 1);

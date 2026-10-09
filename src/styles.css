@@ -16,6 +16,12 @@
   --accent: #0f766e;
   --label-background: #ffffff;
   --label-shadow: rgba(28, 35, 33, 0.25);
+  /* The shadows of cards, pills and months. They are moved right and down, and a bit smaller
+     than their item, so they never show above it or to its left. A card's or pill's shadow
+     reaches 24px to the right and 26px down. A month's shadow reaches 14px down: it ends
+     exactly where the next month starts. */
+  --shadow: 12px 14px 16px -4px var(--label-shadow);
+  --month-shadow: 8px 8px 11px -5px var(--label-shadow);
   --red: #dc2626;
   --yellow: #b45309;
   /* How far the back button of an open card is from the screen edges. */
@@ -173,7 +179,7 @@ main {
   border-radius: var(--radius);
   background: var(--label-border) border-box;
   /* The shadow falls to the bottom-right. */
-  box-shadow: 10px 12px 24px var(--label-shadow);
+  box-shadow: var(--shadow);
 }
 
 /* The inner fill. Its mask shows it everywhere except the badge: to the right of the badge,
@@ -454,7 +460,7 @@ html:not(.loading) .label {
   font: inherit;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 10px 12px 24px var(--label-shadow);
+  box-shadow: var(--shadow);
   transition: background-color var(--pill-fade) ease-in-out;
 }
 
@@ -500,14 +506,14 @@ html:not(.loading) .label {
 /* The open goal card: the months of the goal, one under the other, in an area between the
    number and the back button (32px from each). The area is a box that cuts everything at its
    edges; its edges never move. On the sides it reaches into the card's padding, so the months'
-   shadows are not cut. 12px at the top keeps the first month's shadow inside the box. */
+   shadows are not cut. The shadows never reach above a month, so nothing is needed at the top. */
 .month-area {
   display: none;
   position: relative;
   flex: 1;
   min-height: 0;
   width: min(100%, 360px);
-  margin: 20px 0 32px;
+  margin: 32px 0;
 }
 
 .label.open .month-area {
@@ -517,7 +523,7 @@ html:not(.loading) .label {
 .month-room {
   height: 100%;
   margin: 0 -24px;
-  padding: 12px 24px 0;
+  padding: 0 24px;
   /* With no month open it scrolls like a normal list. */
   overflow-x: hidden;
   overflow-y: auto;
@@ -537,6 +543,8 @@ html:not(.loading) .label {
 }
 
 .month-column {
+  /* Room below the last month for its shadow, also when the area scrolls. */
+  padding-bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -555,7 +563,7 @@ html:not(.loading) .label {
   border-radius: 22px;
   background: #e9ebef;
   color: #1c2321;
-  box-shadow: 10px 12px 24px var(--label-shadow);
+  box-shadow: var(--month-shadow);
   transition: height var(--expand-time) ease-in-out;
 }
 

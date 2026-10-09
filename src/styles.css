@@ -495,10 +495,17 @@ html:not(.loading) .label {
   border-radius: 999px;
   background: #ffffff;
   color: #1c2321;
+  transition: color var(--pill-fade) ease-in-out;
+}
+
+/* A pill that is off: its amount turns to the same grey as the pill, with the same fade. */
+.pill[aria-pressed='false'] .pill-value {
+  color: var(--pill-off);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pill {
+  .pill,
+  .pill-value {
     transition: none;
   }
 }

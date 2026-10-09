@@ -953,12 +953,19 @@ test.describe('the open Total card', () => {
     await openTotal(page);
     const dark = (name) =>
       pill(page, name).evaluate((node) => getComputedStyle(node).backgroundColor);
+    const valueText = (name) =>
+      pill(page, name)
+        .locator('.pill-value')
+        .evaluate((node) => getComputedStyle(node).color);
     expect(await dark('cash')).toBe('rgb(0, 0, 0)');
+    expect(await valueText('cash')).toBe('rgb(28, 35, 33)');
 
     await pill(page, 'cash').click();
 
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'false');
     expect(await dark('cash')).toBe('rgb(107, 114, 128)');
+    // The amount turns to the same grey as the pill.
+    expect(await valueText('cash')).toBe('rgb(107, 114, 128)');
     await expect(page.locator('#total-value')).toHaveText('€499.50');
 
     await page.reload();
@@ -971,6 +978,7 @@ test.describe('the open Total card', () => {
 
     await expect(pill(page, 'cash')).toHaveAttribute('aria-pressed', 'true');
     expect(await dark('cash')).toBe('rgb(0, 0, 0)');
+    expect(await valueText('cash')).toBe('rgb(28, 35, 33)');
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
   });
 
@@ -1040,6 +1048,22 @@ test.describe('the open Total card', () => {
       expect(stillOpen.height).toBe(open.height);
 
       await expect(page.locator('#backdrop')).toBeHidden();
+      await expect.poll(() => locked(page)).toBe(false);
+    });
+
+    test("a pill's amount fades to grey together with the pill", async ({ page }) => {
+      await openMain(page);
+      await openTotal(page);
+
+      await pill(page, 'cash').click();
+
+      const fading = await pill(page, 'cash').evaluate((node) =>
+        node
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.transitionProperty)
+          .sort(),
+      );
+      expect(fading).toEqual(['background-color', 'color']);
       await expect.poll(() => locked(page)).toBe(false);
     });
 

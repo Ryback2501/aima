@@ -1230,10 +1230,14 @@ test.describe('the open goal card', () => {
 
     await tapMonth(page, 1);
 
-    // The open month fills the space from the months' start line to the bottom edge.
+    // The open month fills the space from the top edge to the bottom edge, leaving room below
+    // it for its shadow, which ends right at the bottom edge.
     const november = await month(page, 1).boundingBox();
+    const shadow = await shadowOf(month(page, 1));
     expect(Math.abs(november.y - first.y)).toBeLessThan(1);
-    expect(Math.abs(november.y + november.height - (room.y + room.height))).toBeLessThan(1);
+    expect(
+      Math.abs(november.y + november.height + shadow.bottom - (room.y + room.height)),
+    ).toBeLessThan(1);
     // October is pushed out above (nothing to fade over the open month at the top), December
     // is pushed out below.
     await expect(page.locator('.month-fade-top')).not.toHaveClass(/visible/);
@@ -1268,9 +1272,14 @@ test.describe('the open goal card', () => {
         await tapMonth(page, index);
         const look = await page.evaluate(() => {
           const room = document.querySelector('.month-room').getBoundingClientRect();
-          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
-            node.getBoundingClientRect(),
+          // A closed month counts with its shadow, which reaches the next month.
+          const shadow = parseFloat(
+            getComputedStyle(document.querySelector('.month-column')).rowGap,
           );
+          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) => {
+            const box = node.getBoundingClientRect();
+            return { top: box.top, bottom: box.bottom + shadow };
+          });
           const cutAt = (line) =>
             closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
           return {
@@ -1290,9 +1299,12 @@ test.describe('the open goal card', () => {
   const fadesMatchCuts = async (page) => {
     const look = await page.evaluate(() => {
       const room = document.querySelector('.month-room').getBoundingClientRect();
-      const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
-        node.getBoundingClientRect(),
-      );
+      // A closed month counts with its shadow, which reaches the next month.
+      const shadow = parseFloat(getComputedStyle(document.querySelector('.month-column')).rowGap);
+      const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) => {
+        const box = node.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom + shadow };
+      });
       const cutAt = (line) =>
         closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
       return {
@@ -1359,7 +1371,9 @@ test.describe('the open goal card', () => {
       .poll(async () => {
         const room = await page.locator('.month-room').boundingBox();
         const open = await month(page, 1).boundingBox();
-        return Math.abs(open.y + open.height - (room.y + room.height));
+        const shadow = await shadowOf(month(page, 1));
+        // The open month's shadow ends right at the bottom edge.
+        return Math.abs(open.y + open.height + shadow.bottom - (room.y + room.height));
       })
       .toBeLessThan(1);
     const room = await page.locator('.month-room').boundingBox();
@@ -1459,9 +1473,14 @@ test.describe('the open goal card', () => {
         expect(await edges()).toEqual(before);
         const look = await page.evaluate(() => {
           const room = document.querySelector('.month-room').getBoundingClientRect();
-          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
-            node.getBoundingClientRect(),
+          // A closed month counts with its shadow, which reaches the next month.
+          const shadow = parseFloat(
+            getComputedStyle(document.querySelector('.month-column')).rowGap,
           );
+          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) => {
+            const box = node.getBoundingClientRect();
+            return { top: box.top, bottom: box.bottom + shadow };
+          });
           const cutAt = (line) =>
             closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
           return {

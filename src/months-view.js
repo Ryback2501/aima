@@ -114,11 +114,13 @@ export function createMonths({
     const measured = items.map(sizes);
     const layout = monthLayout({
       heights: measured.map(({ closed }) => closed),
-      gap: parseFloat(window.getComputedStyle(column).rowGap) || 0,
+      gap: gap(),
       open,
       openFull: open === null ? 0 : measured[open].full,
       room: space(),
       current: shift,
+      // A month's shadow reaches exactly to the next month (styles.css).
+      below: gap(),
     });
     items.forEach((item, i) => {
       item.style.height = `${layout.heights[i]}px`;
@@ -189,15 +191,20 @@ export function createMonths({
     return room.clientHeight - parseFloat(window.getComputedStyle(room).paddingTop);
   }
 
-  // Shows a fade over a month that is cut at the top or the bottom edge of the area, as it is on
-  // the screen now. Never over the open month.
+  // The space between two months. A month's shadow fills it exactly (styles.css).
+  const gap = () => parseFloat(window.getComputedStyle(column).rowGap) || 0;
+
+  // Shows a fade where a closed month, or its shadow, is cut at the top or the bottom edge of
+  // the area, as it is on the screen now. A month and its shadow reach the next month, so this
+  // is simply: does a closed month (with its shadow) cross the edge? Never over the open month.
   function updateFades() {
     const { top, bottom } = room.getBoundingClientRect();
+    const shadow = gap();
     const cutAt = (line) =>
       items.some((item, index) => {
         if (index === open) return false;
         const box = item.getBoundingClientRect();
-        return box.top < line - 0.5 && box.bottom > line + 0.5;
+        return box.top < line - 0.5 && box.bottom + shadow > line + 0.5;
       });
     fadeTop.classList.toggle('visible', cutAt(top));
     fadeBottom.classList.toggle('visible', cutAt(bottom));

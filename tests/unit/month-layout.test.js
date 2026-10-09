@@ -66,3 +66,33 @@ test('with nothing open, the column keeps where it was scrolled to', () => {
   // Everything fits: no shift.
   assert.equal(layout(30, 400).shift, 0);
 });
+
+test('an open month leaves room below it for its shadow, so the shadow is never cut', () => {
+  // Same as "taller than the room", with a 14px shadow below each month: the open month is
+  // 14px shorter, and the column moves up so the shadow ends at the bottom limit.
+  assert.deepEqual(
+    monthLayout({ heights: closed, gap, open: 1, openFull: 900, room: 300, below: 14 }),
+    { heights: [60, 286, 60], shift: 72 },
+  );
+  // An open month that fits but would touch the bottom limit moves up by its shadow.
+  assert.deepEqual(
+    monthLayout({ heights: closed, gap, open: 2, openFull: 150, room: 300, below: 14 }),
+    { heights: [60, 60, 150], shift: 8 },
+  );
+});
+
+test('with nothing open, the shadow of the last month counts as part of the column', () => {
+  // 204px of months plus a 14px shadow in a room of 150: they can be scrolled from 0 to 68.
+  assert.equal(
+    monthLayout({
+      heights: closed,
+      gap,
+      open: null,
+      openFull: 0,
+      room: 150,
+      current: 100,
+      below: 14,
+    }).shift,
+    68,
+  );
+});

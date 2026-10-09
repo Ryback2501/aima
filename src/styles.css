@@ -518,7 +518,22 @@ html:not(.loading) .label {
   height: 100%;
   margin: 0 -24px;
   padding: 12px 24px 0;
-  overflow: hidden;
+  /* With no month open it scrolls like a normal list. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* While a month is open (or the months move), months-view.js places them: no scrolling by hand. */
+.month-room.placed {
+  overflow-y: hidden;
+}
+
+/* Changes that must happen at once, without animation (see months-view.js). */
+.month-room.instant .month-column,
+.month-room.instant .month,
+.month-room.instant .month-arrow {
+  transition: none;
 }
 
 .month-column {

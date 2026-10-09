@@ -98,18 +98,19 @@ export function createMonths({
     return { closed: frame + head, full: frame + head + listGap + list.scrollHeight };
   }
 
-  // Opens the month at index (or closes it when it is open), and lets the others move.
-  function toggle(index) {
-    if (!items.length) return;
-    // The animation starts from the heights on the screen now. From here on each month has its
-    // own height ("sized"), so its list can show inside it.
-    for (const item of items) {
-      item.style.height = `${item.offsetHeight}px`;
-      item.classList.add('sized');
-    }
-    void column.offsetHeight;
+  // How far the column is moved up by the layout (while a month is open, or moving).
+  let shift = 0;
 
-    open = open === index ? null : index;
+  // Changes styles at once, without the animations of styles.css.
+  function instantly(change) {
+    room.classList.add('instant');
+    change();
+    void room.offsetHeight;
+    room.classList.remove('instant');
+  }
+
+  // Works out the layout for the open month (or none) and puts the months there.
+  function place() {
     const measured = items.map(sizes);
     const layout = monthLayout({
       heights: measured.map(({ closed }) => closed),
@@ -117,6 +118,7 @@ export function createMonths({
       open,
       openFull: open === null ? 0 : measured[open].full,
       room: space(),
+      current: shift,
     });
     items.forEach((item, i) => {
       item.style.height = `${layout.heights[i]}px`;
@@ -125,11 +127,62 @@ export function createMonths({
       // A closed month always shows the start of its list next time.
       if (i !== open) item.querySelector('.month-list').scrollTop = 0;
     });
-    column.style.transform = `translateY(${-layout.shift}px)`;
-    // Taps wait until the months have stopped moving. The fades follow them on every frame.
-    lockWhile(settled(room));
-    window.requestAnimationFrame(followFades);
+    shift = layout.shift;
+    column.style.transform = `translateY(${-shift}px)`;
   }
+
+  // Opens the month at index (or closes it when it is open), and lets the others move.
+  // With no month open the area scrolls like a normal list. While a month is open, the layout
+  // places the months instead and they cannot be scrolled by hand.
+  function toggle(index) {
+    if (!items.length) return;
+    // The animation starts from what is on the screen now: the heights, and the scrolled
+    // position, which becomes a shift of the column (it looks exactly the same).
+    instantly(() => {
+      for (const item of items) {
+        item.style.height = `${item.offsetHeight}px`;
+        // From here on each month has its own height, so its list can show inside it.
+        item.classList.add('sized');
+      }
+      if (!room.classList.contains('placed')) {
+        shift = room.scrollTop;
+        room.classList.add('placed');
+        room.scrollTop = 0;
+        column.style.transform = `translateY(${-shift}px)`;
+      }
+    });
+
+    open = open === index ? null : index;
+    place();
+    // Taps wait until the months have stopped moving. The fades follow them on every frame.
+    const done = settled(room);
+    lockWhile(done);
+    window.requestAnimationFrame(followFades);
+    // With no month open any more, the area scrolls again, from where the months are.
+    if (open === null) done.then(() => open === null && backToScrolling());
+  }
+
+  // Turns the column's shift back into the area's scrolled position (it looks the same).
+  function backToScrolling() {
+    instantly(() => {
+      room.classList.remove('placed');
+      column.style.transform = '';
+      room.scrollTop = shift;
+      shift = 0;
+    });
+    updateFades();
+  }
+
+  // The fades follow the list when it is scrolled by hand.
+  room.addEventListener('scroll', () => updateFades());
+
+  // When the window changes size, the area changes size too: an open month is placed again at
+  // once, and the fades are checked again.
+  window.addEventListener('resize', () => {
+    if (!items.length) return;
+    if (open !== null) instantly(place);
+    updateFades();
+  });
 
   // The height the months can use: the area without the room kept for the first month's shadow.
   function space() {
@@ -162,6 +215,9 @@ export function createMonths({
   // Puts every month back to closed at once (when the goal card closes).
   function reset() {
     open = null;
+    shift = 0;
+    room.classList.remove('placed');
+    room.scrollTop = 0;
     for (const item of items) {
       item.style.height = '';
       item.classList.remove('open', 'sized');
@@ -173,5 +229,9 @@ export function createMonths({
     fadeBottom.classList.remove('visible');
   }
 
-  return { render, reset };
+  // Starts checking the fades on every frame until the months stop moving (for example while
+  // they rise into view when the goal card opens).
+  const follow = () => window.requestAnimationFrame(followFades);
+
+  return { render, reset, follow };
 }

@@ -216,6 +216,7 @@ export function createView(document, t, formatMoney, monthName) {
         coverTheRest(true);
         // Now the parts rise in, one after the other, and the back button last.
         card.classList.add('settled');
+        months.follow();
         backButton.hidden = false;
         await still(card, backButton);
       })(),

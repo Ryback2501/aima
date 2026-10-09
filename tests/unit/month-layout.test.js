@@ -54,3 +54,15 @@ test('a month in the middle can push months out on both sides', () => {
     shift: 62,
   });
 });
+
+test('with nothing open, the column keeps where it was scrolled to', () => {
+  const layout = (current, room) =>
+    monthLayout({ heights: closed, gap, open: null, openFull: 0, room, current });
+
+  // 204px of months in a room of 150: they can be scrolled from 0 to 54.
+  assert.equal(layout(30, 150).shift, 30);
+  assert.equal(layout(100, 150).shift, 54);
+  assert.equal(layout(-5, 150).shift, 0);
+  // Everything fits: no shift.
+  assert.equal(layout(30, 400).shift, 0);
+});

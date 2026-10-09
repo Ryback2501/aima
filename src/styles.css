@@ -497,34 +497,43 @@ html:not(.loading) .label {
   }
 }
 
-/* The open goal card: the months of the goal, one under the other, in a "room" between the
-   number and the back button (32px from each). Nothing shows above or below the room; on the
-   sides the shadows still show. The months never scroll: month-layout.js and months-view.js
-   decide where they sit, and only the list inside the open month scrolls. */
-.month-room {
+/* The open goal card: the months of the goal, one under the other, in an area between the
+   number and the back button (32px from each). The area is a box that cuts everything at its
+   edges; its edges never move. On the sides it reaches into the card's padding, so the months'
+   shadows are not cut. 12px at the top keeps the first month's shadow inside the box. */
+.month-area {
   display: none;
   position: relative;
   flex: 1;
   min-height: 0;
   width: min(100%, 360px);
-  margin: 32px 0;
-  /* Room for the months' shadows past the limits, as long as no month goes past them. */
-  --clip-top: -16px;
-  --clip-bottom: -40px;
-  clip-path: inset(var(--clip-top) -48px var(--clip-bottom));
+  margin: 20px 0 32px;
 }
 
-/* A month goes past a limit: cut exactly there, so nothing shows past it. */
-.month-room.out-top {
-  --clip-top: 0px;
-}
-
-.month-room.out-bottom {
-  --clip-bottom: 0px;
-}
-
-.label.open .month-room {
+.label.open .month-area {
   display: block;
+}
+
+.month-room {
+  height: 100%;
+  margin: 0 -24px;
+  padding: 12px 24px 0;
+  /* With no month open it scrolls like a normal list. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* While a month is open (or the months move), months-view.js places them: no scrolling by hand. */
+.month-room.placed {
+  overflow-y: hidden;
+}
+
+/* Changes that must happen at once, without animation (see months-view.js). */
+.month-room.instant .month-column,
+.month-room.instant .month,
+.month-room.instant .month-arrow {
+  transition: none;
 }
 
 .month-column {
@@ -550,8 +559,7 @@ html:not(.loading) .label {
   transition: height var(--expand-time) ease-in-out;
 }
 
-/* The header row: calendar with the month's letter, the month's spending, and the arrow. While
-   the month is open it casts a shadow on the list, so it is clear where the list starts. */
+/* The header row: calendar with the month's letter, the month's spending, and the arrow. */
 .month-head {
   position: relative;
   z-index: 1;
@@ -568,12 +576,6 @@ html:not(.loading) .label {
   font: inherit;
   font-size: 1.125rem;
   cursor: pointer;
-  box-shadow: none;
-  transition: box-shadow var(--expand-time) ease-in-out;
-}
-
-.month.open .month-head {
-  box-shadow: 0 6px 8px -4px rgba(0, 0, 0, 0.25);
 }
 
 .month-head:disabled {
@@ -668,16 +670,16 @@ html:not(.loading) .label {
   overflow-wrap: anywhere;
 }
 
-/* Soft fades over a month that is cut at the top or bottom of the room. */
+/* Soft fades over a month that is cut at the top or bottom edge of the area (see
+   months-view.js). They show and hide at once, also while months move. */
 .month-fade {
   position: absolute;
-  right: -48px;
-  left: -48px;
+  right: -24px;
+  left: -24px;
   z-index: 2;
   height: 24px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--expand-time) ease-in-out;
 }
 
 .month-fade-top {
@@ -697,9 +699,7 @@ html:not(.loading) .label {
 @media (prefers-reduced-motion: reduce) {
   .month-column,
   .month,
-  .month-head,
-  .month-arrow,
-  .month-fade {
+  .month-arrow {
     transition: none;
   }
 }

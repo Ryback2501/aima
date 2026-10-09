@@ -110,9 +110,14 @@ export function createView(document, t, formatMoney, monthName) {
   }
 
   // Waits until every animation on these elements (and inside them) has finished.
+  // If a browser ever forgets to tell that an animation ended, taps still come back after
+  // 2 seconds, so the app can never stay stuck.
   async function still(...elements) {
     const animations = elements.flatMap((node) => node.getAnimations({ subtree: true }));
-    await Promise.allSettled(animations.map((animation) => animation.finished));
+    await Promise.race([
+      Promise.allSettled(animations.map((animation) => animation.finished)),
+      new Promise((done) => window.setTimeout(done, 2000)),
+    ]);
   }
 
   // A screen that has just appeared waits until its cards have risen into view.
@@ -211,6 +216,7 @@ export function createView(document, t, formatMoney, monthName) {
         coverTheRest(true);
         // Now the parts rise in, one after the other, and the back button last.
         card.classList.add('settled');
+        months.follow();
         backButton.hidden = false;
         await still(card, backButton);
       })(),

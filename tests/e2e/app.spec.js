@@ -1124,13 +1124,12 @@ test.describe('the open goal card', () => {
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();
     expect(descriptionBox.y).toBeGreaterThan(amountBox.y);
-    // The open month's header casts a shadow on the list; a closed one does not.
+    // No shadow under the header row: the list is already separated from it.
     const shadowOf = (index) =>
       month(page, index)
         .locator('.month-head')
         .evaluate((n) => getComputedStyle(n).boxShadow);
-    expect(await shadowOf(0)).not.toBe('none');
-    expect(await shadowOf(2)).toBe('none');
+    expect(await shadowOf(0)).toBe('none');
 
     // Another month: the first one closes.
     await tapMonth(page, 2);
@@ -1156,15 +1155,19 @@ test.describe('the open goal card', () => {
     const room = await page.locator('.month-room').boundingBox();
     const number = await page.locator('#goal-value').boundingBox();
     const back = await page.locator('#back').boundingBox();
-    // The room starts 32px below the number and ends 32px above the back button.
-    expect(Math.abs(room.y - (number.y + number.height) - 32)).toBeLessThan(1);
+    // The months start 32px below the number; the area ends 32px above the back button. The
+    // area starts 12px higher than the months, to keep the first month's shadow inside it.
+    const first = await month(page, 0).boundingBox();
+    expect(Math.abs(first.y - (number.y + number.height) - 32)).toBeLessThan(1);
+    expect(Math.abs(first.y - room.y - 12)).toBeLessThan(1);
     expect(Math.abs(back.y - (room.y + room.height) - 32)).toBeLessThan(1);
 
     await tapMonth(page, 1);
 
+    // The open month fills the space from the months' start line to the bottom edge.
     const november = await month(page, 1).boundingBox();
-    expect(Math.abs(november.y - room.y)).toBeLessThan(1);
-    expect(Math.abs(november.height - room.height)).toBeLessThan(1);
+    expect(Math.abs(november.y - first.y)).toBeLessThan(1);
+    expect(Math.abs(november.y + november.height - (room.y + room.height))).toBeLessThan(1);
     // October is pushed out above (nothing to fade over the open month at the top), December
     // is pushed out below.
     await expect(page.locator('.month-fade-top')).not.toHaveClass(/visible/);
@@ -1217,6 +1220,87 @@ test.describe('the open goal card', () => {
     });
   }
 
+  // A fade shows over exactly the closed months that are cut at an edge of the area.
+  const fadesMatchCuts = async (page) => {
+    const look = await page.evaluate(() => {
+      const room = document.querySelector('.month-room').getBoundingClientRect();
+      const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
+        node.getBoundingClientRect(),
+      );
+      const cutAt = (line) =>
+        closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
+      return {
+        cutTop: cutAt(room.top),
+        cutBottom: cutAt(room.bottom),
+        fadeTop: document.querySelector('.month-fade-top').classList.contains('visible'),
+        fadeBottom: document.querySelector('.month-fade-bottom').classList.contains('visible'),
+      };
+    });
+    expect(look.fadeTop).toBe(look.cutTop);
+    expect(look.fadeBottom).toBe(look.cutBottom);
+    return look;
+  };
+
+  test('in a short window with no month open, the area scrolls like a normal list', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 412, height: 380 });
+    await openGoal(page);
+    const room = page.locator('.month-room');
+    expect(await room.evaluate((n) => n.scrollHeight > n.clientHeight)).toBe(true);
+    expect((await fadesMatchCuts(page)).cutBottom).toBe(true);
+
+    const box = await room.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 400);
+
+    await expect.poll(() => room.evaluate((n) => n.scrollTop)).toBeGreaterThan(0);
+    await expect(() => fadesMatchCuts(page)).toPass();
+
+    // Scrolled a little: the first month is cut at the top, under the top fade.
+    await room.evaluate((n) => (n.scrollTop = 40));
+    await expect(async () => expect((await fadesMatchCuts(page)).cutTop).toBe(true)).toPass();
+
+    // Open a month and close it again: the months stay where they were, and the area scrolls
+    // like a normal list again.
+    const before = (await month(page, 1).boundingBox()).y;
+    await tapMonth(page, 0);
+    expect(await room.evaluate((n) => getComputedStyle(n).overflowY)).toBe('hidden');
+    await tapMonth(page, 0);
+    expect(await room.evaluate((n) => getComputedStyle(n).overflowY)).toBe('auto');
+    await room.evaluate((n) => (n.scrollTop = 0));
+    await expect.poll(() => room.evaluate((n) => n.scrollTop)).toBe(0);
+    expect((await month(page, 1).boundingBox()).y).toBeGreaterThan(before);
+    await expect(() => fadesMatchCuts(page)).toPass();
+  });
+
+  test('when the window gets smaller with a month open, the months are placed again', async ({
+    page,
+  }) => {
+    const many = Array.from({ length: 40 }, (_, index) => [
+      sheetDay('2026-11-01') + index / 100,
+      'General',
+      `Shop ${index}`,
+      -1,
+    ]);
+    await openGoal(page, many);
+    await tapMonth(page, 1);
+    const size = page.viewportSize();
+
+    await page.setViewportSize({ width: size.width, height: size.height - 150 });
+
+    await expect
+      .poll(async () => {
+        const room = await page.locator('.month-room').boundingBox();
+        const open = await month(page, 1).boundingBox();
+        return Math.abs(open.y + open.height - (room.y + room.height));
+      })
+      .toBeLessThan(1);
+    const room = await page.locator('.month-room').boundingBox();
+    expect((await month(page, 1).boundingBox()).y).toBeGreaterThanOrEqual(room.y);
+    await fadesMatchCuts(page);
+  });
+
   test.describe('in Spanish', () => {
     test.use({ locale: 'es-ES' });
 
@@ -1263,6 +1347,75 @@ test.describe('the open goal card', () => {
       expect(await delayOf(month(page, 2))).toBe('card-sink 0.075s');
       expect(await delayOf(goalCard(page).locator('.total-caption'))).toBe('card-sink 0.3s');
       await expect(page.locator('#backdrop')).toBeHidden();
+    });
+
+    test('while a month opens, the area edges stay still and the fades follow the months', async ({
+      page,
+    }) => {
+      const some = Array.from({ length: 7 }, (_, index) => [
+        sheetDay('2026-10-01') + index / 100,
+        'General',
+        `Shop ${index}`,
+        -1,
+      ]);
+      await setUp(page, { movements: [...movements, ...some] });
+      await page.goto('./');
+      await signInButton(page).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await goalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+      const edges = () =>
+        page.locator('.month-room').evaluate((node) => {
+          const { top, bottom } = node.getBoundingClientRect();
+          // Where the area cuts what is inside it: its box, and any extra cut line.
+          return { top, bottom, cut: getComputedStyle(node).clipPath };
+        });
+      const before = await edges();
+
+      await month(page, 0).locator('.month-head').click();
+
+      for (const part of [0.25, 0.5, 0.75]) {
+        await page.evaluate((part) => {
+          for (const animation of document.querySelector('.month-room').getAnimations({
+            subtree: true,
+          })) {
+            animation.pause();
+            animation.currentTime = animation.effect.getTiming().duration * part;
+          }
+        }, part);
+        await page.evaluate(
+          () =>
+            new Promise((done) =>
+              window.requestAnimationFrame(() => window.requestAnimationFrame(done)),
+            ),
+        );
+        expect(await edges()).toEqual(before);
+        const look = await page.evaluate(() => {
+          const room = document.querySelector('.month-room').getBoundingClientRect();
+          const closed = [...document.querySelectorAll('.month:not(.open)')].map((node) =>
+            node.getBoundingClientRect(),
+          );
+          const cutAt = (line) =>
+            closed.some(({ top, bottom }) => top < line - 0.5 && bottom > line + 0.5);
+          return {
+            cutTop: cutAt(room.top),
+            cutBottom: cutAt(room.bottom),
+            fadeTop: document.querySelector('.month-fade-top').classList.contains('visible'),
+            fadeBottom: document.querySelector('.month-fade-bottom').classList.contains('visible'),
+          };
+        });
+        expect(look.fadeTop).toBe(look.cutTop);
+        expect(look.fadeBottom).toBe(look.cutBottom);
+      }
+      await page.evaluate(() => {
+        for (const animation of document.querySelector('.month-room').getAnimations({
+          subtree: true,
+        })) {
+          animation.play();
+        }
+      });
+      await expect.poll(() => locked(page)).toBe(false);
     });
 
     test('opening a month moves smoothly and taps wait', async ({ page }) => {

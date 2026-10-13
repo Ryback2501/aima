@@ -233,6 +233,39 @@ test.describe('login page', () => {
     expect(y).toBeGreaterThan(0);
   });
 
+  test('shows a small copyright line at the bottom, with links to the terms and privacy', async ({
+    page,
+  }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    const legal = page.locator('#login .legal');
+    await expect(legal).toHaveText('© 2026 David Entrena · Terms · Privacy');
+    await expect(legal.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', 'terms/');
+    await expect(legal.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'privacy/');
+    // At the bottom of the screen, below the sign-in button.
+    const line = await legal.boundingBox();
+    const button = await signInButton(page).boundingBox();
+    expect(line.y).toBeGreaterThan(button.y + button.height);
+    expect(page.viewportSize().height - (line.y + line.height)).toBeLessThan(60);
+
+    await legal.getByRole('link', { name: 'Terms' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Terms of Service');
+  });
+
+  test.describe('the copyright line in Spanish', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('uses Spanish words for the links', async ({ page }) => {
+      await setUp(page);
+      await page.goto('./');
+
+      await expect(page.locator('#login .legal')).toHaveText(
+        '© 2026 David Entrena · Términos · Privacidad',
+      );
+    });
+  });
+
   test('uses the Sol font for the whole app', async ({ page }) => {
     await setUp(page);
     await page.goto('./');

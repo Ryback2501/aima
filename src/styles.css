@@ -128,6 +128,22 @@ main {
   color: var(--accent);
 }
 
+/* The small copyright line at the bottom of the login screen. The free space above it and
+   above the logo is shared, so the logo, name and button stay in the middle. */
+#login > :first-child {
+  margin-top: auto;
+}
+
+.legal {
+  margin-top: auto;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
+.legal a {
+  color: inherit;
+}
+
 .message {
   max-width: 32ch;
   margin: 0;

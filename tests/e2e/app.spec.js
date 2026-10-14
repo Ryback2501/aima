@@ -706,7 +706,7 @@ test.describe('language selector', () => {
     await expect(flag(page, 'en')).toHaveAttribute('aria-current', 'true');
   });
 
-  test('closed, the other flags are hidden: cropped by the border and faded out', async ({
+  test('closed, the other flags are hidden only by the border that crops them, never faded', async ({
     page,
   }) => {
     await openMain(page);
@@ -714,7 +714,7 @@ test.describe('language selector', () => {
     const window = await box(picker(page).locator('.flag-window'));
     await expect(picker(page).locator('.flag-window')).toHaveCSS('overflow', 'hidden');
     for (const language of ['ru', 'es']) {
-      await expect(flag(page, language)).toHaveCSS('opacity', '0');
+      await expect(flag(page, language)).toHaveCSS('opacity', '1');
       const hidden = await box(flag(page, language));
       // Completely outside the window of the closed selector.
       expect(hidden.y >= window.y + window.height || hidden.y + hidden.height <= window.y).toBe(
@@ -751,9 +751,11 @@ test.describe('language selector', () => {
             return `${animation.transitionProperty} ${duration} ${easing}`;
           }),
         );
-        expect(timings.some((timing) => timing.startsWith('height '))).toBe(true);
-        expect(timings.some((timing) => timing.startsWith('transform '))).toBe(true);
-        expect(timings.some((timing) => timing.startsWith('opacity '))).toBe(true);
+        // Only the selector's height and the column's place (top) change. Both are layout
+        // changes, so every browser works them out together in each frame: an iPhone, which
+        // moves "transform" changes on its own clock, can no longer make the flags bounce.
+        // Nothing fades.
+        expect(timings.map((timing) => timing.split(' ')[0]).sort()).toEqual(['height', 'top']);
         expect(new Set(timings.map((timing) => timing.split(' ').slice(1).join(' '))).size).toBe(1);
         for (let frame = 0; frame < 5; frame += 1) {
           const now = await box(picker(page));

@@ -250,14 +250,15 @@ test.describe('login page', () => {
     expect(y).toBeGreaterThan(0);
   });
 
-  test('shows a small copyright line at the bottom, with links to the terms and privacy', async ({
+  test('shows a small copyright line at the bottom, with links to about, terms and privacy', async ({
     page,
   }) => {
     await setUp(page);
     await page.goto('./');
 
     const legal = page.locator('#login .legal');
-    await expect(legal).toHaveText('© 2026 David Entrena · Terms · Privacy');
+    await expect(legal).toHaveText('© 2026 David Entrena · About · Terms · Privacy');
+    await expect(legal.getByRole('link', { name: 'About' })).toHaveAttribute('href', 'about/');
     await expect(legal.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', 'terms/');
     await expect(legal.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'privacy/');
     // At the bottom of the screen, below the sign-in button.
@@ -278,7 +279,7 @@ test.describe('login page', () => {
       await page.goto('./');
 
       await expect(page.locator('#login .legal')).toHaveText(
-        '© 2026 David Entrena · Términos · Privacidad',
+        '© 2026 David Entrena · Acerca de · Términos · Privacidad',
       );
     });
   });
@@ -1897,11 +1898,13 @@ test.describe('the open goal card', () => {
   });
 });
 
-test.describe('privacy policy and terms of service', () => {
-  for (const { path, title } of [
-    { path: 'privacy', title: 'Privacy Policy' },
-    { path: 'terms', title: 'Terms of Service' },
-  ]) {
+test.describe('about page, privacy policy and terms of service', () => {
+  const pages = [
+    { path: 'about', title: 'About aima', link: 'About aima' },
+    { path: 'privacy', title: 'Privacy Policy', link: 'Privacy Policy' },
+    { path: 'terms', title: 'Terms of Service', link: 'Terms of Service' },
+  ];
+  for (const { path, title } of pages) {
     test(`${path}: always light, also when the phone uses dark mode`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: 'dark' });
       await page.goto(`./${path}/`);
@@ -1941,7 +1944,46 @@ test.describe('privacy policy and terms of service', () => {
       ).toHaveAttribute('href', 'https://aima.davidentrena.com/');
       expect(await page.content()).not.toMatch(/github/i);
     });
+
+    test(`${path}: its footer leads back to the app and to the other two pages`, async ({
+      page,
+    }) => {
+      await page.goto(`./${path}/`);
+
+      const footer = page.locator('footer');
+      await expect(footer.getByRole('link', { name: 'Back to aima' })).toHaveAttribute(
+        'href',
+        '../',
+      );
+      for (const other of pages.filter((item) => item.path !== path)) {
+        await expect(footer.getByRole('link', { name: other.link })).toHaveAttribute(
+          'href',
+          `../${other.path}/`,
+        );
+      }
+    });
   }
+
+  // Google's review needs a homepage that anyone can read without signing in: what aima does,
+  // why it asks for Google data, and a link to the privacy policy.
+  test('the About page explains aima and its use of Google data, without signing in', async ({
+    page,
+  }) => {
+    await page.goto('./about/');
+
+    const text = await page.locator('main').textContent();
+    expect(text).toMatch(/household's money/i);
+    expect(text).toMatch(/sharing settings/i);
+    expect(text).toContain('See your primary Google Account email address');
+    expect(text).toContain('See all your Google Sheets spreadsheets');
+    expect(text).toMatch(/read-only/i);
+    const main = page.locator('main');
+    await expect(main.getByRole('link', { name: 'Privacy Policy' }).first()).toHaveAttribute(
+      'href',
+      '../privacy/',
+    );
+    await expect(main.getByRole('link', { name: 'Open aima' })).toHaveAttribute('href', '../');
+  });
 
   test('the privacy policy says what Google data the app uses and how', async ({ page }) => {
     await page.goto('./privacy/');

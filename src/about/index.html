@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="only light" />
+    <title>About aima</title>
+    <link rel="icon" href="../icons/logo.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --background: #f6f7f6;
+        --paper: #ffffff;
+        --text: #1c2321;
+        --text-soft: #5b6662;
+        --line: #e2e6e4;
+        --accent: #0f766e;
+        color-scheme: only light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      header,
+      main,
+      footer {
+        width: min(760px, 100% - 32px);
+        margin: 0 auto;
+      }
+
+      main {
+        padding: 0 24px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-top: 32px;
+        padding-bottom: 16px;
+      }
+
+      header img {
+        width: 40px;
+        height: 40px;
+      }
+
+      header a {
+        color: var(--text);
+        font-size: 1.25rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      main {
+        padding-top: 32px;
+        padding-bottom: 32px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--paper);
+      }
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+
+      h2 {
+        margin: 32px 0 8px;
+        font-size: 1.25rem;
+      }
+
+      .updated {
+        margin: 0 0 24px;
+        color: var(--text-soft);
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      ul {
+        padding-left: 1.25rem;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 24px;
+        padding-top: 24px;
+        padding-bottom: 40px;
+        color: var(--text-soft);
+        font-size: 0.9375rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="../icons/logo.svg" alt="" width="40" height="40" />
+      <a href="../">aima</a>
+    </header>
+
+    <main>
+      <h1>About aima</h1>
+      <p class="updated">Last updated: 14 October 2026</p>
+
+      <p>
+        aima is a small web app that shows a household's money summary from one Google Sheet. It
+        runs at <a href="https://aima.davidentrena.com/">aima.davidentrena.com</a>, in English,
+        Spanish and Russian, and you can install it on your phone like any other app.
+      </p>
+
+      <h2>What aima shows</h2>
+      <ul>
+        <li>
+          <strong>The Total:</strong> the money of the household, from its parts: the bank accounts,
+          the credit cards, the money set aside, and the cash. You can switch each part on or off to
+          see the Total without it.
+        </li>
+        <li>
+          <strong>The spending goal:</strong> how much the household has spent in a period, compared
+          with a limit, and the spending of each month, movement by movement.
+        </li>
+      </ul>
+      <p>aima only shows these numbers. It never changes anything in the spreadsheet.</p>
+
+      <h2>Who can use it</h2>
+      <p>
+        Only the people the owner of the spreadsheet shares it with. Access is decided by the
+        spreadsheet's sharing settings in Google Sheets, not by aima. If the spreadsheet is not
+        shared with you, Google refuses to give aima the data, and aima signs you out with a
+        message.
+      </p>
+
+      <h2>What Google data aima uses, and why</h2>
+      <p>When you sign in with Google, aima asks for two permissions:</p>
+      <ul>
+        <li>
+          <strong>"See your primary Google Account email address"</strong>, so your next sign-in can
+          be one tap, without choosing the account again.
+        </li>
+        <li>
+          <strong>"See all your Google Sheets spreadsheets"</strong>, read-only, so aima can read
+          the cells it shows from the one spreadsheet it is set up for. It reads nothing else, and
+          it cannot change or delete anything.
+        </li>
+      </ul>
+      <p>
+        aima has no server. The data goes straight from Google to your browser and is not kept
+        anywhere else. The <a href="../privacy/">Privacy Policy</a> explains all the details, and
+        the <a href="../terms/">Terms of Service</a> explain the rules for using aima.
+      </p>
+
+      <h2>How to start</h2>
+      <p>
+        <a href="../">Open aima</a> and tap "Login with Google". Use the Google account that the
+        spreadsheet is shared with.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For any question about aima, write to its developer at
+        <a href="mailto:deiturbe@gmail.com">deiturbe@gmail.com</a>.
+      </p>
+    </main>
+
+    <footer>
+      <a href="../">Back to aima</a>
+      <a href="../privacy/">Privacy Policy</a>
+      <a href="../terms/">Terms of Service</a>
+    </footer>
+  </body>
+</html>

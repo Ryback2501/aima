@@ -1321,6 +1321,21 @@ test.describe('the open goal card', () => {
     await expect(month(page, 2).locator('.month-head')).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('a General purchase ("compra") shows the cart, other General spending the money bag', async ({
+    page,
+  }) => {
+    await openGoal(page, [
+      [sheetDay('2026-10-05'), 'General', 'Compra Mercadona', -80],
+      [sheetDay('2026-10-03'), 'General', 'Market', -100],
+    ]);
+    await tapMonth(page, 0);
+
+    const rows = month(page, 0).locator('.movement');
+    await expect(rows.locator('.movement-description')).toHaveText(['Compra Mercadona', 'Market']);
+    await expect(rows.nth(0).locator('svg path')).toHaveAttribute('d', ICONS.cart.path);
+    await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
+  });
+
   test('with many movements the open month fills the room, and only its list scrolls', async ({
     page,
   }) => {

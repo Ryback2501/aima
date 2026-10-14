@@ -616,7 +616,9 @@ html:not(.loading) .label {
   fill: currentColor;
 }
 
-/* The month's first letter, in white on the filled lower part of the calendar. */
+/* The month's first letter, in white on the filled lower part of the calendar. Its place (top)
+   fits the calendar icon in icons.js at 28px (CALENDAR_SIZE in months-view.js). If either one
+   changes, move the letter too. */
 .month-letter {
   position: absolute;
   top: 14px;

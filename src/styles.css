@@ -130,6 +130,15 @@ main {
   font-size: 0.8125rem;
 }
 
+/* The sentence under the app's name that says what aima does: small grey text, like the
+   copyright line. */
+.about {
+  max-width: 32ch;
+  margin: -12px 0 12px;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
 .legal a {
   color: inherit;
 }

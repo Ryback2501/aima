@@ -4,6 +4,7 @@
 
 export const STRINGS = {
   en: {
+    about: "aima shows your household's money summary from a Google Sheet you have access to.",
     signIn: 'Login with Google',
     checking: 'Checking your access…',
     noAccess: "You don't have access to this document. Ask its owner to share it with you.",
@@ -27,6 +28,8 @@ export const STRINGS = {
     language: 'Language',
   },
   es: {
+    about:
+      'aima muestra el resumen del dinero de tu hogar a partir de una hoja de Google a la que tienes acceso.',
     signIn: 'Iniciar sesión con Google',
     checking: 'Comprobando tu acceso…',
     noAccess: 'No tienes acceso a este documento. Pide a su propietario que lo comparta contigo.',
@@ -50,6 +53,8 @@ export const STRINGS = {
     language: 'Idioma',
   },
   ru: {
+    about:
+      'aima показывает сводку финансов вашей семьи из Google Таблицы, к которой у вас есть доступ.',
     signIn: 'Войти через Google',
     checking: 'Проверяем ваш доступ…',
     noAccess: 'У вас нет доступа к этому документу. Попросите владельца открыть вам доступ.',

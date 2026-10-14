@@ -8,7 +8,7 @@
   font-display: swap;
 }
 
-/* Colors for light mode. Dark mode changes them below. */
+/* The app's colors. The app is always light, also when the phone uses dark mode. */
 :root {
   --background: #f6f7f6;
   --text: #1c2321;
@@ -28,20 +28,8 @@
   --back-gap: 20px;
   /* How long a pill takes to change color when it is switched on or off. */
   --pill-fade: 250ms;
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111614;
-    --text: #e8eeeb;
-    --text-soft: #a3aea9;
-    --accent: #5eead4;
-    --label-background: #1b2220;
-    --label-shadow: rgba(0, 0, 0, 0.6);
-    --red: #f87171;
-    --yellow: #facc15;
-  }
+  /* "only" also stops browsers from painting the app dark by themselves. */
+  color-scheme: only light;
 }
 
 * {
@@ -574,8 +562,7 @@ html:not(.loading) .label {
   transition: transform var(--expand-time) ease-in-out;
 }
 
-/* A month: a light panel like the side panel in the iisu app, with white parts inside. It keeps
-   this light look in dark mode too. */
+/* A month: a light panel like the side panel in the iisu app, with white parts inside. */
 .month {
   display: flex;
   flex: none;

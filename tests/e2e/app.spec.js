@@ -1932,7 +1932,9 @@ test.describe('privacy policy and terms of service', () => {
         'href',
         'mailto:deiturbe@gmail.com',
       );
-      await expect(page.getByText(/9 October 2026/).first()).toBeVisible();
+      await expect(page.locator('.updated')).toHaveText(
+        /^Last updated: \d{1,2} [A-Z][a-z]+ \d{4}$/,
+      );
       // The app's public address, and no mention of where the files are hosted.
       await expect(
         page.getByRole('link', { name: 'aima.davidentrena.com' }).first(),
@@ -1950,6 +1952,8 @@ test.describe('privacy policy and terms of service', () => {
     expect(text).toMatch(/email address/i);
     expect(text).toMatch(/read-only/i);
     expect(text).toContain('https://myaccount.google.com/permissions');
+    // Everything the app keeps on the device is listed, also the language picked with the flags.
+    expect(text).toMatch(/the language you chose/i);
   });
 
   test('the terms name Spanish law and link to the privacy policy', async ({ page }) => {

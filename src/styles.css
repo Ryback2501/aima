@@ -300,9 +300,9 @@ html:not(.loading) .label {
 
 /* The selector. The flags sit in one column, one slot each; a slot is as tall as the inside of
    the closed selector. Closed, it shows only the slot of the app's language (--selected, set
-   by view.js). Open, it is as tall as all the slots (--flag-count). Its height, the column's
-   place and the other flags' fade all change together, with the same timing, so the opening
-   and the closing are the same movement played in both directions. */
+   by view.js). Open, it is as tall as all the slots (--flag-count). Its height and the
+   column's place change together, with the same timing, so the opening and the closing are
+   the same movement played in both directions. The flags outside the border are cropped. */
 .language-picker {
   --slot: calc(var(--height) - 2 * var(--border));
   --open-time: 300ms;
@@ -326,17 +326,20 @@ html:not(.loading) .label {
   border-radius: calc(var(--radius) - var(--border));
 }
 
+/* The column moves with "top", not with "transform": the height above and "top" are both
+   worked out by the page layout in the same step of every frame, so they always stay
+   together. iPhones move "transform" changes on their own clock, and then the flags would
+   bounce against the moving border. */
 .flag-column {
   position: absolute;
-  top: 0;
+  top: calc(var(--selected) * var(--slot) * -1);
   right: 0;
   left: 0;
-  transform: translateY(calc(var(--selected) * var(--slot) * -1));
-  transition: transform var(--open-time) ease-in-out;
+  transition: top var(--open-time) ease-in-out;
 }
 
 .language-picker.expanded .flag-column {
-  transform: translateY(0);
+  top: 0;
 }
 
 .flag {
@@ -349,12 +352,6 @@ html:not(.loading) .label {
   border: 0;
   background: none;
   cursor: pointer;
-  transition: opacity var(--open-time) ease-in-out;
-}
-
-/* Closed, only the flag of the app's language shows: the others fade out. */
-.language-picker:not(.expanded) .flag:not([aria-current='true']) {
-  opacity: 0;
 }
 
 /* The flags are square drawings: the app makes them round. */
@@ -365,8 +362,7 @@ html:not(.loading) .label {
 
 @media (prefers-reduced-motion: reduce) {
   .language-picker,
-  .flag-column,
-  .flag {
+  .flag-column {
     transition: none;
   }
 }

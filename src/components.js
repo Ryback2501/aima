@@ -121,7 +121,7 @@ const pill = {
   border: 3,
   borderColor: '#e5e7eb',
   colors: { on: '#000000', off: '#6b7280' },
-  valueWidth: 160,
+  valueWidth: 130,
   padding: { x: 20, y: 4 },
 };
 

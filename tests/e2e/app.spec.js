@@ -1297,8 +1297,8 @@ test.describe('the open goal card', () => {
       'Market',
     ]);
     await expect(rows.nth(0).locator('svg path')).toHaveAttribute('d', ICONS.car.path);
-    await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.ticket.path);
-    await expect(rows.nth(2).locator('svg path')).toHaveAttribute('d', ICONS.moneyBag.path);
+    await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.cocktail.path);
+    await expect(rows.nth(2).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
     // The description is below the amount.
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();

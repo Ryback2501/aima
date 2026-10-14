@@ -616,12 +616,13 @@ html:not(.loading) .label {
   fill: currentColor;
 }
 
-/* The month's first letter, inside the empty part of the calendar. */
+/* The month's first letter, in white on the filled lower part of the calendar. */
 .month-letter {
   position: absolute;
-  top: 11px;
+  top: 14px;
   right: 0;
   left: 0;
+  color: #ffffff;
   font-size: 11px;
   line-height: 1;
   text-align: center;

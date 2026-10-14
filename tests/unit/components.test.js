@@ -146,10 +146,10 @@ test('the categories that the goal leaves out have no icon', () => {
   }
 });
 
-test('a category without its own icon gets the money bag', () => {
-  assert.equal(categoryIcon('Something new'), 'moneyBag');
-  assert.equal(categoryIcon(''), 'moneyBag');
-  assert.ok(ICONS.moneyBag);
+test('a category without its own icon gets the money bag with a euro sign', () => {
+  assert.equal(categoryIcon('Something new'), 'sackEuro');
+  assert.equal(categoryIcon(''), 'sackEuro');
+  assert.ok(ICONS.sackEuro);
 });
 
 test('a General movement that is a purchase ("compra") gets the cart', () => {

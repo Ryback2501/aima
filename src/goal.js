@@ -21,7 +21,11 @@ const text = (value) => String(value ?? '').trim();
 // True when a movement must not be counted (salary, mortgage, fixed house bills, ...).
 function skipped(category, description, skip) {
   if (skip.categories.includes(category)) return true;
-  return category === skip.house.category && skip.house.descriptions.includes(description);
+  // Object.hasOwn: a category called like a built-in word (for example "constructor") is not
+  // a list of descriptions.
+  return (
+    Object.hasOwn(skip.descriptions, category) && skip.descriptions[category].includes(description)
+  );
 }
 
 // Spending is negative in the sheet. Turns a sum into spending: positive, rounded to cents,

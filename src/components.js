@@ -60,16 +60,14 @@ export const CARDS = {
     colors: ['#6b7280', '#e5e7eb'],
     padding: { x: 0, y: 0 },
   },
-  // The "Log out" button.
+  // The "Log out" button: as big as the back button, in red. Its content is the exit icon.
   logOut: {
-    width: 544,
-    height: 64,
+    width: 56,
+    height: 56,
     border: 3,
-    radius: 20,
-    icon: 'logout',
-    iconSize: 22,
+    radius: 16,
     colors: ['#b91c1c', '#fca5a5'],
-    padding: { x: 52, y: 12 },
+    padding: { x: 0, y: 0 },
   },
 };
 

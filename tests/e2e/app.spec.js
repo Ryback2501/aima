@@ -331,42 +331,43 @@ test.describe('sign-in', () => {
     expect(log.requests[0].scope).toContain('spreadsheets.readonly');
   });
 
-  test('the Log out button is a card as wide as the Total card', async ({ page }) => {
+  test('the Log out button is a small card with only the exit icon, like the back button', async ({
+    page,
+  }) => {
     await setUp(page);
     await page.goto('./');
 
     await signInButton(page).click();
 
+    // Screen readers still call it "Log out", but it shows no words and no corner icon.
     const button = page.getByRole('button', { name: 'Log out' });
-    const badge = button.locator('.label-badge');
-    await expect(button).toHaveText('Log out');
-    await expect(badge.locator('svg')).toBeVisible();
+    await expect(button).toHaveText('');
+    await expect(button).toHaveAttribute('data-badge', 'none');
+    await expect(button.locator('.label-badge')).toHaveCount(0);
+    const icon = button.locator('[data-icon="logout"] svg');
+    await expect(icon).toHaveAttribute('width', '24');
+    await expect(icon.locator('path')).toHaveAttribute('d', ICONS.logout.path);
 
+    // As big as the back button, at the bottom of the screen, in the middle.
     const buttonBox = await button.boundingBox();
-    const totalBox = await page.locator('#main .label:has(#total-value)').boundingBox();
-    expect(Math.abs(buttonBox.width - totalBox.width)).toBeLessThan(1);
-    expect(Math.abs(buttonBox.x - totalBox.x)).toBeLessThan(1);
+    const screen = page.viewportSize();
+    expect(Math.abs(buttonBox.width - CARDS.back.width)).toBeLessThan(1);
+    expect(Math.abs(buttonBox.height - CARDS.back.height)).toBeLessThan(1);
+    expect(buttonBox.y + buttonBox.height).toBeGreaterThan(screen.height - 60);
 
-    // The exit icon badge sits in the button's top-left corner, on top of the border.
-    const badgeBox = await badge.boundingBox();
-    expect(Math.abs(badgeBox.x - buttonBox.x)).toBeLessThan(1);
-    expect(Math.abs(badgeBox.y - buttonBox.y)).toBeLessThan(1);
-
+    // It keeps its red border gradient and its shadow to the bottom-right.
     const style = await button.evaluate((node) => {
       const css = getComputedStyle(node);
-      return {
-        radius: parseFloat(css.borderTopLeftRadius),
-        background: css.backgroundImage,
-        shadow: css.boxShadow,
-      };
+      return { background: css.backgroundImage, shadow: css.boxShadow };
     });
-    expect(style.radius).toBeGreaterThan(0);
     expect(style.background).toContain('linear-gradient');
-    await expectBadgeShowsBorder(button);
-    // The shadow falls to the bottom-right: both offsets are positive.
+    expect(style.background).toContain('rgb(185, 28, 28)');
     const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);
     expect(x).toBeGreaterThan(0);
     expect(y).toBeGreaterThan(0);
+
+    await button.click();
+    await expect(signInButton(page)).toBeVisible();
   });
 
   test('the text sits in a rounded label with a star badge', async ({ page }) => {

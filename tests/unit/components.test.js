@@ -78,6 +78,12 @@ test('every card has all its settings, and its corner icon exists', () => {
   }
 });
 
+test('the Log out button is as big as the back button, without a corner icon', () => {
+  assert.equal(CARDS.logOut.width, CARDS.back.width);
+  assert.equal(CARDS.logOut.height, CARDS.back.height);
+  assert.equal(hasIcon(CARDS.logOut), false);
+});
+
 test('the back button is a card without a corner icon', () => {
   assert.ok(CARDS.back);
   assert.equal(hasIcon(CARDS.back), false);

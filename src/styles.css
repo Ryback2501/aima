@@ -34,6 +34,9 @@
 
 * {
   box-sizing: border-box;
+  /* One finger scrolls, but two fingers or a double tap never zoom, like in a phone app. It is
+     on every element, because a scroll area (like a month's list) would allow zoom again. */
+  touch-action: pan-x pan-y;
 }
 
 html,
@@ -54,8 +57,6 @@ body {
     sans-serif;
   /* Sol is always heavy. Bold makes the system font (used for Russian letters) look close to it. */
   font-weight: 700;
-  /* Stops double-tap zoom on phones. */
-  touch-action: manipulation;
   /* Stops the page from bouncing or reloading when pulled down in the installed app. */
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;

@@ -531,8 +531,16 @@ test.describe('phone app', () => {
     const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
     expect(viewport).toContain('user-scalable=no');
     expect(viewport).toContain('maximum-scale=1');
-    const touchAction = await page.evaluate(() => getComputedStyle(document.body).touchAction);
-    expect(touchAction).toBe('manipulation');
+
+    // Every element, the scroll areas too, lets one finger scroll but never zooms.
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    const zoomable = await page.evaluate(() =>
+      [document.documentElement, ...document.querySelectorAll('body, body *')]
+        .filter((node) => getComputedStyle(node).touchAction !== 'pan-x pan-y')
+        .map((node) => node.className || node.tagName),
+    );
+    expect(zoomable).toEqual([]);
   });
 
   test('the app always shows the light colors, also when the phone uses dark mode', async ({

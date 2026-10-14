@@ -183,12 +183,28 @@ test('each card follows its settings', async ({ page }) => {
 });
 
 test.describe('login page', () => {
-  test('shows the logo, the name and the Google button, and nothing else', async ({ page }) => {
+  test('shows the logo, the name, what aima does and the Google button, and nothing else', async ({
+    page,
+  }) => {
     await setUp(page);
     await page.goto('./');
 
     await expect(page.locator('#login .logo')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'aima' })).toBeVisible();
+    // One short sentence under the name says what the app does (Google's review needs it).
+    const about = page.locator('#login .about');
+    await expect(about).toHaveText(
+      "aima shows your household's money summary from a Google Sheet you have access to.",
+    );
+    const name = await page.getByRole('heading', { name: 'aima' }).boundingBox();
+    const button = await signInButton(page).boundingBox();
+    const aboutBox = await about.boundingBox();
+    expect(aboutBox.y).toBeGreaterThan(name.y + name.height - 1);
+    expect(aboutBox.y + aboutBox.height).toBeLessThan(button.y + 1);
+    // Small grey text, like the copyright line.
+    const look = (locator) =>
+      locator.evaluate((node) => [getComputedStyle(node).color, getComputedStyle(node).fontSize]);
+    expect(await look(about)).toEqual(await look(page.locator('.legal')));
     await expect(signInButton(page)).toBeEnabled();
     await expect(page.locator('#main')).toBeHidden();
     await expect(page.locator('#login-message')).toBeHidden();
@@ -506,11 +522,28 @@ test.describe('sign-in', () => {
 
 test.describe('language', () => {
   const cases = [
-    { locale: 'es-ES', lang: 'es', button: 'Iniciar sesión con Google' },
-    { locale: 'ru-RU', lang: 'ru', button: 'Войти через Google' },
-    { locale: 'fr-FR', lang: 'en', button: 'Login with Google' },
+    {
+      locale: 'es-ES',
+      lang: 'es',
+      button: 'Iniciar sesión con Google',
+      about:
+        'aima muestra el resumen del dinero de tu hogar a partir de una hoja de Google a la que tienes acceso.',
+    },
+    {
+      locale: 'ru-RU',
+      lang: 'ru',
+      button: 'Войти через Google',
+      about:
+        'aima показывает сводку финансов вашей семьи из Google Таблицы, к которой у вас есть доступ.',
+    },
+    {
+      locale: 'fr-FR',
+      lang: 'en',
+      button: 'Login with Google',
+      about: "aima shows your household's money summary from a Google Sheet you have access to.",
+    },
   ];
-  for (const { locale, lang, button } of cases) {
+  for (const { locale, lang, button, about } of cases) {
     test.describe(locale, () => {
       test.use({ locale });
 
@@ -519,6 +552,7 @@ test.describe('language', () => {
         await page.goto('./');
 
         await expect(page.getByRole('button', { name: button })).toBeVisible();
+        await expect(page.locator('#login .about')).toHaveText(about);
         expect(await page.locator('html').getAttribute('lang')).toBe(lang);
       });
     });

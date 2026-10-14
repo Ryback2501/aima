@@ -139,6 +139,13 @@ test('every spending category has an icon that exists in icons.js', () => {
   }
 });
 
+// Movements of a left-out category are never shown, so they need no icon.
+test('the categories that the goal leaves out have no icon', () => {
+  for (const category of config.goal.skip.categories) {
+    assert.equal(Object.hasOwn(CATEGORY_ICONS, category), false, category);
+  }
+});
+
 test('a category without its own icon gets the money bag', () => {
   assert.equal(categoryIcon('Something new'), 'moneyBag');
   assert.equal(categoryIcon(''), 'moneyBag');

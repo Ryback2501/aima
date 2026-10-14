@@ -20,7 +20,7 @@ const config = {
     from: '2026-10-01',
     to: '2026-12-31',
     limit: 3000,
-    skip: { categories: ['Pay'], house: { category: 'Home', descriptions: ['Water'] } },
+    skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
   },
 };
 

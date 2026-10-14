@@ -143,7 +143,6 @@ export function pillStyle({ width, height, border, borderColor, colors, valueWid
 // (column C of the sheet). A category that is not here gets the money bag.
 export const CATEGORY_ICONS = {
   Car: 'car',
-  'Credit Cards': 'card',
   'Debts paid': 'handCoin',
   General: 'moneyBag',
   House: 'house',

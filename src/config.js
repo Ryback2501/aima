@@ -31,10 +31,10 @@ export const config = {
     limit: 4000,
     // Movements that do not count.
     skip: {
-      categories: ['Whitening', 'Salary', 'Mortgage'],
-      house: {
-        category: 'House',
-        descriptions: [
+      categories: ['Whitening', 'Salary', 'Mortgage', 'Credit Cards'],
+      // In these categories, only the movements with these descriptions are left out.
+      descriptions: {
+        House: [
           'Seguro hogar BBVA',
           'Pepephone - Internet',
           'Impuesto vivienda',

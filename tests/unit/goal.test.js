@@ -12,7 +12,7 @@ const goal = {
   limit: 3000,
   skip: {
     categories: ['Pay', 'Loan'],
-    house: { category: 'Home', descriptions: ['Water', 'Phone'] },
+    descriptions: { Home: ['Water', 'Phone'], Misc: ['Coffee'] },
   },
 };
 
@@ -69,6 +69,23 @@ test('skips house movements with a listed description, but counts other house mo
   ];
 
   assert.equal(goalStatus(rows, goal).amount, 37);
+});
+
+test('every category with a list of descriptions leaves those movements out', () => {
+  const rows = [
+    row('2026-10-05', -100, 'Home', 'Water'),
+    row('2026-10-05', -200, 'Misc', 'Coffee'),
+    row('2026-10-05', -30, 'Misc', 'Water'),
+    row('2026-10-05', -7, 'Food', 'Coffee'),
+  ];
+
+  assert.equal(goalStatus(rows, goal).amount, 37);
+});
+
+test('a category named like a built-in word does not break the lists', () => {
+  const rows = [row('2026-10-05', -5, 'constructor', 'Water'), row('2026-10-05', -2, 'toString')];
+
+  assert.equal(goalStatus(rows, goal).amount, 7);
 });
 
 test('the heading row, empty rows and rows without a number are left out', () => {
@@ -130,8 +147,10 @@ test('the real goal settings have every part the calculation needs', () => {
   assert.match(to, /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(limit > 0);
   assert.ok(Array.isArray(skip.categories));
-  assert.equal(typeof skip.house.category, 'string');
-  assert.ok(Array.isArray(skip.house.descriptions));
+  assert.ok(skip.categories.includes('Credit Cards'));
+  for (const descriptions of Object.values(skip.descriptions)) {
+    assert.ok(Array.isArray(descriptions));
+  }
 });
 
 test('goalMonths gives one entry per month of the period, in order', () => {

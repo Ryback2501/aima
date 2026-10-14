@@ -1,6 +1,6 @@
 {
   "name": "aima",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Personal home economy survival helper",
   "private": true,
   "type": "module",

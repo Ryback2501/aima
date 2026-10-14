@@ -141,6 +141,7 @@ export function pillStyle({ width, height, border, borderColor, colors, valueWid
 
 // CATEGORY_ICONS: the icon (from icons.js) for each spending category of the movements
 // (column C of the sheet). A category that is not here gets the money bag.
+// A General movement whose description has the word "compra" (a purchase) gets the cart.
 export const CATEGORY_ICONS = {
   Car: 'car',
   'Debts paid': 'handCoin',
@@ -152,4 +153,7 @@ export const CATEGORY_ICONS = {
   Yoshi: 'paw',
 };
 
-export const categoryIcon = (category) => CATEGORY_ICONS[category] ?? 'moneyBag';
+export function categoryIcon(category, description = '') {
+  if (category === 'General' && description.toLowerCase().includes('compra')) return 'cart';
+  return CATEGORY_ICONS[category] ?? 'moneyBag';
+}

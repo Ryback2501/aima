@@ -67,7 +67,10 @@ export function createMonths({
         make('span', 'movement-amount', formatMoney(movement.amount)),
         make('span', 'movement-description', movement.description),
       );
-      row.append(createIcon(categoryIcon(movement.category), MOVEMENT_ICON_SIZE), text);
+      row.append(
+        createIcon(categoryIcon(movement.category, movement.description), MOVEMENT_ICON_SIZE),
+        text,
+      );
       list.append(row);
     }
     item.append(head, list);

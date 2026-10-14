@@ -152,6 +152,19 @@ test('a category without its own icon gets the money bag', () => {
   assert.ok(ICONS.moneyBag);
 });
 
+test('a General movement that is a purchase ("compra") gets the cart', () => {
+  assert.equal(categoryIcon('General', 'Compra Mercadona'), 'cart');
+  assert.equal(categoryIcon('General', 'compras de la semana'), 'cart');
+  assert.equal(categoryIcon('General', 'Gran COMPRA'), 'cart');
+  assert.ok(ICONS.cart);
+});
+
+test('only General movements get the cart for a purchase', () => {
+  assert.equal(categoryIcon('General', 'Peluquería'), CATEGORY_ICONS.General);
+  assert.equal(categoryIcon('General'), CATEGORY_ICONS.General);
+  assert.equal(categoryIcon('House', 'Compra de muebles'), CATEGORY_ICONS.House);
+});
+
 test('the month items have their icons', () => {
   assert.ok(ICONS.calendar);
   assert.ok(ICONS.chevron);

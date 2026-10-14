@@ -31,7 +31,7 @@ export const config = {
     limit: 4000,
     // Movements that do not count.
     skip: {
-      categories: ['Whitening', 'Salary', 'Mortgage'],
+      categories: ['Whitening', 'Salary', 'Mortgage', 'Credit Cards'],
       house: {
         category: 'House',
         descriptions: [

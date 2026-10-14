@@ -130,6 +130,7 @@ test('the real goal settings have every part the calculation needs', () => {
   assert.match(to, /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(limit > 0);
   assert.ok(Array.isArray(skip.categories));
+  assert.ok(skip.categories.includes('Credit Cards'));
   assert.equal(typeof skip.house.category, 'string');
   assert.ok(Array.isArray(skip.house.descriptions));
 });

@@ -31,17 +31,20 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-const language = pickLanguage(browserLanguages(navigator));
+const session = createSession({
+  sessionStorage: storage('sessionStorage'),
+  localStorage: storage('localStorage'),
+});
+
+// The language chosen on this phone comes first. Without one, the phone's languages decide.
+const language = pickLanguage([session.getLanguage(), ...browserLanguages(navigator)]);
 document.documentElement.lang = language;
 const t = createTranslator(language);
 
 const app = createApp({
   config,
   view: createView(document, t, createMoneyFormatter(language), createMonthNamer(language)),
-  session: createSession({
-    sessionStorage: storage('sessionStorage'),
-    localStorage: storage('localStorage'),
-  }),
+  session,
   loadAuth: async () =>
     createAuth({
       google: await loadGoogleIdentity({ window, document }),

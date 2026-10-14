@@ -4,10 +4,13 @@
 // - The Google account email is kept longer (localStorage). Next time, Google can sign the
 //   same person in with one tap, without asking which account to use.
 // - The parts of the Total that the person switched off are kept on this phone (localStorage).
+// - The language chosen with the flag button is kept on this phone too (localStorage). It
+//   stays after signing out, because it belongs to the phone, not to the Google account.
 
 const TOKEN_KEY = 'aima.token';
 const HINT_KEY = 'aima.hint';
 const OFF_KEY = 'aima.off';
+const LANGUAGE_KEY = 'aima.language';
 
 // We stop using a token one minute before it expires, so it cannot expire in the middle of a request.
 const SAFETY_MARGIN_MS = 60_000;
@@ -94,6 +97,15 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
 
     saveSwitchedOff(names) {
       long.set(OFF_KEY, JSON.stringify(names));
+    },
+
+    // The language chosen on this phone, for example "es", or null when none was chosen.
+    getLanguage() {
+      return long.get(LANGUAGE_KEY);
+    },
+
+    saveLanguage(language) {
+      long.set(LANGUAGE_KEY, language);
     },
 
     // Forgets everything, for example when the person signs out.

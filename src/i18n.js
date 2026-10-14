@@ -1,5 +1,6 @@
 // The words the app shows, in English, Spanish and Russian.
-// The app uses the phone's language. If the app does not have that language, it uses English.
+// The app uses the language chosen with the flag button on this phone. Without one, it uses
+// the phone's language. If the app does not have that language, it uses English.
 
 export const STRINGS = {
   en: {

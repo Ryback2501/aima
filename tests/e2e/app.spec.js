@@ -522,6 +522,19 @@ test.describe('language', () => {
       });
     });
   }
+
+  test.describe('a language chosen on this phone', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('wins over the phone language', async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem('aima.language', 'ru'));
+      await setUp(page);
+      await page.goto('./');
+
+      await expect(page.getByRole('button', { name: 'Войти через Google' })).toBeVisible();
+      expect(await page.locator('html').getAttribute('lang')).toBe('ru');
+    });
+  });
 });
 
 test.describe('phone app', () => {

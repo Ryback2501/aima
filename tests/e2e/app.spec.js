@@ -543,6 +543,18 @@ test.describe('phone app', () => {
     expect(zoomable).toEqual([]);
   });
 
+  test('pulling down never moves or reloads the whole app', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    // Browsers only read this from the page's root element (html), not from body.
+    const pull = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      return { x: root.overscrollBehaviorX, y: root.overscrollBehaviorY };
+    });
+    expect(pull).toEqual({ x: 'none', y: 'none' });
+  });
+
   test('the app always shows the light colors, also when the phone uses dark mode', async ({
     page,
   }) => {

@@ -43,6 +43,9 @@ html,
 body {
   height: 100%;
   margin: 0;
+  /* Pulling down does not move the whole app or reload it, like in a phone app. Browsers read
+     this from html; body has it too for older browsers. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -57,8 +60,6 @@ body {
     sans-serif;
   /* Sol is always heavy. Bold makes the system font (used for Russian letters) look close to it. */
   font-weight: 700;
-  /* Stops the page from bouncing or reloading when pulled down in the installed app. */
-  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   user-select: none;

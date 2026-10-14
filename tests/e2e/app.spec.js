@@ -123,6 +123,7 @@ test('no shadow in the app shows above or to the left of its item', async ({ pag
   await check(page.locator('#main [data-card="total"]'));
   await check(page.locator('#main [data-card="goal"]'));
   await check(page.locator('#sign-out'));
+  await check(page.locator('#main [data-card="language"]'));
 
   await page.locator('#main [data-card="total"]').click();
   await expect.poll(() => locked(page)).toBe(false);
@@ -134,7 +135,7 @@ test('no shadow in the app shows above or to the left of its item', async ({ pag
   await page.locator('#main [data-card="goal"]').click();
   await expect.poll(() => locked(page)).toBe(false);
   await check(page.locator('.month').first());
-  expect(checked).toHaveLength(7);
+  expect(checked).toHaveLength(8);
 });
 
 test.describe('loading', () => {
@@ -331,42 +332,43 @@ test.describe('sign-in', () => {
     expect(log.requests[0].scope).toContain('spreadsheets.readonly');
   });
 
-  test('the Log out button is a card as wide as the Total card', async ({ page }) => {
+  test('the Log out button is a small card with only the exit icon, like the back button', async ({
+    page,
+  }) => {
     await setUp(page);
     await page.goto('./');
 
     await signInButton(page).click();
 
+    // Screen readers still call it "Log out", but it shows no words and no corner icon.
     const button = page.getByRole('button', { name: 'Log out' });
-    const badge = button.locator('.label-badge');
-    await expect(button).toHaveText('Log out');
-    await expect(badge.locator('svg')).toBeVisible();
+    await expect(button).toHaveText('');
+    await expect(button).toHaveAttribute('data-badge', 'none');
+    await expect(button.locator('.label-badge')).toHaveCount(0);
+    const icon = button.locator('[data-icon="logout"] svg');
+    await expect(icon).toHaveAttribute('width', '24');
+    await expect(icon.locator('path')).toHaveAttribute('d', ICONS.logout.path);
 
+    // As big as the back button, at the bottom of the screen, in the middle.
     const buttonBox = await button.boundingBox();
-    const totalBox = await page.locator('#main .label:has(#total-value)').boundingBox();
-    expect(Math.abs(buttonBox.width - totalBox.width)).toBeLessThan(1);
-    expect(Math.abs(buttonBox.x - totalBox.x)).toBeLessThan(1);
+    const screen = page.viewportSize();
+    expect(Math.abs(buttonBox.width - CARDS.back.width)).toBeLessThan(1);
+    expect(Math.abs(buttonBox.height - CARDS.back.height)).toBeLessThan(1);
+    expect(buttonBox.y + buttonBox.height).toBeGreaterThan(screen.height - 60);
 
-    // The exit icon badge sits in the button's top-left corner, on top of the border.
-    const badgeBox = await badge.boundingBox();
-    expect(Math.abs(badgeBox.x - buttonBox.x)).toBeLessThan(1);
-    expect(Math.abs(badgeBox.y - buttonBox.y)).toBeLessThan(1);
-
+    // It keeps its red border gradient and its shadow to the bottom-right.
     const style = await button.evaluate((node) => {
       const css = getComputedStyle(node);
-      return {
-        radius: parseFloat(css.borderTopLeftRadius),
-        background: css.backgroundImage,
-        shadow: css.boxShadow,
-      };
+      return { background: css.backgroundImage, shadow: css.boxShadow };
     });
-    expect(style.radius).toBeGreaterThan(0);
     expect(style.background).toContain('linear-gradient');
-    await expectBadgeShowsBorder(button);
-    // The shadow falls to the bottom-right: both offsets are positive.
+    expect(style.background).toContain('rgb(185, 28, 28)');
     const [x, y] = style.shadow.match(/-?[\d.]+px/g).map(parseFloat);
     expect(x).toBeGreaterThan(0);
     expect(y).toBeGreaterThan(0);
+
+    await button.click();
+    await expect(signInButton(page)).toBeVisible();
   });
 
   test('the text sits in a rounded label with a star badge', async ({ page }) => {
@@ -521,6 +523,213 @@ test.describe('language', () => {
       });
     });
   }
+
+  test.describe('a language chosen on this phone', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('wins over the phone language', async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem('aima.language', 'ru'));
+      await setUp(page);
+      await page.goto('./');
+
+      await expect(page.getByRole('button', { name: 'Войти через Google' })).toBeVisible();
+      expect(await page.locator('html').getAttribute('lang')).toBe('ru');
+    });
+  });
+});
+
+test.describe('language selector', () => {
+  const picker = (page) => page.locator('#main [data-card="language"]');
+  const flag = (page, language) => picker(page).locator(`[data-language="${language}"]`);
+  const box = (locator) => locator.boundingBox();
+  const near = (a, b) => expect(Math.abs(a - b)).toBeLessThan(1);
+  // The inside of the closed selector: one flag fits in it.
+  const slot = CARDS.language.height - 2 * CARDS.language.border;
+
+  async function openMain(page) {
+    await setUp(page);
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    await expect.poll(() => locked(page)).toBe(false);
+  }
+
+  async function tap(locator) {
+    await locator.click();
+    await expect.poll(() => locked(locator.page())).toBe(false);
+  }
+
+  test('Log out and the language selector sit side by side, in the middle, at the bottom', async ({
+    page,
+  }) => {
+    await openMain(page);
+
+    await expectCardFollowsSettings(picker(page), 'language');
+    const logOut = await box(page.getByRole('button', { name: 'Log out' }));
+    const selector = await box(picker(page));
+    const screen = page.viewportSize();
+    near(logOut.y + logOut.height, selector.y + selector.height);
+    expect(selector.x).toBeGreaterThan(logOut.x + logOut.width);
+    near((logOut.x + selector.x + selector.width) / 2, screen.width / 2);
+    expect(selector.y + selector.height).toBeGreaterThan(screen.height - 60);
+    // It shows the flag of the app's language.
+    await expect(flag(page, 'en')).toHaveAttribute('aria-current', 'true');
+    await expect(flag(page, 'en')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('a tap opens it upward: its bottom stays, and the flags are UK, Russia, Spain', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const closed = await box(picker(page));
+
+    await tap(flag(page, 'en'));
+
+    await expect(flag(page, 'en')).toHaveAttribute('aria-expanded', 'true');
+    const open = await box(picker(page));
+    near(open.y + open.height, closed.y + closed.height);
+    near(open.height, CARDS.language.height + 2 * slot);
+    const [en, ru, es] = await Promise.all(['en', 'ru', 'es'].map((name) => box(flag(page, name))));
+    expect(en.y).toBeLessThan(ru.y);
+    expect(ru.y).toBeLessThan(es.y);
+    for (const language of ['en', 'ru', 'es']) {
+      await expect(flag(page, language)).toHaveCSS('opacity', '1');
+      await expect(flag(page, language).locator('svg')).toBeVisible();
+    }
+  });
+
+  test('picking a flag closes it and shows the app in that language, also after a reload', async ({
+    page,
+  }) => {
+    await openMain(page);
+    const closed = await box(picker(page));
+
+    await tap(flag(page, 'en'));
+    await tap(flag(page, 'es'));
+
+    near((await box(picker(page))).height, closed.height);
+    await expect(flag(page, 'es')).toHaveAttribute('aria-current', 'true');
+    await expect(flag(page, 'en')).not.toHaveAttribute('aria-current', 'true');
+    // The Spanish flag is the one in the window of the closed selector.
+    const shown = await box(flag(page, 'es'));
+    near(shown.y + shown.height, closed.y + closed.height - CARDS.language.border);
+    // The words, the amounts and the names for screen readers are in Spanish now.
+    expect(await page.locator('html').getAttribute('lang')).toBe('es');
+    await expect(page.locator('#total-value')).toHaveText(/^549,50\s€$/);
+    await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+    await expect(page.locator('#goal-title')).toHaveText(/^Objetivo /);
+
+    await page.reload();
+    await expect(page.locator('#total-value')).toHaveText(/^549,50\s€$/);
+    expect(await page.locator('html').getAttribute('lang')).toBe('es');
+    await expect(flag(page, 'es')).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('the month names change language too', async ({ page }) => {
+    await setUp(page, { movements: [[sheetDay('2026-10-03'), 'General', 'Market', -10]] });
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect.poll(() => locked(page)).toBe(false);
+
+    await tap(flag(page, 'en'));
+    await tap(flag(page, 'ru'));
+    await tap(page.locator('#main [data-card="goal"]'));
+
+    await expect(page.locator('.month-head').first()).toHaveAttribute('aria-label', /^Октябрь: /);
+  });
+
+  test('a tap outside, or Esc, closes it without changing anything', async ({ page }) => {
+    await openMain(page);
+    const closed = await box(picker(page));
+
+    // A tap on the goal card only closes the selector: the card stays closed.
+    await tap(flag(page, 'en'));
+    const goal = await box(page.locator('#main [data-card="goal"]'));
+    await page.mouse.click(goal.x + goal.width / 2, goal.y + goal.height / 2);
+    await expect.poll(() => locked(page)).toBe(false);
+    near((await box(picker(page))).height, closed.height);
+    await expect(page.locator('#main [data-card="goal"]')).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    // A tap on the empty background closes it too.
+    await tap(flag(page, 'en'));
+    await page.mouse.click(5, 5);
+    await expect.poll(() => locked(page)).toBe(false);
+    near((await box(picker(page))).height, closed.height);
+
+    // Esc closes it, and the keyboard focus goes back to the flag in the window.
+    await tap(flag(page, 'en'));
+    await flag(page, 'ru').focus();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => locked(page)).toBe(false);
+    near((await box(picker(page))).height, closed.height);
+    await expect(flag(page, 'en')).toBeFocused();
+
+    expect(await page.locator('html').getAttribute('lang')).toBe('en');
+    await expect(flag(page, 'en')).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('closed, the other flags are hidden: cropped by the border and faded out', async ({
+    page,
+  }) => {
+    await openMain(page);
+
+    const window = await box(picker(page).locator('.flag-window'));
+    await expect(picker(page).locator('.flag-window')).toHaveCSS('overflow', 'hidden');
+    for (const language of ['ru', 'es']) {
+      await expect(flag(page, language)).toHaveCSS('opacity', '0');
+      const hidden = await box(flag(page, language));
+      // Completely outside the window of the closed selector.
+      expect(hidden.y >= window.y + window.height || hidden.y + hidden.height <= window.y).toBe(
+        true,
+      );
+      // Not reachable by tap or keyboard while closed.
+      expect(await flag(page, language).evaluate((node) => node.inert)).toBe(true);
+    }
+  });
+
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    test('opening and closing move everything at the same time; the bottom never moves', async ({
+      page,
+    }) => {
+      // Russian is in the middle, so the column of flags moves both when it opens and when
+      // Spanish is picked.
+      await page.addInitScript(() => localStorage.setItem('aima.language', 'ru'));
+      await setUp(page);
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Войти через Google' }).click();
+      await expect(page.locator('#total-value')).toHaveText(/^549,50\s€$/);
+      await expect.poll(() => locked(page)).toBe(false);
+      const closed = await box(picker(page));
+
+      for (const language of ['ru', 'es']) {
+        await flag(page, language).click();
+        // While it moves: the selector grows or shrinks, the column of flags moves and the
+        // other flags fade, all with the same timing.
+        const timings = await picker(page).evaluate((node) =>
+          node.getAnimations({ subtree: true }).map((animation) => {
+            const { duration, easing } = animation.effect.getTiming();
+            return `${animation.transitionProperty} ${duration} ${easing}`;
+          }),
+        );
+        expect(timings.some((timing) => timing.startsWith('height '))).toBe(true);
+        expect(timings.some((timing) => timing.startsWith('transform '))).toBe(true);
+        expect(timings.some((timing) => timing.startsWith('opacity '))).toBe(true);
+        expect(new Set(timings.map((timing) => timing.split(' ').slice(1).join(' '))).size).toBe(1);
+        for (let frame = 0; frame < 5; frame += 1) {
+          const now = await box(picker(page));
+          near(now.y + now.height, closed.y + closed.height);
+          await page.waitForTimeout(40);
+        }
+        await expect.poll(() => locked(page)).toBe(false);
+      }
+      await expect(flag(page, 'es')).toHaveAttribute('aria-current', 'true');
+    });
+  });
 });
 
 test.describe('phone app', () => {
@@ -732,6 +941,8 @@ test.describe('cards rise into view', () => {
     expect(await look(total)).toMatchObject({ name: 'card-rise', delay: '0s' });
     expect(await look(goal)).toMatchObject({ name: 'card-rise', delay: '0.075s' });
     expect(await look(logOut)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
+    const language = page.locator('#main [data-card="language"]');
+    expect(await look(language)).toMatchObject({ name: 'card-rise', delay: '0.15s' });
   });
 
   test('taps are ignored until the cards have risen', async ({ page }) => {

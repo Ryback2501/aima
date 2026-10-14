@@ -20,6 +20,18 @@ test('the first language the app has wins, in the order the phone prefers', () =
   assert.equal(pickLanguage(['fr-FR', 'ru', 'es']), 'ru');
 });
 
+test('a language chosen on this phone comes first, so it wins over the phone languages', () => {
+  assert.equal(pickLanguage(['ru', 'es-ES', 'en']), 'ru');
+  // Nothing chosen yet, or a choice the app no longer has: the phone languages decide.
+  assert.equal(pickLanguage([null, 'es-ES', 'en']), 'es');
+  assert.equal(pickLanguage(['fr', 'es-ES', 'en']), 'es');
+});
+
+test('a damaged saved language never breaks the start, even a built-in JavaScript name', () => {
+  assert.equal(pickLanguage(['constructor', '__proto__', 'toString', 'es']), 'es');
+  assert.equal(pickLanguage(['constructor']), 'en');
+});
+
 test('upper case language codes work too', () => {
   assert.equal(pickLanguage(['ES-es']), 'es');
 });

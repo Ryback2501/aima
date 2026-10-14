@@ -1,5 +1,6 @@
 // The words the app shows, in English, Spanish and Russian.
-// The app uses the phone's language. If the app does not have that language, it uses English.
+// The app uses the language chosen with the flag button on this phone. Without one, it uses
+// the phone's language. If the app does not have that language, it uses English.
 
 export const STRINGS = {
   en: {
@@ -23,6 +24,7 @@ export const STRINGS = {
     cards: 'Cards',
     provisioned: 'Provisioned',
     cash: 'Cash',
+    language: 'Language',
   },
   es: {
     signIn: 'Iniciar sesión con Google',
@@ -45,6 +47,7 @@ export const STRINGS = {
     cards: 'Tarjetas',
     provisioned: 'Provisionado',
     cash: 'Efectivo',
+    language: 'Idioma',
   },
   ru: {
     signIn: 'Войти через Google',
@@ -67,6 +70,7 @@ export const STRINGS = {
     cards: 'Карты',
     provisioned: 'Резерв',
     cash: 'Наличные',
+    language: 'Язык',
   },
 };
 
@@ -79,7 +83,7 @@ export function pickLanguage(preferred = []) {
     const base = String(code ?? '')
       .toLowerCase()
       .split('-')[0];
-    if (base in STRINGS) return base;
+    if (Object.hasOwn(STRINGS, base)) return base;
   }
   return FALLBACK;
 }

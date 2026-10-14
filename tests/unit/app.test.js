@@ -48,12 +48,15 @@ function setup({
   loadAuth,
 } = {}) {
   const screens = [];
+  const languages = [];
   const handlers = {};
   const view = {
     render: (state) => screens.push(state),
+    setLanguage: (language) => languages.push(language),
     onSignIn: (handler) => (handlers.signIn = handler),
     onSignOut: (handler) => (handlers.signOut = handler),
     onTogglePill: (handler) => (handlers.togglePill = handler),
+    onPickLanguage: (handler) => (handlers.pickLanguage = handler),
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -91,7 +94,7 @@ function setup({
     }),
   });
   const last = () => screens.at(-1);
-  return { app, session, screens, handlers, log, last };
+  return { app, session, screens, languages, handlers, log, last };
 }
 
 test('the app starts on the login page when nobody is signed in', async () => {
@@ -444,4 +447,18 @@ test('a quick double tap opens only one Google sign-in window', async () => {
   await Promise.all([handlers.signIn(), handlers.signIn()]);
 
   assert.equal(log.signIns.length, 1);
+});
+
+test('a language picked with the flag button is shown at once and kept on this phone', async () => {
+  const { app, session, languages, handlers, log } = setup();
+  await app.start();
+  await handlers.signIn();
+  const reads = log.cells.length;
+
+  handlers.pickLanguage('es');
+
+  assert.deepEqual(languages, ['es']);
+  assert.equal(session.getLanguage(), 'es');
+  // The words change, the numbers stay: the sheet is not read again.
+  assert.equal(log.cells.length, reads);
 });

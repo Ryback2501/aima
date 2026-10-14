@@ -170,3 +170,25 @@ test('damaged or blocked storage for the switched-off parts gives an empty list'
   blocked.saveSwitchedOff(['bank']);
   assert.deepEqual(blocked.getSwitchedOff(), []);
 });
+
+test('the chosen language is kept on this phone, also after signing out', () => {
+  const localStorage = memoryStorage();
+  const session = createSession({ sessionStorage: memoryStorage(), localStorage });
+  assert.equal(session.getLanguage(), null);
+
+  session.saveLanguage('es');
+  session.clear();
+
+  const later = createSession({ sessionStorage: memoryStorage(), localStorage });
+  assert.equal(later.getLanguage(), 'es');
+});
+
+test('broken or missing storage never stops the language choice', () => {
+  for (const storage of [brokenStorage, undefined]) {
+    const session = createSession({ sessionStorage: storage, localStorage: storage });
+
+    session.saveLanguage('ru');
+
+    assert.equal(session.getLanguage(), null);
+  }
+});

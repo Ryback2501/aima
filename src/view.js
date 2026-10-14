@@ -1,12 +1,16 @@
 // Shows the screens on the page. Only this file and months-view.js (which it uses) change the page.
 
 import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from './components.js';
+import { FLAGS } from './flags.js';
+import { createMoneyFormatter, createMonthNamer, createTranslator } from './i18n.js';
 import { ICONS } from './icons.js';
 import { createMonths } from './months-view.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
+// How big the flags of the language selector are, in pixels.
+const FLAG_SIZE = 34;
 
-export function createView(document, t, formatMoney, monthName) {
+export function createView(document, language) {
   const element = (id) => document.getElementById(id);
   const screens = ['login', 'checking', 'main'].map((id) => element(id));
   const signInButton = element('sign-in');
@@ -16,14 +20,24 @@ export function createView(document, t, formatMoney, monthName) {
   const goalValue = element('goal-value');
   const goalTitle = element('goal-title');
 
-  // Put the fixed words (button texts and so on) in the chosen language.
-  for (const node of document.querySelectorAll('[data-i18n]')) {
-    node.textContent = t(node.dataset.i18n);
+  // The words, the amounts and the month names, in the app's language. useLanguage changes them.
+  let appLanguage, t, formatMoney, monthName;
+  function useLanguage(language) {
+    appLanguage = language;
+    document.documentElement.lang = language;
+    t = createTranslator(language);
+    formatMoney = createMoneyFormatter(language);
+    monthName = createMonthNamer(language);
+    // Put the fixed words (button texts and so on) in the language.
+    for (const node of document.querySelectorAll('[data-i18n]')) {
+      node.textContent = t(node.dataset.i18n);
+    }
+    // The same for names that screen readers say, for buttons that show only an icon.
+    for (const node of document.querySelectorAll('[data-i18n-label]')) {
+      node.setAttribute('aria-label', t(node.dataset.i18nLabel));
+    }
   }
-  // The same for names that screen readers say, for buttons that show only an icon.
-  for (const node of document.querySelectorAll('[data-i18n-label]')) {
-    node.setAttribute('aria-label', t(node.dataset.i18nLabel));
-  }
+  useLanguage(language);
 
   // Builds an icon from icons.js, the given number of pixels wide and high.
   function createIcon(name, size) {
@@ -37,6 +51,22 @@ export function createView(document, t, formatMoney, monthName) {
     const path = document.createElementNS(SVG, 'path');
     path.setAttribute('d', icon.path);
     svg.append(path);
+    return svg;
+  }
+
+  // Builds a flag from flags.js, the given number of pixels wide and high.
+  function createFlag(flag, size) {
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', flag.viewBox);
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('aria-hidden', 'true');
+    for (const { fill, d } of flag.parts) {
+      const path = document.createElementNS(SVG, 'path');
+      path.setAttribute('fill', fill);
+      path.setAttribute('d', d);
+      svg.append(path);
+    }
     return svg;
   }
 
@@ -272,8 +302,9 @@ export function createView(document, t, formatMoney, monthName) {
     document,
     room: document.querySelector('.month-room'),
     createIcon,
-    formatMoney,
-    monthName,
+    // Always in the language of the moment, also after it changes.
+    formatMoney: (amount) => formatMoney(amount),
+    monthName: (year, month) => monthName(year, month),
     lockWhile,
     settled: (node) => nextFrame().then(() => still(node)),
   });
@@ -288,6 +319,80 @@ export function createView(document, t, formatMoney, monthName) {
     });
   }
   backButton.addEventListener('click', () => close());
+
+  // The language selector on the main screen (see index.html and styles.css). Closed, it shows
+  // the flag of the app's language. A tap opens it upward to show every flag. A tap on a flag
+  // closes it again and picks that language.
+  const picker = document.querySelector('.language-picker');
+  const flagButtons = Object.entries(FLAGS).map(([language, flag]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'flag';
+    button.dataset.language = language;
+    button.lang = language;
+    button.setAttribute('aria-label', flag.name);
+    button.append(createFlag(flag, FLAG_SIZE));
+    return button;
+  });
+  picker.querySelector('.flag-column').append(...flagButtons);
+  picker.style.setProperty('--flag-count', String(flagButtons.length));
+  picker.parentElement.style.setProperty('--language-size', `${CARDS.language.height}px`);
+  let pickerOpen = false;
+
+  // Shows the selector open or closed, with the flag of the app's language in its window.
+  function placeFlags() {
+    const index = flagButtons.findIndex((button) => button.dataset.language === appLanguage);
+    picker.style.setProperty('--selected', String(index));
+    picker.classList.toggle('expanded', pickerOpen);
+    for (const button of flagButtons) {
+      const current = button.dataset.language === appLanguage;
+      button.setAttribute('aria-current', String(current));
+      // Closed, only the flag of the app's language can be tapped: it opens the selector.
+      button.inert = !pickerOpen && !current;
+      if (current) button.setAttribute('aria-expanded', String(pickerOpen));
+      else button.removeAttribute('aria-expanded');
+    }
+  }
+  placeFlags();
+
+  // Opens or closes the selector. Taps wait until it has stopped moving.
+  function movePicker(open) {
+    pickerOpen = open;
+    placeFlags();
+    return lockWhile(nextFrame().then(() => still(picker)));
+  }
+
+  for (const button of flagButtons) {
+    button.addEventListener('click', async () => {
+      if (!pickerOpen) {
+        movePicker(true);
+        return;
+      }
+      // The picked flag moves into the window as the selector closes. The app changes
+      // language once the selector has closed.
+      const language = button.dataset.language;
+      const changed = language !== appLanguage;
+      appLanguage = language;
+      await movePicker(false);
+      if (changed) pickLanguage(language);
+    });
+  }
+
+  // While the selector is open, a tap anywhere else only closes it, without picking: for
+  // example a card under the tap does not open. Esc closes it too.
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!pickerOpen || picker.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      movePicker(false);
+    },
+    true,
+  );
+  document.addEventListener('keydown', (event) => {
+    if (pickerOpen && event.key === 'Escape') movePicker(false);
+  });
 
   // Shows the Total as money. After a tap on a pill, the number counts from the old Total to
   // the new one while the pill changes color. A small animation with the pill's timing is the
@@ -333,8 +438,14 @@ export function createView(document, t, formatMoney, monthName) {
     });
   }
 
+  let shownState = null;
   function render(state) {
+    shownState = state;
     if (openCard && state.screen !== 'main') putBack();
+    if (pickerOpen && state.screen !== 'main') {
+      pickerOpen = false;
+      placeFlags();
+    }
     for (const screen of screens) screen.hidden = screen.id !== state.screen;
     if (!visible) show();
     const screen = screens.find(({ id }) => id === state.screen);
@@ -364,10 +475,25 @@ export function createView(document, t, formatMoney, monthName) {
     }
   }
 
+  // What happens when a language is picked (the app decides).
+  let pickLanguage = () => {};
+
+  // Shows the app in another language: the words, the amounts and the month names change,
+  // and the screen stays as it is.
+  function setLanguage(language) {
+    useLanguage(language);
+    placeFlags();
+    if (!shownState) return;
+    render(shownState);
+    months.redraw();
+  }
+
   return {
     render,
+    setLanguage,
     onSignIn: (handler) => signInButton.addEventListener('click', () => handler()),
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
     onTogglePill: (handler) => (togglePill = handler),
+    onPickLanguage: (handler) => (pickLanguage = handler),
   };
 }

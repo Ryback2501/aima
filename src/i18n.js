@@ -24,6 +24,7 @@ export const STRINGS = {
     cards: 'Cards',
     provisioned: 'Provisioned',
     cash: 'Cash',
+    language: 'Language',
   },
   es: {
     signIn: 'Iniciar sesión con Google',
@@ -46,6 +47,7 @@ export const STRINGS = {
     cards: 'Tarjetas',
     provisioned: 'Provisionado',
     cash: 'Efectivo',
+    language: 'Idioma',
   },
   ru: {
     signIn: 'Войти через Google',
@@ -68,6 +70,7 @@ export const STRINGS = {
     cards: 'Карты',
     provisioned: 'Резерв',
     cash: 'Наличные',
+    language: 'Язык',
   },
 };
 

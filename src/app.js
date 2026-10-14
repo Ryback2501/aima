@@ -149,6 +149,12 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
     if (token) await (await loadedAuth())?.signOut(token);
   }
 
+  // A language picked with the flag button: the view shows it at once, and this phone keeps it.
+  function chooseLanguage(language) {
+    session.saveLanguage(language);
+    view.setLanguage(language);
+  }
+
   async function start() {
     if (!isConfigured(config)) {
       view.render({ screen: 'login', message: 'notConfigured', disabled: true });
@@ -157,6 +163,7 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
     view.onSignIn(signIn);
     view.onSignOut(signOut);
     view.onTogglePill(togglePill);
+    view.onPickLanguage(chooseLanguage);
 
     const token = session.getToken();
     if (token) {

@@ -131,17 +131,38 @@
         >
           <span data-icon="back" data-icon-size="24"></span>
         </button>
-        <!-- Signs out. A card without a corner icon: its content is the exit icon. -->
-        <button
-          id="sign-out"
-          class="label card-button"
-          data-card="logOut"
-          data-i18n-label="signOut"
-          aria-label="Log out"
-          type="button"
-        >
-          <span data-icon="logout" data-icon-size="24"></span>
-        </button>
+        <!-- The bottom row: Log out and the language selector, side by side in the middle. -->
+        <div class="bottom-row">
+          <!-- Signs out. A card without a corner icon: its content is the exit icon. -->
+          <button
+            id="sign-out"
+            class="label card-button"
+            data-card="logOut"
+            data-i18n-label="signOut"
+            aria-label="Log out"
+            type="button"
+          >
+            <span data-icon="logout" data-icon-size="24"></span>
+          </button>
+          <!-- The language selector. Its place in the row is as big as the closed selector. The
+               selector stands on the bottom of its place, so it opens upward over the free space
+               and the row never moves. The flag buttons are built by view.js from flags.js. -->
+          <div class="language-place">
+            <!-- A card. Its look (sizes, colors) is set in components.js. -->
+            <div
+              class="label language-picker"
+              data-card="language"
+              role="group"
+              data-i18n-label="language"
+              aria-label="Language"
+            >
+              <!-- The inside of the border: anything outside it is cropped. -->
+              <div class="flag-window">
+                <div class="flag-column"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
     <noscript>aima needs JavaScript to work.</noscript>

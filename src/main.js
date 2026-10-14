@@ -6,13 +6,7 @@ import { createView } from './view.js';
 import { createSession } from './session.js';
 import { createSheetsClient } from './sheets.js';
 import { createAuth, loadGoogleIdentity } from './auth.js';
-import {
-  browserLanguages,
-  createMoneyFormatter,
-  createMonthNamer,
-  createTranslator,
-  pickLanguage,
-} from './i18n.js';
+import { browserLanguages, pickLanguage } from './i18n.js';
 import { blockZoom } from './no-zoom.js';
 
 // Some browsers throw an error just for looking at storage (for example with cookies blocked).
@@ -38,12 +32,10 @@ const session = createSession({
 
 // The language chosen on this phone comes first. Without one, the phone's languages decide.
 const language = pickLanguage([session.getLanguage(), ...browserLanguages(navigator)]);
-document.documentElement.lang = language;
-const t = createTranslator(language);
 
 const app = createApp({
   config,
-  view: createView(document, t, createMoneyFormatter(language), createMonthNamer(language)),
+  view: createView(document, language),
   session,
   loadAuth: async () =>
     createAuth({

@@ -84,6 +84,13 @@ test('the Log out button is as big as the back button, without a corner icon', (
   assert.equal(hasIcon(CARDS.logOut), false);
 });
 
+test('the language selector looks like the back button: same size, border and colors', () => {
+  for (const setting of ['width', 'height', 'border', 'radius', 'colors', 'padding']) {
+    assert.deepEqual(CARDS.language[setting], CARDS.back[setting], setting);
+  }
+  assert.equal(hasIcon(CARDS.language), false);
+});
+
 test('the back button is a card without a corner icon', () => {
   assert.ok(CARDS.back);
   assert.equal(hasIcon(CARDS.back), false);

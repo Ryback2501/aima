@@ -245,7 +245,8 @@ html:not(.loading) .label {
   --card-order: 1;
 }
 
-#main [data-card='logOut'] {
+#main [data-card='logOut'],
+#main [data-card='language'] {
   --card-order: 2;
 }
 
@@ -253,6 +254,103 @@ html:not(.loading) .label {
 @media (prefers-reduced-motion: reduce) {
   html:not(.loading) .label {
     animation: none;
+  }
+}
+
+/* The bottom row of the main screen: Log out and the language selector, side by side in the
+   middle. */
+.bottom-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.bottom-row > .label {
+  flex: none;
+}
+
+/* The language selector's place in the row, as big as the closed selector (view.js sets the
+   size from components.js). The selector stands on the bottom of this place: when it opens, it
+   grows upward over the free space, and the row does not move. */
+.language-place {
+  position: relative;
+  flex: none;
+  width: var(--language-size);
+  height: var(--language-size);
+}
+
+/* The selector. The flags sit in one column, one slot each; a slot is as tall as the inside of
+   the closed selector. Closed, it shows only the slot of the app's language (--selected, set
+   by view.js). Open, it is as tall as all the slots (--flag-count). Its height, the column's
+   place and the other flags' fade all change together, with the same timing, so the opening
+   and the closing are the same movement played in both directions. */
+.language-picker {
+  --slot: calc(var(--height) - 2 * var(--border));
+  --open-time: 300ms;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  height: var(--height);
+  transition: height var(--open-time) ease-in-out;
+}
+
+.language-picker.expanded {
+  height: calc(var(--flag-count) * var(--slot) + 2 * var(--border));
+}
+
+/* The inside of the border, round corners included. Flags outside it are cropped. */
+.flag-window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius) - var(--border));
+}
+
+.flag-column {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  transform: translateY(calc(var(--selected) * var(--slot) * -1));
+  transition: transform var(--open-time) ease-in-out;
+}
+
+.language-picker.expanded .flag-column {
+  transform: translateY(0);
+}
+
+.flag {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: var(--slot);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--open-time) ease-in-out;
+}
+
+/* Closed, only the flag of the app's language shows: the others fade out. */
+.language-picker:not(.expanded) .flag:not([aria-current='true']) {
+  opacity: 0;
+}
+
+/* The flags are square drawings: the app makes them round. */
+.flag svg {
+  display: block;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .language-picker,
+  .flag-column,
+  .flag {
+    transition: none;
   }
 }
 

@@ -42,6 +42,22 @@ test('moving one finger still works, so people can scroll', () => {
   assert.equal(target.fire('touchmove', { touches: [{}] }), false);
 });
 
+// A new touch can always be stopped, even while the first finger is scrolling. A finger that is
+// already moving cannot, so the pinch must be stopped when the second finger touches down.
+test('a second finger touching down is stopped, because that starts a pinch', () => {
+  const target = fakeTarget();
+  blockZoom(target);
+
+  assert.equal(target.fire('touchstart', { touches: [{}, {}] }), true);
+});
+
+test('one finger touching down still works, so people can tap and scroll', () => {
+  const target = fakeTarget();
+  blockZoom(target);
+
+  assert.equal(target.fire('touchstart', { touches: [{}] }), false);
+});
+
 test('the listeners tell the browser they may stop the touch', () => {
   const target = fakeTarget();
   blockZoom(target);

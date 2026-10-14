@@ -531,8 +531,64 @@ test.describe('phone app', () => {
     const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
     expect(viewport).toContain('user-scalable=no');
     expect(viewport).toContain('maximum-scale=1');
-    const touchAction = await page.evaluate(() => getComputedStyle(document.body).touchAction);
-    expect(touchAction).toBe('manipulation');
+
+    // Every element, the scroll areas too, lets one finger scroll but never zooms.
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    const zoomable = await page.evaluate(() =>
+      [document.documentElement, ...document.querySelectorAll('body, body *')]
+        .filter((node) => getComputedStyle(node).touchAction !== 'pan-x pan-y')
+        .map((node) => node.className || node.tagName),
+    );
+    expect(zoomable).toEqual([]);
+  });
+
+  test('pulling down never moves or reloads the whole app', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    // Browsers only read this from the page's root element (html), not from body.
+    const pull = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      return { x: root.overscrollBehaviorX, y: root.overscrollBehaviorY };
+    });
+    expect(pull).toEqual({ x: 'none', y: 'none' });
+  });
+
+  test('the app always shows the light colors, also when the phone uses dark mode', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await setUp(page);
+    await page.goto('./');
+
+    // "only light" also stops browsers from painting the page dark by themselves.
+    expect(await page.locator('meta[name="color-scheme"]').getAttribute('content')).toBe(
+      'only light',
+    );
+    const colors = () =>
+      page.evaluate(() => {
+        const body = getComputedStyle(document.body);
+        const root = getComputedStyle(document.documentElement);
+        return {
+          background: body.backgroundColor,
+          text: body.color,
+          card: root.getPropertyValue('--label-background').trim(),
+          scheme: root.colorScheme,
+        };
+      });
+    const light = {
+      background: 'rgb(246, 247, 246)',
+      text: 'rgb(28, 35, 33)',
+      card: '#ffffff',
+      // The browser writes the words of "only light" the other way round.
+      scheme: 'light only',
+    };
+    expect(await colors()).toEqual(light);
+
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await colors()).toEqual(light);
   });
 
   test('the app can be installed with a home-screen icon and without the browser bar', async ({
@@ -1586,6 +1642,20 @@ test.describe('privacy policy and terms of service', () => {
     { path: 'privacy', title: 'Privacy Policy' },
     { path: 'terms', title: 'Terms of Service' },
   ]) {
+    test(`${path}: always light, also when the phone uses dark mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.goto(`./${path}/`);
+
+      expect(await page.locator('meta[name="color-scheme"]').getAttribute('content')).toBe(
+        'only light',
+      );
+      const colors = await page.evaluate(() => {
+        const body = getComputedStyle(document.body);
+        return { background: body.backgroundColor, text: body.color };
+      });
+      expect(colors).toEqual({ background: 'rgb(246, 247, 246)', text: 'rgb(28, 35, 33)' });
+    });
+
     test(`${path}: a plain page with its own styles, reachable at /${path}`, async ({ page }) => {
       const response = await page.goto(`./${path}`);
 

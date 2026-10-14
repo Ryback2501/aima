@@ -8,7 +8,7 @@
   font-display: swap;
 }
 
-/* Colors for light mode. Dark mode changes them below. */
+/* The app's colors. The app is always light, also when the phone uses dark mode. */
 :root {
   --background: #f6f7f6;
   --text: #1c2321;
@@ -28,30 +28,24 @@
   --back-gap: 20px;
   /* How long a pill takes to change color when it is switched on or off. */
   --pill-fade: 250ms;
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111614;
-    --text: #e8eeeb;
-    --text-soft: #a3aea9;
-    --accent: #5eead4;
-    --label-background: #1b2220;
-    --label-shadow: rgba(0, 0, 0, 0.6);
-    --red: #f87171;
-    --yellow: #facc15;
-  }
+  /* "only" also stops browsers from painting the app dark by themselves. */
+  color-scheme: only light;
 }
 
 * {
   box-sizing: border-box;
+  /* One finger scrolls, but two fingers or a double tap never zoom, like in a phone app. It is
+     on every element, because a scroll area (like a month's list) would allow zoom again. */
+  touch-action: pan-x pan-y;
 }
 
 html,
 body {
   height: 100%;
   margin: 0;
+  /* Pulling down does not move the whole app or reload it, like in a phone app. Browsers read
+     this from html; body has it too for older browsers. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -66,10 +60,6 @@ body {
     sans-serif;
   /* Sol is always heavy. Bold makes the system font (used for Russian letters) look close to it. */
   font-weight: 700;
-  /* Stops double-tap zoom on phones. */
-  touch-action: manipulation;
-  /* Stops the page from bouncing or reloading when pulled down in the installed app. */
-  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -574,8 +564,7 @@ html:not(.loading) .label {
   transition: transform var(--expand-time) ease-in-out;
 }
 
-/* A month: a light panel like the side panel in the iisu app, with white parts inside. It keeps
-   this light look in dark mode too. */
+/* A month: a light panel like the side panel in the iisu app, with white parts inside. */
 .month {
   display: flex;
   flex: none;

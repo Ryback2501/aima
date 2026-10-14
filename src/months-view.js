@@ -87,12 +87,10 @@ export function createMonths({
     column.replaceChildren(...items);
   }
 
-  // Builds the same months again, for example after the language changed: the month names
-  // and the amounts then use the new language.
-  function redraw() {
-    const months = JSON.parse(shown || '[]');
+  // Forgets which months are shown, so the next render builds them again, for example after
+  // the language changed: the month names and the amounts then use the new language.
+  function forget() {
     shown = '';
-    render(months);
   }
 
   // How tall a month is closed (header only) and open (with every movement).
@@ -251,5 +249,5 @@ export function createMonths({
   // they rise into view when the goal card opens).
   const follow = () => window.requestAnimationFrame(followFades);
 
-  return { render, redraw, reset, follow };
+  return { render, forget, reset, follow };
 }

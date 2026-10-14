@@ -642,19 +642,30 @@ test.describe('language selector', () => {
     await openMain(page);
     const closed = await box(picker(page));
 
-    await tap(flag(page, 'en'));
     // A tap on the goal card only closes the selector: the card stays closed.
-    await tap(page.locator('#main [data-card="goal"]'));
+    await tap(flag(page, 'en'));
+    const goal = await box(page.locator('#main [data-card="goal"]'));
+    await page.mouse.click(goal.x + goal.width / 2, goal.y + goal.height / 2);
+    await expect.poll(() => locked(page)).toBe(false);
     near((await box(picker(page))).height, closed.height);
     await expect(page.locator('#main [data-card="goal"]')).toHaveAttribute(
       'aria-expanded',
       'false',
     );
 
+    // A tap on the empty background closes it too.
     await tap(flag(page, 'en'));
+    await page.mouse.click(5, 5);
+    await expect.poll(() => locked(page)).toBe(false);
+    near((await box(picker(page))).height, closed.height);
+
+    // Esc closes it, and the keyboard focus goes back to the flag in the window.
+    await tap(flag(page, 'en'));
+    await flag(page, 'ru').focus();
     await page.keyboard.press('Escape');
     await expect.poll(() => locked(page)).toBe(false);
     near((await box(picker(page))).height, closed.height);
+    await expect(flag(page, 'en')).toBeFocused();
 
     expect(await page.locator('html').getAttribute('lang')).toBe('en');
     await expect(flag(page, 'en')).toHaveAttribute('aria-current', 'true');

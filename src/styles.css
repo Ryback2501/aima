@@ -272,13 +272,21 @@ html:not(.loading) .label {
 }
 
 /* The language selector's place in the row, as big as the closed selector (view.js sets the
-   size from components.js). The selector stands on the bottom of this place: when it opens, it
+   width and height from components.js). The selector stands on the bottom of this place: when it opens, it
    grows upward over the free space, and the row does not move. */
 .language-place {
   position: relative;
   flex: none;
-  width: var(--language-size);
-  height: var(--language-size);
+  width: var(--language-width);
+  height: var(--language-height);
+}
+
+/* While the language selector is open, this see-through shield covers the rest of the screen,
+   below the selector. A tap on it closes the selector, and nothing under it reacts. */
+#picker-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
 }
 
 /* The selector. The flags sit in one column, one slot each; a slot is as tall as the inside of

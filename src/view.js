@@ -39,36 +39,32 @@ export function createView(document, language) {
   }
   useLanguage(language);
 
-  // Builds an icon from icons.js, the given number of pixels wide and high.
-  function createIcon(name, size) {
-    const icon = ICONS[name];
-    if (!icon) throw new Error(`There is no icon called "${name}" in icons.js.`);
+  // Builds a drawing the given number of pixels wide and high, from its drawing area
+  // (viewBox) and its shapes, each with its own color (fill) or the color of the text.
+  function createDrawing(viewBox, parts, size) {
     const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', icon.viewBox);
+    svg.setAttribute('viewBox', viewBox);
     svg.setAttribute('width', String(size));
     svg.setAttribute('height', String(size));
     svg.setAttribute('aria-hidden', 'true');
-    const path = document.createElementNS(SVG, 'path');
-    path.setAttribute('d', icon.path);
-    svg.append(path);
-    return svg;
-  }
-
-  // Builds a flag from flags.js, the given number of pixels wide and high.
-  function createFlag(flag, size) {
-    const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', flag.viewBox);
-    svg.setAttribute('width', String(size));
-    svg.setAttribute('height', String(size));
-    svg.setAttribute('aria-hidden', 'true');
-    for (const { fill, d } of flag.parts) {
+    for (const { fill, d } of parts) {
       const path = document.createElementNS(SVG, 'path');
-      path.setAttribute('fill', fill);
+      if (fill) path.setAttribute('fill', fill);
       path.setAttribute('d', d);
       svg.append(path);
     }
     return svg;
   }
+
+  // Builds an icon from icons.js.
+  function createIcon(name, size) {
+    const icon = ICONS[name];
+    if (!icon) throw new Error(`There is no icon called "${name}" in icons.js.`);
+    return createDrawing(icon.viewBox, [{ d: icon.path }], size);
+  }
+
+  // Builds a flag from flags.js.
+  const createFlag = (flag, size) => createDrawing(flag.viewBox, flag.parts, size);
 
   // Give every card the look set in components.js: sizes, colors and the icon in its corner.
   for (const card of document.querySelectorAll('[data-card]')) {
@@ -336,16 +332,22 @@ export function createView(document, language) {
   });
   picker.querySelector('.flag-column').append(...flagButtons);
   picker.style.setProperty('--flag-count', String(flagButtons.length));
-  picker.parentElement.style.setProperty('--language-size', `${CARDS.language.height}px`);
+  picker.parentElement.style.setProperty('--language-width', `${CARDS.language.width}px`);
+  picker.parentElement.style.setProperty('--language-height', `${CARDS.language.height}px`);
+  const shield = element('picker-shield');
   let pickerOpen = false;
+  // The flag in the selector's window: the app's language, or the flag just picked while the
+  // selector closes (the app changes language once it has closed).
+  let shownFlag = appLanguage;
 
-  // Shows the selector open or closed, with the flag of the app's language in its window.
+  // Shows the selector open or closed, with the shown flag in its window.
   function placeFlags() {
-    const index = flagButtons.findIndex((button) => button.dataset.language === appLanguage);
+    const index = flagButtons.findIndex((button) => button.dataset.language === shownFlag);
     picker.style.setProperty('--selected', String(index));
     picker.classList.toggle('expanded', pickerOpen);
+    shield.hidden = !pickerOpen;
     for (const button of flagButtons) {
-      const current = button.dataset.language === appLanguage;
+      const current = button.dataset.language === shownFlag;
       button.setAttribute('aria-current', String(current));
       // Closed, only the flag of the app's language can be tapped: it opens the selector.
       button.inert = !pickerOpen && !current;
@@ -355,10 +357,16 @@ export function createView(document, language) {
   }
   placeFlags();
 
-  // Opens or closes the selector. Taps wait until it has stopped moving.
+  // Opens or closes the selector. Taps wait until it has stopped moving. When it closes with
+  // the keyboard focus inside it, the focus goes to the flag in the window: the other flags
+  // can no longer be reached.
   function movePicker(open) {
+    const focused = picker.contains(document.activeElement);
     pickerOpen = open;
     placeFlags();
+    if (!open && focused) {
+      flagButtons.find((button) => button.dataset.language === shownFlag).focus();
+    }
     return lockWhile(nextFrame().then(() => still(picker)));
   }
 
@@ -370,28 +378,19 @@ export function createView(document, language) {
       }
       // The picked flag moves into the window as the selector closes. The app changes
       // language once the selector has closed.
-      const language = button.dataset.language;
-      const changed = language !== appLanguage;
-      appLanguage = language;
+      shownFlag = button.dataset.language;
       await movePicker(false);
-      if (changed) pickLanguage(language);
+      if (shownFlag !== appLanguage) pickLanguage(shownFlag);
     });
   }
 
-  // While the selector is open, a tap anywhere else only closes it, without picking: for
-  // example a card under the tap does not open. Esc closes it too.
-  document.addEventListener(
-    'click',
-    (event) => {
-      if (!pickerOpen || picker.contains(event.target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      movePicker(false);
-    },
-    true,
-  );
+  // While the selector is open, a see-through shield covers the rest of the screen: a tap
+  // anywhere else only closes the selector, without picking. For example a card under the tap
+  // does not open. (A shield also works on iPhones, which send no tap for empty places.)
+  // Esc closes it too, but not while something moves: like taps, it waits.
+  shield.addEventListener('click', () => movePicker(false));
   document.addEventListener('keydown', (event) => {
-    if (pickerOpen && event.key === 'Escape') movePicker(false);
+    if (pickerOpen && event.key === 'Escape' && !page.inert) movePicker(false);
   });
 
   // Shows the Total as money. After a tap on a pill, the number counts from the old Total to
@@ -482,10 +481,11 @@ export function createView(document, language) {
   // and the screen stays as it is.
   function setLanguage(language) {
     useLanguage(language);
+    shownFlag = language;
     placeFlags();
     if (!shownState) return;
+    months.forget();
     render(shownState);
-    months.redraw();
   }
 
   return {

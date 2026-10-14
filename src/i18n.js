@@ -83,7 +83,7 @@ export function pickLanguage(preferred = []) {
     const base = String(code ?? '')
       .toLowerCase()
       .split('-')[0];
-    if (base in STRINGS) return base;
+    if (Object.hasOwn(STRINGS, base)) return base;
   }
   return FALLBACK;
 }

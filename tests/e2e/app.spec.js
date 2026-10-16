@@ -346,7 +346,7 @@ test.describe('sign-in', () => {
     );
     const log = await googleLog(page);
     expect(log.requests[0].clientId).toBe(FAKE_CLIENT_ID);
-    expect(log.requests[0].scope).toContain('spreadsheets.readonly');
+    expect(log.requests[0].scope).toContain('drive.file');
   });
 
   test('the Log out button is a small card with only the exit icon, like the back button', async ({

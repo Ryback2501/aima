@@ -7,7 +7,9 @@ import { NoAccessError, SignInExpiredError, SheetsError } from '../../src/sheets
 import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 
 const config = {
-  googleClientId: 'client-1.apps.googleusercontent.com',
+  googleClientId: '1-client.apps.googleusercontent.com',
+  googleApiKey: 'key-1',
+  googleAppId: '1',
   spreadsheetId: 'sheet-1',
   pills: [
     { name: 'bank', cell: 'Sheet1!A1' },

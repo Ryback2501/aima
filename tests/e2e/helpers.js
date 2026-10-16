@@ -4,6 +4,7 @@ const fakeGsi = readFile(new URL('./fake-gsi.js', import.meta.url), 'utf8');
 
 export const FAKE_CLIENT_ID = 'test-client.apps.googleusercontent.com';
 export const FAKE_SHEET_ID = 'test-sheet-id';
+export const FAKE_API_KEY = 'test-api-key';
 // Made-up cells for the four parts of the Total, in the order of config.pills.
 export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 // The default amounts of those parts, and their sum as the app writes it in English.
@@ -44,6 +45,7 @@ export async function setUp(
     let next = 0;
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
+      .replace(/googleApiKey: '[^']*'/, `googleApiKey: '${FAKE_API_KEY}'`)
       .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
       .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
       .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`);

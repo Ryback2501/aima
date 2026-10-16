@@ -7,7 +7,9 @@ import { NoAccessError, SignInExpiredError, SheetsError } from '../../src/sheets
 import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 
 const config = {
-  googleClientId: 'client-1.apps.googleusercontent.com',
+  googleClientId: '1-client.apps.googleusercontent.com',
+  googleApiKey: 'key-1',
+  googleAppId: '1',
   spreadsheetId: 'sheet-1',
   pills: [
     { name: 'bank', cell: 'Sheet1!A1' },
@@ -46,6 +48,9 @@ function setup({
   appConfig = config,
   storage = memoryStorage,
   loadAuth,
+  // What the person does in the Google file picker: true = picks the sheet, false = closes it.
+  pick = async () => true,
+  pickerFails = false,
 } = {}) {
   const screens = [];
   const languages = [];
@@ -62,7 +67,7 @@ function setup({
     sessionStorage: storage(),
     localStorage: storage(),
   });
-  const log = { signIns: [], revoked: [], cells: [], values: [], tokens: [] };
+  const log = { signIns: [], revoked: [], cells: [], values: [], tokens: [], picks: [] };
   const auth = {
     signIn: (options) => {
       log.signIns.push(options);
@@ -81,6 +86,15 @@ function setup({
           if (authFails) throw new SignInFailedError('script_not_loaded');
           return auth;
         },
+    loadPicker: async () => {
+      if (pickerFails) throw new Error('script_not_loaded');
+      return {
+        pickSheet: async (token) => {
+          log.picks.push(token);
+          return pick();
+        },
+      };
+    },
     createSheets: ({ spreadsheetId, getToken }) => ({
       getCells: async (ranges) => {
         log.cells.push({ spreadsheetId, ranges });
@@ -249,10 +263,65 @@ test('a person without access is signed out and told why', async () => {
 
   await handlers.signIn();
 
-  assert.deepEqual(log.revoked, ['tok']);
+  assert.deepEqual(log.picks, ['tok']);
+  assert.equal(log.cells.length, 2);
+  // Cancelling the token at Google would also take back the pick the person just made.
+  assert.deepEqual(log.revoked, []);
   assert.equal(session.getToken(), null);
   assert.equal(session.getHint(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
+});
+
+test('the first time, the person picks the sheet in the Google picker and sees the total', async () => {
+  let picked = false;
+  const { app, handlers, session, log, last } = setup({
+    cells: async () => {
+      if (!picked) throw new NoAccessError();
+      return [1, 2, 3, 4];
+    },
+    pick: async () => (picked = true),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.picks, ['tok']);
+  assert.deepEqual(log.revoked, []);
+  assert.equal(session.getHint(), 'ana@example.com');
+  assert.equal(last().screen, 'main');
+});
+
+test('closing the Google picker signs the person out and says to pick the sheet', async () => {
+  const { app, handlers, session, log, last } = setup({
+    cells: async () => {
+      throw new NoAccessError();
+    },
+    pick: async () => false,
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(log.cells.length, 1);
+  assert.deepEqual(log.revoked, ['tok']);
+  assert.equal(session.getToken(), null);
+  assert.deepEqual(last(), { screen: 'login', message: 'notPicked' });
+});
+
+test('when the Google picker cannot load, the sign-in is kept for the next try', async () => {
+  const { app, handlers, session, log, last } = setup({
+    cells: async () => {
+      throw new NoAccessError();
+    },
+    pickerFails: true,
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.revoked, []);
+  assert.equal(session.getToken(), 'tok');
+  assert.deepEqual(last(), { screen: 'login', message: 'error' });
 });
 
 test('a person who cannot read the movements is signed out too', async () => {
@@ -265,7 +334,7 @@ test('a person who cannot read the movements is signed out too', async () => {
 
   await handlers.signIn();
 
-  assert.deepEqual(log.revoked, ['tok']);
+  assert.deepEqual(log.revoked, []);
   assert.equal(session.getToken(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
 });
@@ -356,14 +425,16 @@ test('a token from earlier in this visit is used again without a new sign-in', a
   assert.equal(last().screen, 'main');
 });
 
-test('signing out cancels the token, forgets the person and shows the login page', async () => {
+// Cancelling the token at Google would also take back the sheet the person picked, and they
+// would have to pick it again at every sign-in.
+test('signing out forgets the person on this phone and shows the login page', async () => {
   const { app, handlers, session, log, last } = setup();
   await app.start();
   await handlers.signIn();
 
   await handlers.signOut();
 
-  assert.deepEqual(log.revoked, ['tok']);
+  assert.deepEqual(log.revoked, []);
   assert.equal(session.getToken(), null);
   assert.equal(session.getHint(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'signedOut' });
@@ -401,23 +472,6 @@ test('after sign-in the app remembers the account the person really chose', asyn
   await handlers.signIn();
 
   assert.equal(session.getHint(), 'bob@example.com');
-});
-
-test('signing out cancels the token even while Google sign-in is still loading', async () => {
-  let finishLoading;
-  const { app, handlers, session, log, last } = setup({
-    loadAuth: (auth) => new Promise((resolve) => (finishLoading = () => resolve(auth))),
-  });
-  session.saveToken({ token: 'old-tok', expiresAt: Date.now() + 3_600_000 });
-  session.saveHint('ana@example.com');
-  await app.start();
-
-  const signingOut = handlers.signOut();
-  finishLoading();
-  await signingOut;
-
-  assert.deepEqual(log.revoked, ['old-tok']);
-  assert.deepEqual(last(), { screen: 'login', message: 'signedOut' });
 });
 
 test('after a network problem, the next tap tries again with the same sign-in', async () => {

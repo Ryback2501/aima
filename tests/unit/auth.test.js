@@ -8,11 +8,11 @@ import {
   PermissionMissingError,
 } from '../../src/auth.js';
 
-const SHEETS = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+const FILES = 'https://www.googleapis.com/auth/drive.file';
 const EMAIL = 'https://www.googleapis.com/auth/userinfo.email';
 
 // A fake of the Google Identity Services library. Each test says how Google "answers".
-function fakeGoogle({ response, error, granted = [SHEETS, EMAIL] } = {}) {
+function fakeGoogle({ response, error, granted = [FILES, EMAIL] } = {}) {
   const log = { configs: [], requests: [], revoked: [] };
   const google = {
     accounts: {
@@ -42,8 +42,8 @@ function auth(google, extra = {}) {
   return createAuth({
     google,
     clientId: 'client-1',
-    scopes: [SHEETS, EMAIL],
-    requiredScopes: [SHEETS],
+    scopes: [FILES, EMAIL],
+    requiredScopes: [FILES],
     now: () => 1_000,
     ...extra,
   });
@@ -55,7 +55,7 @@ test('signIn asks Google for a token with our app id and permissions', async () 
   await auth(google).signIn();
 
   assert.equal(log.configs[0].client_id, 'client-1');
-  assert.equal(log.configs[0].scope, `${SHEETS} ${EMAIL}`);
+  assert.equal(log.configs[0].scope, `${FILES} ${EMAIL}`);
 });
 
 test('signIn returns the token and when it expires', async () => {

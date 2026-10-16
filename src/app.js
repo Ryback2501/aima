@@ -3,7 +3,8 @@
 //
 // Screens:
 //   login     - logo, name and the "Login with Google" button, maybe with a message
-//   checking  - we ask the sheet if this person may see it
+//   checking  - we ask the sheet if this person may see it. The first time, the Google file
+//               picker opens on top, so the person can give the sheet to aima.
 //   main      - the Total (the sum of its parts that are switched on) and the spending goal
 
 import { isConfigured } from './config.js';
@@ -11,9 +12,10 @@ import { NoAccessError, SignInExpiredError } from './sheets.js';
 import { goalStatus, goalMonths } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 
-export function createApp({ config, view, session, loadAuth, createSheets }) {
+export function createApp({ config, view, session, loadAuth, loadPicker, createSheets }) {
   let auth = null;
   let authReady = null;
+  let pickerReady = null;
   // What the main screen shows, kept so a tap on a pill can show it again with new totals.
   let parts = [];
   let goal = null;
@@ -40,6 +42,38 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
     return auth ?? (await getAuth().catch(() => null));
   }
 
+  // Loads the Google file picker the first time it is needed. If it fails, the next call tries
+  // again.
+  function getPicker() {
+    pickerReady ??= loadPicker().catch((error) => {
+      pickerReady = null;
+      throw error;
+    });
+    return pickerReady;
+  }
+
+  // aima may open the sheet only after the person gives it to aima in the Google file picker.
+  // They do this once: Google remembers it for their account. Someone who cannot open the sheet
+  // does not see it in the picker, so they can only close it.
+  async function pickSheet(token, { fresh }) {
+    let picked;
+    try {
+      picked = await (await getPicker()).pickSheet(token);
+    } catch {
+      // No internet or a problem at Google. The sign-in is still good, so we keep it.
+      view.render({ screen: 'login', message: 'error' });
+      return;
+    }
+    if (picked) {
+      await check(token, { fresh, picked: true });
+      return;
+    }
+    // The person closed the picker: maybe they cannot open the sheet. We sign them out completely.
+    await (await loadedAuth())?.signOut(token);
+    session.clear();
+    view.render({ screen: 'login', message: 'notPicked' });
+  }
+
   // Shows the main screen. The Total adds up the parts that are switched on, and takes away
   // the ones marked "subtract" in the config.
   function showMain() {
@@ -63,7 +97,8 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
   // Asks the sheet for the parts of the Total and the movements, both at the same time.
   // Google answers only if this person may open the sheet.
   // "fresh" means the person just signed in, so we ask Google which account they chose.
-  async function check(token, { fresh = false } = {}) {
+  // "picked" means the person has just picked the sheet in the Google file picker.
+  async function check(token, { fresh = false, picked = false } = {}) {
     view.render({ screen: 'checking' });
     try {
       const [amounts, movements] = await Promise.all([
@@ -88,9 +123,11 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
       };
       showMain();
     } catch (error) {
-      if (error instanceof NoAccessError) {
-        // This person cannot open the sheet, so we sign them out completely.
-        await (await loadedAuth())?.signOut(token);
+      if (error instanceof NoAccessError && !picked) {
+        await pickSheet(token, { fresh });
+      } else if (error instanceof NoAccessError) {
+        // The person picked the sheet, but Google still says no. We sign them out, but we do
+        // not cancel the token at Google: that would also take back the pick they just made.
         session.clear();
         view.render({ screen: 'login', message: 'noAccess' });
       } else if (error instanceof SignInExpiredError) {
@@ -141,12 +178,12 @@ export function createApp({ config, view, session, loadAuth, createSheets }) {
     }
   }
 
-  async function signOut() {
-    const token = session.getToken();
+  // We do not cancel the token at Google here: that would also take back the sheet the person
+  // picked, and they would have to pick it again at every sign-in. The token stops working by
+  // itself after about one hour.
+  function signOut() {
     session.clear();
     view.render({ screen: 'login', message: 'signedOut' });
-    // Cancel the token at Google too, even if Google sign-in is still loading.
-    if (token) await (await loadedAuth())?.signOut(token);
   }
 
   // A language picked with the flag button: the view shows it at once, and this phone keeps it.

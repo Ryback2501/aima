@@ -7,6 +7,14 @@ export const config = {
   // The "Client ID" from Google Cloud (it ends in .apps.googleusercontent.com).
   googleClientId: '712077474606-v44i18grv0mtt944hka709lc81o30d7i.apps.googleusercontent.com',
 
+  // The "API key" from Google Cloud (it starts with AIza). Only the Google file picker uses it.
+  // It is public on purpose and works only on this app's web addresses, so the secret scanner
+  // must not report it.
+  googleApiKey: 'AIzaSyA24kHWE3w9Wi0rc64RGX1XJrYezwXPkRo', // gitleaks:allow
+
+  // The Google Cloud "project number". It is also the first part of the Client ID.
+  googleAppId: '712077474606',
+
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
   spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',
 
@@ -46,20 +54,22 @@ export const config = {
     },
   },
 
-  // What the app asks Google for. Today it only reads. When the app can add and change data,
-  // the first one becomes "https://www.googleapis.com/auth/spreadsheets".
+  // What the app asks Google for.
+  // "drive.file" lets the app open only the files the person picks for it in the Google file
+  // picker: here, the one sheet. It also allows changes to that file, for when the app can add
+  // and change data. Today the app only reads.
   scopes: [
-    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',
   ],
 
   // Without these permissions the app cannot work, so sign-in fails with a clear message.
-  requiredScopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  requiredScopes: ['https://www.googleapis.com/auth/drive.file'],
 };
 
 // True when the example values above have been replaced with real ones.
-export function isConfigured({ googleClientId, spreadsheetId }) {
-  return [googleClientId, spreadsheetId].every(
+export function isConfigured({ googleClientId, googleApiKey, googleAppId, spreadsheetId }) {
+  return [googleClientId, googleApiKey, googleAppId, spreadsheetId].every(
     (value) => typeof value === 'string' && value !== '' && !value.startsWith('REPLACE_WITH_'),
   );
 }

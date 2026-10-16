@@ -8,9 +8,11 @@ export const STRINGS = {
     signIn: 'Login with Google',
     checking: 'Checking your access…',
     noAccess: "You don't have access to this document. Ask its owner to share it with you.",
+    notPicked:
+      'To see your data, select the aima sheet when Google shows it. If it is not there, ask its owner to share it with you.',
     signInFailed: 'Sign-in did not finish. Please try again.',
     permissionMissing:
-      'aima needs permission to see your Google Sheets. Please sign in again and allow it.',
+      'aima needs permission to open the sheet you pick. Please sign in again and allow it.',
     expired: 'Your sign-in has expired. Please sign in again.',
     error: 'Something went wrong. Please try again.',
     notConfigured: 'This app is not set up yet.',
@@ -34,9 +36,11 @@ export const STRINGS = {
     signIn: 'Iniciar sesión con Google',
     checking: 'Comprobando tu acceso…',
     noAccess: 'No tienes acceso a este documento. Pide a su propietario que lo comparta contigo.',
+    notPicked:
+      'Para ver tus datos, selecciona la hoja de aima cuando Google te la muestre. Si no aparece, pide a su propietario que la comparta contigo.',
     signInFailed: 'No se completó el inicio de sesión. Inténtalo de nuevo.',
     permissionMissing:
-      'aima necesita permiso para ver tus hojas de cálculo de Google. Vuelve a iniciar sesión y permítelo.',
+      'aima necesita permiso para abrir la hoja que elijas. Vuelve a iniciar sesión y permítelo.',
     expired: 'Tu sesión ha caducado. Vuelve a iniciar sesión.',
     error: 'Algo salió mal. Inténtalo de nuevo.',
     notConfigured: 'Esta aplicación aún no está configurada.',
@@ -60,9 +64,11 @@ export const STRINGS = {
     signIn: 'Войти через Google',
     checking: 'Проверяем ваш доступ…',
     noAccess: 'У вас нет доступа к этому документу. Попросите владельца открыть вам доступ.',
+    notPicked:
+      'Чтобы увидеть свои данные, выберите таблицу aima, когда Google её покажет. Если её там нет, попросите владельца открыть вам доступ.',
     signInFailed: 'Вход не завершён. Попробуйте ещё раз.',
     permissionMissing:
-      'Приложению aima нужно разрешение на просмотр ваших Google Таблиц. Войдите снова и разрешите доступ.',
+      'Приложению aima нужно разрешение открыть таблицу, которую вы выберете. Войдите снова и разрешите доступ.',
     expired: 'Срок входа истёк. Пожалуйста, войдите снова.',
     error: 'Что-то пошло не так. Попробуйте ещё раз.',
     notConfigured: 'Это приложение ещё не настроено.',

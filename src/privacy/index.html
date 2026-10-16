@@ -121,7 +121,7 @@
 
     <main>
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: 14 October 2026</p>
+      <p class="updated">Last updated: 16 October 2026</p>
 
       <p>
         aima is a small web app that shows information from a Google Sheet about a household's
@@ -134,6 +134,7 @@
       <h2>The short version</h2>
       <ul>
         <li>aima only reads data. It never changes your Google data.</li>
+        <li>aima can open only the one spreadsheet you select for it, and no other file.</li>
         <li>
           Everything happens in your browser. aima has no server, and we do not receive, store or
           see your data.
@@ -150,10 +151,12 @@
           account again.
         </li>
         <li>
-          <strong>Read-only access to Google Sheets</strong> (Google permission "See all your Google
-          Sheets spreadsheets"). aima only reads the one spreadsheet it is set up for, and only the
-          cells it shows: totals, account balances and spending movements (date, category,
-          description and amount). It cannot change or delete anything.
+          <strong>Access to the one spreadsheet you select</strong> (Google permission "See, edit,
+          create, and delete only the specific Google Drive files you use with this app"). The first
+          time you sign in, the Google file picker shows the spreadsheet aima is set up for, and you
+          select it. aima cannot open any other file. aima only reads the cells it shows from it:
+          totals, account balances and spending movements (date, category, description and amount).
+          It does not create, change or delete anything.
         </li>
         <li>
           <strong>A sign-in token</strong> that Google gives your browser after you sign in. It lets
@@ -196,7 +199,8 @@
       <h2>Sharing</h2>
       <p>
         We do not share, sell, rent or transfer your information to anyone. aima talks only to
-        Google, to sign you in and to read the spreadsheet. Google's own
+        Google, to sign you in, to show the Google file picker and to read the spreadsheet. Google's
+        own
         <a href="https://policies.google.com/privacy">Privacy Policy</a> applies to that. The app's
         files are delivered by a web hosting service, which may keep short technical logs of visits
         (such as IP addresses) to keep the service running and secure. These logs are not used by
@@ -216,12 +220,13 @@
       <ul>
         <li>
           Sign out in aima: this removes the sign-in token and your email address from the device.
+          Google keeps your choice of spreadsheet, so you do not have to select it again next time.
         </li>
         <li>
           Remove aima's access to your Google Account at any time at
           <a href="https://myaccount.google.com/permissions"
             >https://myaccount.google.com/permissions</a
-          >.
+          >. This also removes aima's access to the spreadsheet you selected.
         </li>
         <li>
           Clear the site data for aima in your browser settings to remove everything aima kept on

@@ -3,9 +3,11 @@ import { test, expect } from '@playwright/test';
 import {
   setUp,
   googleLog,
+  pickerLog,
   sheetDay,
   FAKE_CLIENT_ID,
   FAKE_SHEET_ID,
+  FAKE_API_KEY,
   FAKE_CELLS,
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
@@ -346,7 +348,7 @@ test.describe('sign-in', () => {
     );
     const log = await googleLog(page);
     expect(log.requests[0].clientId).toBe(FAKE_CLIENT_ID);
-    expect(log.requests[0].scope).toContain('spreadsheets.readonly');
+    expect(log.requests[0].scope).toContain('drive.file');
   });
 
   test('the Log out button is a small card with only the exit icon, like the back button', async ({
@@ -452,11 +454,60 @@ test.describe('sign-in', () => {
       ).toBeVisible();
       await expect(page.locator('#main')).toBeHidden();
       await expect(signInButton(page)).toBeEnabled();
-      expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+      // The person picked the sheet in the Google picker, but Google still says no. Cancelling
+      // the token would also take back that pick, so the app only forgets it.
+      expect((await googleLog(page)).revoked).toEqual([]);
       expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
     });
   }
+
+  test('the first time, the Google picker opens on the sheet, and then the Total shows', async ({
+    page,
+  }) => {
+    await setUp(page, { needsPick: true });
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await pickerLog(page)).toEqual([
+      {
+        views: [{ viewId: 'spreadsheets', fileIds: FAKE_SHEET_ID }],
+        features: ['navHidden'],
+        token: 'fake-token',
+        key: FAKE_API_KEY,
+        appId: '712077474606',
+        locale: 'en',
+      },
+    ]);
+    expect((await googleLog(page)).revoked).toEqual([]);
+  });
+
+  test('after the sheet was picked once, the Google picker does not open', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await pickerLog(page)).toEqual([]);
+  });
+
+  test('closing the Google picker signs the person out and says what to do', async ({ page }) => {
+    await setUp(page, { needsPick: true, google: { pick: 'cancel' } });
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(
+      page.getByText('To see your data, select the aima sheet when Google shows it.', {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.locator('#main')).toBeHidden();
+    expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+  });
 
   test('closing the Google window keeps the login page with a message', async ({ page }) => {
     await setUp(page, { google: { closePopup: true } });
@@ -474,7 +525,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.getByText(/aima needs permission to see your Google Sheets/)).toBeVisible();
+    await expect(page.getByText(/aima needs permission to open the sheet you pick/)).toBeVisible();
     expect((await googleLog(page)).revoked).toEqual(['fake-token']);
   });
 
@@ -506,6 +557,7 @@ test.describe('sign-in', () => {
     expect(requests[0]).toMatchObject({ prompt: '', login_hint: 'ana@example.com' });
   });
 
+  // Cancelling the token at Google would also take back the picked sheet.
   test('signing out goes back to the login page and forgets the person', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
@@ -516,8 +568,9 @@ test.describe('sign-in', () => {
 
     await expect(page.getByText('You have signed out.')).toBeVisible();
     await expect(page.locator('#main')).toBeHidden();
-    expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+    expect((await googleLog(page)).revoked).toEqual([]);
     expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
   });
 });
 
@@ -1966,6 +2019,10 @@ test.describe('about page, privacy policy and terms of service', () => {
     });
   }
 
+  // The words Google shows for the "drive.file" permission on its sign-in screen.
+  const FILES_PERMISSION =
+    'See, edit, create, and delete only the specific Google Drive files you use with this app';
+
   // Google's review needs a homepage that anyone can read without signing in: what aima does,
   // why it asks for Google data, and a link to the privacy policy.
   test('the About page explains aima and its use of Google data, without signing in', async ({
@@ -1973,12 +2030,16 @@ test.describe('about page, privacy policy and terms of service', () => {
   }) => {
     await page.goto('./about/');
 
-    const text = await page.locator('main').textContent();
+    // One space between words, also where the page source breaks a line.
+    const text = (await page.locator('main').textContent()).replace(/\s+/g, ' ');
     expect(text).toMatch(/household's money/i);
     expect(text).toMatch(/sharing settings/i);
     expect(text).toContain('See your primary Google Account email address');
-    expect(text).toContain('See all your Google Sheets spreadsheets');
-    expect(text).toMatch(/read-only/i);
+    expect(text).toContain(FILES_PERMISSION);
+    expect(text).not.toContain('See all your Google Sheets spreadsheets');
+    expect(text).toMatch(/only reads/i);
+    // The one-time step in the Google file picker is explained.
+    expect(text).toMatch(/Google file picker/i);
     const main = page.locator('main');
     await expect(main.getByRole('link', { name: 'Privacy Policy' }).first()).toHaveAttribute(
       'href',
@@ -1990,11 +2051,14 @@ test.describe('about page, privacy policy and terms of service', () => {
   test('the privacy policy says what Google data the app uses and how', async ({ page }) => {
     await page.goto('./privacy/');
 
-    const text = await page.locator('main').textContent();
+    // One space between words, also where the page source breaks a line.
+    const text = (await page.locator('main').textContent()).replace(/\s+/g, ' ');
     expect(text).toContain('Google API Services User Data Policy');
     expect(text).toContain('Limited Use');
     expect(text).toMatch(/email address/i);
-    expect(text).toMatch(/read-only/i);
+    expect(text).toContain(FILES_PERMISSION);
+    expect(text).toMatch(/only reads/i);
+    expect(text).toMatch(/Google file picker/i);
     expect(text).toContain('https://myaccount.google.com/permissions');
     // Everything the app keeps on the device is listed, also the language picked with the flags.
     expect(text).toMatch(/the language you chose/i);

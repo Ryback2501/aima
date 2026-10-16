@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises';
 
 const fakeGsi = readFile(new URL('./fake-gsi.js', import.meta.url), 'utf8');
+const fakePicker = readFile(new URL('./fake-picker.js', import.meta.url), 'utf8');
 
 export const FAKE_CLIENT_ID = 'test-client.apps.googleusercontent.com';
 export const FAKE_SHEET_ID = 'test-sheet-id';
+export const FAKE_API_KEY = 'test-api-key';
 // Made-up cells for the four parts of the Total, in the order of config.pills.
 export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 // The default amounts of those parts, and their sum as the app writes it in English.
@@ -28,10 +30,15 @@ export async function setUp(
     // Movement rows: date (sheetDay), category, description, amount.
     movements = [],
     email = 'ana@example.com',
+    // true: like the first sign-in, Google Sheets says no until the person picks the sheet.
+    needsPick = false,
     google = {},
   } = {},
 ) {
   const sheetRequests = [];
+  let picked = !needsPick;
+
+  await page.exposeFunction('__sheetPicked', () => (picked = true));
 
   await page.addInitScript((options) => (window.__fakeGoogle = options), google);
 
@@ -44,6 +51,7 @@ export async function setUp(
     let next = 0;
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
+      .replace(/googleApiKey: '[^']*'/, `googleApiKey: '${FAKE_API_KEY}'`)
       .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
       .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
       .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`);
@@ -54,9 +62,17 @@ export async function setUp(
     route.fulfill({ contentType: 'text/javascript', body: await fakeGsi }),
   );
 
+  await page.route('https://apis.google.com/js/api.js', async (route) =>
+    route.fulfill({ contentType: 'text/javascript', body: await fakePicker }),
+  );
+
   await page.route('https://sheets.googleapis.com/**', async (route) => {
     const request = route.request();
     sheetRequests.push({ url: request.url(), authorization: request.headers().authorization });
+    if (!picked) {
+      await route.fulfill({ status: 403, json: { error: {} } });
+      return;
+    }
     const askedForMovements = request.url().includes(encodeURIComponent(FAKE_MOVEMENTS));
     const answer = askedForMovements
       ? { values: movements }
@@ -75,4 +91,9 @@ export async function setUp(
 // What the Google stand-in wrote down: sign-in requests and cancelled tokens.
 export function googleLog(page) {
   return page.evaluate(() => window.__gsiLog);
+}
+
+// How the app set up each Google file picker it opened.
+export function pickerLog(page) {
+  return page.evaluate(() => window.__pickerLog ?? []);
 }

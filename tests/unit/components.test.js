@@ -212,3 +212,17 @@ test('the color of a movement always goes with its icon', () => {
   assert.equal(categoryColor('General', 'Peluquería'), ICON_COLORS.sackEuro);
   assert.equal(categoryColor('Something new'), ICON_COLORS.sackEuro);
 });
+
+// How colorful a color is, from 0 (grey) to 1 (fully colorful), as HSL counts it.
+function saturation(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const light = (max + min) / 2;
+  return max === min ? 0 : (max - min) / (1 - Math.abs(2 * light - 1));
+}
+
+test('shopping has a clear color of its own, so it does not look like the grey of general', () => {
+  assert.ok(saturation(ICON_COLORS.sackEuro) < 0.2, 'general is grey');
+  assert.ok(saturation(ICON_COLORS.cart) >= 0.4, `shopping (${ICON_COLORS.cart}) looks grey`);
+});

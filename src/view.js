@@ -2,7 +2,12 @@
 
 import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from './components.js';
 import { FLAGS } from './flags.js';
-import { createMoneyFormatter, createMonthNamer, createTranslator } from './i18n.js';
+import {
+  createDayNamer,
+  createMoneyFormatter,
+  createMonthNamer,
+  createTranslator,
+} from './i18n.js';
 import { ICONS } from './icons.js';
 import { createMonths } from './months-view.js';
 
@@ -20,14 +25,16 @@ export function createView(document, language) {
   const goalValue = element('goal-value');
   const goalTitle = element('goal-title');
 
-  // The words, the amounts and the month names, in the app's language. useLanguage changes them.
-  let appLanguage, t, formatMoney, monthName;
+  // The words, the amounts, the month names and the dates, in the app's language. useLanguage
+  // changes them.
+  let appLanguage, t, formatMoney, monthName, dayName;
   function useLanguage(language) {
     appLanguage = language;
     document.documentElement.lang = language;
     t = createTranslator(language);
     formatMoney = createMoneyFormatter(language);
     monthName = createMonthNamer(language);
+    dayName = createDayNamer(language);
     // Put the fixed words (button texts and so on) in the language.
     for (const node of document.querySelectorAll('[data-i18n]')) {
       node.textContent = t(node.dataset.i18n);
@@ -301,6 +308,7 @@ export function createView(document, language) {
     // Always in the language of the moment, also after it changes.
     formatMoney: (amount) => formatMoney(amount),
     monthName: (year, month) => monthName(year, month),
+    dayName: (year, month, day) => dayName(year, month, day),
     lockWhile,
     settled: (node) => nextFrame().then(() => still(node)),
   });

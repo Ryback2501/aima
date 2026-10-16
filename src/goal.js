@@ -74,10 +74,25 @@ export function goalStatus(rows, goal) {
   return { amount, level };
 }
 
+// The day of the month (1-31) of a sheet's day number.
+const dayOfMonth = (day) => new Date(SHEET_START + Math.floor(day) * DAY).getUTCDate();
+
+// Puts movements that are already newest first into days, newest day first.
+function byDay(movements) {
+  const days = [];
+  for (const { day, category, description, amount } of movements) {
+    const date = dayOfMonth(day);
+    if (days.at(-1)?.day !== date) days.push({ day: date, movements: [] });
+    days.at(-1).movements.push({ category, description, amount: spending(amount) });
+  }
+  return days;
+}
+
 // The goal's spending month by month: one entry per month of the period, in order:
-// { year, month (1-12), amount, movements }. amount is the month's spending, or null when the
-// month has no counted movements. movements: { category, description, amount } with the amount
-// as spending, newest first. The same rules as goalStatus decide what counts.
+// { year, month (1-12), amount, days }. amount is the month's spending, or null when the
+// month has no counted movements. days: the days with movements, newest first, each one
+// { day (1-31), movements }. movements: { category, description, amount } with the amount as
+// spending, newest first. The same rules as goalStatus decide what counts.
 export function goalMonths(rows, goal) {
   const counted = countedMovements(rows, goal);
   const first = monthCount(dayNumber(goal.from));
@@ -91,11 +106,7 @@ export function goalMonths(rows, goal) {
       year: Math.floor(count / 12),
       month: (count % 12) + 1,
       amount: inMonth.length ? spending(inMonth.reduce((sum, m) => sum + m.amount, 0)) : null,
-      movements: inMonth.map(({ category, description, amount }) => ({
-        category,
-        description,
-        amount: spending(amount),
-      })),
+      days: byDay(inMonth),
     });
   }
   return months;

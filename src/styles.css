@@ -788,8 +788,30 @@ html:not(.loading) .label {
   border-bottom: 1px solid #eef0f2;
 }
 
-.movement:last-child {
+.movement:last-child,
+.movement:has(+ .movement-date) {
   border-bottom: 0;
+}
+
+/* The date above the movements of a day. While the list scrolls, it stays at the top of the
+   list. The next date stops at the same place and covers it, because it comes later in the
+   page. Its background reaches across the list's side padding, so nothing shows through.
+   It always fits on one line, so all dates are the same height and the next one covers it
+   fully. */
+.movement-date {
+  position: sticky;
+  top: 0;
+  margin: 0 -12px;
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid #eef0f2;
+  background: #ffffff;
+  color: #5b6662;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .movement-text {

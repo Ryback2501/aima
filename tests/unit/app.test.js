@@ -169,10 +169,10 @@ test('a person with access sees the total after sign-in', async () => {
           year: 2026,
           month: 10,
           amount: 12.5,
-          movements: [{ category: 'Food', description: 'Shop', amount: 12.5 }],
+          days: [{ day: 5, movements: [{ category: 'Food', description: 'Shop', amount: 12.5 }] }],
         },
-        { year: 2026, month: 11, amount: null, movements: [] },
-        { year: 2026, month: 12, amount: null, movements: [] },
+        { year: 2026, month: 11, amount: null, days: [] },
+        { year: 2026, month: 12, amount: null, days: [] },
       ],
     },
   });

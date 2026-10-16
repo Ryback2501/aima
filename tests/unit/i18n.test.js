@@ -7,6 +7,7 @@ import {
   createTranslator,
   createMoneyFormatter,
   createMonthNamer,
+  createDayNamer,
   STRINGS,
 } from '../../src/i18n.js';
 
@@ -94,4 +95,10 @@ test('month names are in the app language, starting with a capital letter', () =
   assert.equal(createMonthNamer('en')(2026, 10), 'October');
   assert.equal(createMonthNamer('es')(2026, 10), 'Octubre');
   assert.equal(createMonthNamer('ru')(2026, 12), 'Декабрь');
+});
+
+test('dates show the day of the week, the day and the month, starting with a capital letter', () => {
+  assert.equal(createDayNamer('en')(2026, 10, 20), 'Tuesday, October 20');
+  assert.equal(createDayNamer('es')(2026, 10, 20), 'Martes, 20 de octubre');
+  assert.equal(createDayNamer('ru')(2026, 10, 3), 'Суббота, 3 октября');
 });

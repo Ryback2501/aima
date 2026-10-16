@@ -165,3 +165,22 @@ export function categoryIcon(category, description = '') {
   if (category === 'General' && description.toLowerCase().includes('compra')) return 'cart';
   return CATEGORY_ICONS[category] ?? 'sackEuro';
 }
+
+// ICON_COLORS: the color of each movement icon. They are close to the colors of the
+// categories in the sheet, and dark enough to be easy to see on the white list.
+export const ICON_COLORS = {
+  car: '#2f6fd6',
+  handshake: '#d9363e',
+  house: '#e8620c',
+  investing: '#0f8a8a',
+  cocktail: '#b8338f',
+  suitcase: '#7a4fd6',
+  paw: '#b8860b',
+  cart: '#64748b',
+  sackEuro: '#4b5563',
+};
+
+// The color of a movement's icon. It comes from the icon, so the two always go together.
+export function categoryColor(category, description = '') {
+  return ICON_COLORS[categoryIcon(category, description)];
+}

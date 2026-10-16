@@ -12,7 +12,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasIcon, PILLS } from '../../src/components.js';
+import { CARDS, hasIcon, ICON_COLORS, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -1600,6 +1600,16 @@ test.describe('the open goal card', () => {
     await expect(rows.nth(0).locator('svg path')).toHaveAttribute('d', ICONS.car.path);
     await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.cocktail.path);
     await expect(rows.nth(2).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
+    // Each icon has the color of its kind of movement.
+    const fills = await rows
+      .locator('svg')
+      .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).fill));
+    expect(fills).toEqual(
+      [ICON_COLORS.car, ICON_COLORS.cocktail, ICON_COLORS.sackEuro].map((hex) => {
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+        return `rgb(${r}, ${g}, ${b})`;
+      }),
+    );
     // The description is below the amount.
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();

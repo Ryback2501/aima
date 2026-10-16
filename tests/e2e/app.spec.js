@@ -1677,6 +1677,22 @@ test.describe('the open goal card', () => {
       'date: Saturday, October 3',
       'Market',
     ]);
+
+    // The dates are easy to see: dark and centered, on a grey band across the whole list.
+    const date = month(page, 0).locator('.movement-date').first();
+    const look = await date.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return { background: css.backgroundColor, color: css.color, align: css.textAlign };
+    });
+    expect(look).toEqual({
+      background: 'rgb(223, 227, 234)',
+      color: 'rgb(28, 35, 33)',
+      align: 'center',
+    });
+    const dateBox = await date.boundingBox();
+    const listBox = await month(page, 0).locator('.month-list').boundingBox();
+    expect(Math.abs(dateBox.x - listBox.x)).toBeLessThan(1);
+    expect(Math.abs(dateBox.width - listBox.width)).toBeLessThan(1);
   });
 
   test.describe('in Spanish', () => {

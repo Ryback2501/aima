@@ -6,6 +6,7 @@ import { createView } from './view.js';
 import { createSession } from './session.js';
 import { createSheetsClient } from './sheets.js';
 import { createAuth, loadGoogleIdentity } from './auth.js';
+import { createPicker, loadGooglePicker } from './picker.js';
 import { browserLanguages, pickLanguage } from './i18n.js';
 import { blockZoom } from './no-zoom.js';
 
@@ -43,6 +44,15 @@ const app = createApp({
       clientId: config.googleClientId,
       scopes: config.scopes,
       requiredScopes: config.requiredScopes,
+    }),
+  loadPicker: async () =>
+    createPicker({
+      google: await loadGooglePicker({ window, document }),
+      apiKey: config.googleApiKey,
+      appId: config.googleAppId,
+      spreadsheetId: config.spreadsheetId,
+      // The picker uses the app's language.
+      getLocale: () => document.documentElement.lang,
     }),
   createSheets: createSheetsClient,
 });

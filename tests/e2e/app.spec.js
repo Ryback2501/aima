@@ -3,9 +3,11 @@ import { test, expect } from '@playwright/test';
 import {
   setUp,
   googleLog,
+  pickerLog,
   sheetDay,
   FAKE_CLIENT_ID,
   FAKE_SHEET_ID,
+  FAKE_API_KEY,
   FAKE_CELLS,
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
@@ -458,6 +460,53 @@ test.describe('sign-in', () => {
     });
   }
 
+  test('the first time, the Google picker opens on the sheet, and then the Total shows', async ({
+    page,
+  }) => {
+    await setUp(page, { needsPick: true });
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await pickerLog(page)).toEqual([
+      {
+        views: [{ viewId: 'spreadsheets', fileIds: FAKE_SHEET_ID }],
+        features: ['navHidden'],
+        token: 'fake-token',
+        key: FAKE_API_KEY,
+        appId: '712077474606',
+        locale: 'en',
+      },
+    ]);
+    expect((await googleLog(page)).revoked).toEqual([]);
+  });
+
+  test('after the sheet was picked once, the Google picker does not open', async ({ page }) => {
+    await setUp(page);
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect(await pickerLog(page)).toEqual([]);
+  });
+
+  test('closing the Google picker signs the person out and says what to do', async ({ page }) => {
+    await setUp(page, { needsPick: true, google: { pick: 'cancel' } });
+    await page.goto('./');
+
+    await signInButton(page).click();
+
+    await expect(
+      page.getByText('To see your data, select the aima sheet when Google shows it.', {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.locator('#main')).toBeHidden();
+    expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+  });
+
   test('closing the Google window keeps the login page with a message', async ({ page }) => {
     await setUp(page, { google: { closePopup: true } });
     await page.goto('./');
@@ -474,7 +523,7 @@ test.describe('sign-in', () => {
 
     await signInButton(page).click();
 
-    await expect(page.getByText(/aima needs permission to see your Google Sheets/)).toBeVisible();
+    await expect(page.getByText(/aima needs permission to open the sheet you pick/)).toBeVisible();
     expect((await googleLog(page)).revoked).toEqual(['fake-token']);
   });
 
@@ -506,6 +555,7 @@ test.describe('sign-in', () => {
     expect(requests[0]).toMatchObject({ prompt: '', login_hint: 'ana@example.com' });
   });
 
+  // Cancelling the token at Google would also take back the picked sheet.
   test('signing out goes back to the login page and forgets the person', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
@@ -516,8 +566,9 @@ test.describe('sign-in', () => {
 
     await expect(page.getByText('You have signed out.')).toBeVisible();
     await expect(page.locator('#main')).toBeHidden();
-    expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+    expect((await googleLog(page)).revoked).toEqual([]);
     expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
   });
 });
 

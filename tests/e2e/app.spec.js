@@ -1637,6 +1637,110 @@ test.describe('the open goal card', () => {
     await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
   });
 
+  // What an open month's list shows, in order: a date, or the description of a movement.
+  const listLines = (page, index) =>
+    month(page, index)
+      .locator('.month-list > *')
+      .evaluateAll((nodes) =>
+        nodes.map((node) =>
+          node.classList.contains('movement-date')
+            ? `date: ${node.textContent}`
+            : node.querySelector('.movement-description').textContent,
+        ),
+      );
+
+  test('the movements of an open month are grouped by day, with the date above each day', async ({
+    page,
+  }) => {
+    await openGoal(page, [
+      ...movements,
+      [sheetDay('2026-10-20') + 0.9, 'General', 'Market at night', -5],
+    ]);
+    await tapMonth(page, 0);
+
+    expect(await listLines(page, 0)).toEqual([
+      'date: Tuesday, October 20',
+      'Market at night',
+      'Petrol',
+      'date: Monday, October 12',
+      'Cinema refund',
+      'date: Saturday, October 3',
+      'Market',
+    ]);
+  });
+
+  test.describe('in Spanish', () => {
+    test.use({ locale: 'es-ES' });
+
+    test('the dates are in Spanish', async ({ page }) => {
+      await setUp(page, { movements });
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Iniciar sesión con Google' }).click();
+      await expect(page.locator('#total-value')).toHaveText('549,50 €');
+      await expect.poll(() => locked(page)).toBe(false);
+      await goalCard(page).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await tapMonth(page, 0);
+
+      await expect(month(page, 0).locator('.movement-date')).toHaveText([
+        'Martes, 20 de octubre',
+        'Lunes, 12 de octubre',
+        'Sábado, 3 de octubre',
+      ]);
+    });
+  });
+
+  test('while the list scrolls, the date stays at the top until the next date covers it', async ({
+    page,
+  }) => {
+    // Three days in November with ten movements each.
+    const many = [3, 2, 1].flatMap((date) =>
+      Array.from({ length: 10 }, (_, index) => [
+        sheetDay(`2026-11-0${date}`) + index / 100,
+        'General',
+        `Shop ${date}-${index}`,
+        -1,
+      ]),
+    );
+    await openGoal(page, many);
+    await tapMonth(page, 1);
+    const list = month(page, 1).locator('.month-list');
+
+    // Scrolls the list so that the top of the movement with this description is at the top of
+    // the list. Then tells where each date is, compared with the top of the list, and which date
+    // is seen at the top of the list.
+    const scrollTo = (description) =>
+      list.evaluate((node, text) => {
+        const row = [...node.querySelectorAll('.movement')].find(
+          (movement) => movement.querySelector('.movement-description').textContent === text,
+        );
+        node.scrollTop += row.getBoundingClientRect().top - node.getBoundingClientRect().top;
+        const top = node.getBoundingClientRect().top;
+        const dates = [...node.querySelectorAll('.movement-date')];
+        const first = dates[0].getBoundingClientRect();
+        const seen = document.elementFromPoint(first.left + first.width / 2, top + 2);
+        return {
+          scrolled: node.scrollTop,
+          tops: dates.map((date) => Math.round(date.getBoundingClientRect().top - top)),
+          seen: seen.closest('.movement-date')?.textContent ?? null,
+        };
+      }, description);
+
+    // In the middle of the first day: its date is at the top, the others are further down.
+    const middle = await scrollTo('Shop 3-4');
+    expect(middle.scrolled).toBeGreaterThan(0);
+    expect(middle.tops[0]).toBe(0);
+    expect(middle.tops[1]).toBeGreaterThan(0);
+    expect(middle.seen).toBe('Tuesday, November 3');
+
+    // In the middle of the second day: its date is at the top too, over the first date.
+    const later = await scrollTo('Shop 2-4');
+    expect(later.tops[0]).toBe(0);
+    expect(later.tops[1]).toBe(0);
+    expect(later.tops[2]).toBeGreaterThan(0);
+    expect(later.seen).toBe('Monday, November 2');
+  });
+
   test('with many movements the open month fills the room, and only its list scrolls', async ({
     page,
   }) => {

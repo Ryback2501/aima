@@ -21,6 +21,7 @@ export function createMonths({
   createIcon,
   formatMoney,
   monthName,
+  dayName,
   lockWhile,
   settled,
 }) {
@@ -58,20 +59,25 @@ export function createMonths({
     head.disabled = empty;
     head.addEventListener('click', () => toggle(index));
 
+    // Each day: its date, then its movements. The dates stay at the top while the list
+    // scrolls, until the next date covers them (styles.css).
     const list = make('div', 'month-list');
-    for (const movement of days.flatMap(({ movements }) => movements)) {
-      const row = make('div', 'movement');
-      const text = make('span', 'movement-text');
-      // textContent shows the sheet's words as plain text, never as page code.
-      text.append(
-        make('span', 'movement-amount', formatMoney(movement.amount)),
-        make('span', 'movement-description', movement.description),
-      );
-      row.append(
-        createIcon(categoryIcon(movement.category, movement.description), MOVEMENT_ICON_SIZE),
-        text,
-      );
-      list.append(row);
+    for (const { day, movements } of days) {
+      list.append(make('div', 'movement-date', dayName(year, month, day)));
+      for (const movement of movements) {
+        const row = make('div', 'movement');
+        const text = make('span', 'movement-text');
+        // textContent shows the sheet's words as plain text, never as page code.
+        text.append(
+          make('span', 'movement-amount', formatMoney(movement.amount)),
+          make('span', 'movement-description', movement.description),
+        );
+        row.append(
+          createIcon(categoryIcon(movement.category, movement.description), MOVEMENT_ICON_SIZE),
+          text,
+        );
+        list.append(row);
+      }
     }
     item.append(head, list);
     return item;
@@ -88,7 +94,7 @@ export function createMonths({
   }
 
   // Forgets which months are shown, so the next render builds them again, for example after
-  // the language changed: the month names and the amounts then use the new language.
+  // the language changed: the month names, the dates and the amounts then use the new language.
   function forget() {
     shown = '';
   }

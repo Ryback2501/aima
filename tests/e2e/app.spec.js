@@ -1610,6 +1610,26 @@ test.describe('the open goal card', () => {
         return `rgb(${r}, ${g}, ${b})`;
       }),
     );
+    // Behind each movement there is a soft shape with a very light version of its icon's
+    // color (8% of the color, the rest white), with blurred edges.
+    const shapes = await rows.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const css = getComputedStyle(node, '::before');
+        const parts = css.backgroundColor.match(/[\d.]+/g).map(Number);
+        // Chromium writes a mixed color as color(srgb 0-1 0-1 0-1), other colors as rgb(0-255).
+        const channels = css.backgroundColor.startsWith('color(')
+          ? parts.slice(0, 3).map((part) => part * 255)
+          : parts.slice(0, 3);
+        return { channels, filter: css.filter };
+      }),
+    );
+    [ICON_COLORS.car, ICON_COLORS.cocktail, ICON_COLORS.sackEuro].forEach((hex, index) => {
+      const light = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) * 0.08 + 255 * 0.92);
+      shapes[index].channels.forEach((channel, i) =>
+        expect(Math.abs(channel - light[i])).toBeLessThan(1.5),
+      );
+      expect(shapes[index].filter).toBe('blur(6px)');
+    });
     // The description is below the amount.
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();

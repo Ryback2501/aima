@@ -76,8 +76,11 @@ export function createMonths({
           categoryIcon(movement.category, movement.description),
           MOVEMENT_ICON_SIZE,
         );
-        // The icon is painted in its color (styles.css fills it with the current color).
-        icon.style.color = categoryColor(movement.category, movement.description);
+        // The color of this kind of movement, for its icon and its soft background (styles.css).
+        row.style.setProperty(
+          '--movement-color',
+          categoryColor(movement.category, movement.description),
+        );
         row.append(icon, text);
         list.append(row);
       }

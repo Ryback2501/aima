@@ -7,7 +7,7 @@
 // moves up; the browser animates the change (styles.css). The months themselves never scroll:
 // only the list inside the open month does.
 
-import { categoryIcon } from './components.js';
+import { categoryColor, categoryIcon } from './components.js';
 import { monthLayout } from './month-layout.js';
 
 // The size of the icons in a month item, in pixels.
@@ -72,10 +72,13 @@ export function createMonths({
           make('span', 'movement-amount', formatMoney(movement.amount)),
           make('span', 'movement-description', movement.description),
         );
-        row.append(
-          createIcon(categoryIcon(movement.category, movement.description), MOVEMENT_ICON_SIZE),
-          text,
+        const icon = createIcon(
+          categoryIcon(movement.category, movement.description),
+          MOVEMENT_ICON_SIZE,
         );
+        // The icon is painted in its color (styles.css fills it with the current color).
+        icon.style.color = categoryColor(movement.category, movement.description);
+        row.append(icon, text);
         list.append(row);
       }
     }

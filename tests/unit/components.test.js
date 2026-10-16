@@ -9,6 +9,8 @@ import {
   pillStyle,
   CATEGORY_ICONS,
   categoryIcon,
+  ICON_COLORS,
+  categoryColor,
 } from '../../src/components.js';
 import { config } from '../../src/config.js';
 import { ICONS } from '../../src/icons.js';
@@ -181,4 +183,32 @@ test('only General movements get the cart for a purchase', () => {
 test('the month items have their icons', () => {
   assert.ok(ICONS.calendar);
   assert.ok(ICONS.chevron);
+});
+
+// How much a color stands out from white, from 1 (not at all) to 21 (black), as WCAG counts it.
+function contrastWithWhite(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const value = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05);
+}
+
+test('every movement icon has a color', () => {
+  for (const icon of [...Object.values(CATEGORY_ICONS), 'cart', 'sackEuro']) {
+    assert.match(ICON_COLORS[icon] ?? '', /^#[0-9a-f]{6}$/, `${icon} has no color`);
+  }
+});
+
+test('every icon color is easy to see on the white list', () => {
+  for (const [icon, color] of Object.entries(ICON_COLORS)) {
+    assert.ok(contrastWithWhite(color) >= 3, `${icon} (${color}) is too light`);
+  }
+});
+
+test('the color of a movement always goes with its icon', () => {
+  assert.equal(categoryColor('Car'), ICON_COLORS.car);
+  assert.equal(categoryColor('General', 'Compra Mercadona'), ICON_COLORS.cart);
+  assert.equal(categoryColor('General', 'Peluquería'), ICON_COLORS.sackEuro);
+  assert.equal(categoryColor('Something new'), ICON_COLORS.sackEuro);
 });

@@ -12,7 +12,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasIcon, PILLS } from '../../src/components.js';
+import { CARDS, hasIcon, ICON_COLORS, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
@@ -1600,6 +1600,16 @@ test.describe('the open goal card', () => {
     await expect(rows.nth(0).locator('svg path')).toHaveAttribute('d', ICONS.car.path);
     await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.cocktail.path);
     await expect(rows.nth(2).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
+    // Each icon has the color of its kind of movement.
+    const fills = await rows
+      .locator('svg')
+      .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).fill));
+    expect(fills).toEqual(
+      [ICON_COLORS.car, ICON_COLORS.cocktail, ICON_COLORS.sackEuro].map((hex) => {
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+        return `rgb(${r}, ${g}, ${b})`;
+      }),
+    );
     // The description is below the amount.
     const amountBox = await rows.nth(0).locator('.movement-amount').boundingBox();
     const descriptionBox = await rows.nth(0).locator('.movement-description').boundingBox();
@@ -1667,6 +1677,22 @@ test.describe('the open goal card', () => {
       'date: Saturday, October 3',
       'Market',
     ]);
+
+    // The dates are easy to see: dark and centered, on a grey band across the whole list.
+    const date = month(page, 0).locator('.movement-date').first();
+    const look = await date.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return { background: css.backgroundColor, color: css.color, align: css.textAlign };
+    });
+    expect(look).toEqual({
+      background: 'rgb(223, 227, 234)',
+      color: 'rgb(28, 35, 33)',
+      align: 'center',
+    });
+    const dateBox = await date.boundingBox();
+    const listBox = await month(page, 0).locator('.month-list').boundingBox();
+    expect(Math.abs(dateBox.x - listBox.x)).toBeLessThan(1);
+    expect(Math.abs(dateBox.width - listBox.width)).toBeLessThan(1);
   });
 
   test.describe('in Spanish', () => {

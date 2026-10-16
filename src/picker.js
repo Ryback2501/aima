@@ -32,7 +32,11 @@ export function loadGooglePicker({ window, document }) {
       script.src = GAPI_URL;
       script.async = true;
       script.onload = loadPicker;
-      script.onerror = fail;
+      script.onerror = () => {
+        // Take the failed script out of the page, so the next try starts clean.
+        script.remove();
+        fail();
+      };
       document.head.appendChild(script);
     });
     loading.set(window, promise);
@@ -47,8 +51,9 @@ export function createPicker({ google, apiKey, appId, spreadsheetId, getLocale }
 
   // Opens the picker on the sheet. Gives true when the person picked it, false when they closed
   // the picker. Someone who cannot open the sheet does not see it there, so they can only close.
+  // Fails with PickerFailedError when the picker shows an error.
   function pickSheet(token) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const view = new picker.DocsView(picker.ViewId.SPREADSHEETS).setFileIds(spreadsheetId);
       new picker.PickerBuilder()
         .addView(view)
@@ -65,6 +70,8 @@ export function createPicker({ google, apiKey, appId, spreadsheetId, getLocale }
             resolve(docs.some((doc) => doc[picker.Document.ID] === spreadsheetId));
           } else if (action === picker.Action.CANCEL) {
             resolve(false);
+          } else if (action === picker.Action.ERROR) {
+            reject(new PickerFailedError());
           }
           // Other answers only say that the picker is loading. We wait for the person.
         })

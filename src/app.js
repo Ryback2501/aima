@@ -52,13 +52,6 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     return pickerReady;
   }
 
-  // Cancels the token at Google, forgets the person and shows the login page with a message.
-  async function forget(token, message) {
-    await (await loadedAuth())?.signOut(token);
-    session.clear();
-    view.render({ screen: 'login', message });
-  }
-
   // aima may open the sheet only after the person gives it to aima in the Google file picker.
   // They do this once: Google remembers it for their account. Someone who cannot open the sheet
   // does not see it in the picker, so they can only close it.
@@ -71,8 +64,14 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       view.render({ screen: 'login', message: 'error' });
       return;
     }
-    if (picked) await check(token, { fresh, picked: true });
-    else await forget(token, 'notPicked');
+    if (picked) {
+      await check(token, { fresh, picked: true });
+      return;
+    }
+    // The person closed the picker: maybe they cannot open the sheet. We sign them out completely.
+    await (await loadedAuth())?.signOut(token);
+    session.clear();
+    view.render({ screen: 'login', message: 'notPicked' });
   }
 
   // Shows the main screen. The Total adds up the parts that are switched on, and takes away
@@ -127,8 +126,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (error instanceof NoAccessError && !picked) {
         await pickSheet(token, { fresh });
       } else if (error instanceof NoAccessError) {
-        // This person cannot open the sheet, so we sign them out completely.
-        await forget(token, 'noAccess');
+        // The person picked the sheet, but Google still says no. We sign them out, but we do
+        // not cancel the token at Google: that would also take back the pick they just made.
+        session.clear();
+        view.render({ screen: 'login', message: 'noAccess' });
       } else if (error instanceof SignInExpiredError) {
         session.clearToken();
         view.render({ screen: 'login', message: 'expired' });

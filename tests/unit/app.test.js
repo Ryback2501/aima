@@ -265,7 +265,8 @@ test('a person without access is signed out and told why', async () => {
 
   assert.deepEqual(log.picks, ['tok']);
   assert.equal(log.cells.length, 2);
-  assert.deepEqual(log.revoked, ['tok']);
+  // Cancelling the token at Google would also take back the pick the person just made.
+  assert.deepEqual(log.revoked, []);
   assert.equal(session.getToken(), null);
   assert.equal(session.getHint(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
@@ -333,7 +334,7 @@ test('a person who cannot read the movements is signed out too', async () => {
 
   await handlers.signIn();
 
-  assert.deepEqual(log.revoked, ['tok']);
+  assert.deepEqual(log.revoked, []);
   assert.equal(session.getToken(), null);
   assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
 });

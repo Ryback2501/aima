@@ -454,7 +454,9 @@ test.describe('sign-in', () => {
       ).toBeVisible();
       await expect(page.locator('#main')).toBeHidden();
       await expect(signInButton(page)).toBeEnabled();
-      expect((await googleLog(page)).revoked).toEqual(['fake-token']);
+      // The person picked the sheet in the Google picker, but Google still says no. Cancelling
+      // the token would also take back that pick, so the app only forgets it.
+      expect((await googleLog(page)).revoked).toEqual([]);
       expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
     });

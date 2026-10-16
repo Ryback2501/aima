@@ -61,7 +61,7 @@ function fakeGoogle() {
       ViewId: { SPREADSHEETS: 'spreadsheets' },
       Feature: { NAV_HIDDEN: 'navHidden' },
       Response: { ACTION: 'action', DOCUMENTS: 'docs' },
-      Action: { PICKED: 'picked', CANCEL: 'cancel', LOADED: 'loaded' },
+      Action: { PICKED: 'picked', CANCEL: 'cancel', ERROR: 'error', LOADED: 'loaded' },
       Document: { ID: 'id' },
     },
   };
@@ -108,6 +108,15 @@ test('picking the sheet gives true', async () => {
   assert.equal(await picking, true);
 });
 
+test('an error in the picker fails clearly, so the app does not wait forever', async () => {
+  const { google, log } = fakeGoogle();
+
+  const picking = picker(google).pickSheet('tok');
+  log.answer({ action: 'error' });
+
+  await assert.rejects(picking, PickerFailedError);
+});
+
 test('closing the picker, or picking another file, gives false', async () => {
   for (const answer of [{ action: 'cancel' }, { action: 'picked', docs: [{ id: 'other' }] }]) {
     const { google, log } = fakeGoogle();
@@ -122,10 +131,14 @@ test('closing the picker, or picking another file, gives false', async () => {
 // A fake page where adding a <script> "loads" Google's loader at once (or fails).
 function fakePage({ fails = false } = {}) {
   const added = [];
+  const removed = [];
   const loaded = [];
   const window = {};
   const document = {
-    createElement: () => ({}),
+    createElement: () => {
+      const script = { remove: () => removed.push(script) };
+      return script;
+    },
     head: {
       appendChild(script) {
         added.push(script);
@@ -144,7 +157,7 @@ function fakePage({ fails = false } = {}) {
       },
     },
   };
-  return { window, document, added, loaded };
+  return { window, document, added, removed, loaded };
 }
 
 test('loadGooglePicker adds the Google script once and gives back the library', async () => {
@@ -167,4 +180,6 @@ test('loadGooglePicker fails clearly when the script cannot load, and can try ag
   await assert.rejects(loadGooglePicker(page), PickerFailedError);
 
   assert.equal(page.added.length, 2);
+  // The failed script tags do not stay in the page.
+  assert.deepEqual(page.removed, page.added);
 });

@@ -76,7 +76,7 @@
         ViewId: { SPREADSHEETS: 'spreadsheets' },
         Feature: { NAV_HIDDEN: 'navHidden' },
         Response: { ACTION: 'action', DOCUMENTS: 'docs' },
-        Action: { PICKED: 'picked', CANCEL: 'cancel', LOADED: 'loaded' },
+        Action: { PICKED: 'picked', CANCEL: 'cancel', ERROR: 'error', LOADED: 'loaded' },
         Document: { ID: 'id' },
       };
       setTimeout(callback, 0);

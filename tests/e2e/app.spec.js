@@ -2017,6 +2017,10 @@ test.describe('about page, privacy policy and terms of service', () => {
     });
   }
 
+  // The words Google shows for the "drive.file" permission on its sign-in screen.
+  const FILES_PERMISSION =
+    'See, edit, create, and delete only the specific Google Drive files you use with this app';
+
   // Google's review needs a homepage that anyone can read without signing in: what aima does,
   // why it asks for Google data, and a link to the privacy policy.
   test('the About page explains aima and its use of Google data, without signing in', async ({
@@ -2024,12 +2028,16 @@ test.describe('about page, privacy policy and terms of service', () => {
   }) => {
     await page.goto('./about/');
 
-    const text = await page.locator('main').textContent();
+    // One space between words, also where the page source breaks a line.
+    const text = (await page.locator('main').textContent()).replace(/\s+/g, ' ');
     expect(text).toMatch(/household's money/i);
     expect(text).toMatch(/sharing settings/i);
     expect(text).toContain('See your primary Google Account email address');
-    expect(text).toContain('See all your Google Sheets spreadsheets');
-    expect(text).toMatch(/read-only/i);
+    expect(text).toContain(FILES_PERMISSION);
+    expect(text).not.toContain('See all your Google Sheets spreadsheets');
+    expect(text).toMatch(/only reads/i);
+    // The one-time step in the Google file picker is explained.
+    expect(text).toMatch(/Google file picker/i);
     const main = page.locator('main');
     await expect(main.getByRole('link', { name: 'Privacy Policy' }).first()).toHaveAttribute(
       'href',
@@ -2041,11 +2049,14 @@ test.describe('about page, privacy policy and terms of service', () => {
   test('the privacy policy says what Google data the app uses and how', async ({ page }) => {
     await page.goto('./privacy/');
 
-    const text = await page.locator('main').textContent();
+    // One space between words, also where the page source breaks a line.
+    const text = (await page.locator('main').textContent()).replace(/\s+/g, ' ');
     expect(text).toContain('Google API Services User Data Policy');
     expect(text).toContain('Limited Use');
     expect(text).toMatch(/email address/i);
-    expect(text).toMatch(/read-only/i);
+    expect(text).toContain(FILES_PERMISSION);
+    expect(text).toMatch(/only reads/i);
+    expect(text).toMatch(/Google file picker/i);
     expect(text).toContain('https://myaccount.google.com/permissions');
     // Everything the app keeps on the device is listed, also the language picked with the flags.
     expect(text).toMatch(/the language you chose/i);

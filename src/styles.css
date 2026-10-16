@@ -807,18 +807,19 @@ html:not(.loading) .label {
   fill: var(--movement-color, currentColor);
 }
 
-/* The date above the movements of a day: dark, centered text on a grey band, so it is easy to
-   see. While the list scrolls, it stays at the top of the list. The next date stops at the same
-   place and covers it, because it comes later in the page. The band reaches across the list's
-   side padding, so nothing shows through. It always fits on one line, so all dates are the
-   same height and the next one covers it fully. z-index: the movements pass under it. */
+/* The date above the movements of a day: dark, centered text on a grey band (light at the top,
+   a little darker at the bottom), so it is easy to see. While the list scrolls, it stays at the
+   top of the list. The next date stops at the same place and covers it, because it comes later
+   in the page. The band reaches across the list's side padding, so nothing shows through. It
+   always fits on one line, so all dates are the same height and the next one covers it fully.
+   z-index: the movements pass under it. */
 .movement-date {
   position: sticky;
   top: 0;
   z-index: 1;
   margin: 0 -12px;
   padding: 7px 12px;
-  background: #dfe3ea;
+  background: linear-gradient(#f3f5f8, #d3d9e3);
   color: #1c2321;
   font-size: 0.875rem;
   font-weight: 600;

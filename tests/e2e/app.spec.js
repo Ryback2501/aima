@@ -1698,14 +1698,15 @@ test.describe('the open goal card', () => {
       'Market',
     ]);
 
-    // The dates are easy to see: dark and centered, on a grey band across the whole list.
+    // The dates are easy to see: dark and centered, on a grey band across the whole list. The
+    // band goes from light at the top to a little darker at the bottom.
     const date = month(page, 0).locator('.movement-date').first();
     const look = await date.evaluate((node) => {
       const css = getComputedStyle(node);
-      return { background: css.backgroundColor, color: css.color, align: css.textAlign };
+      return { background: css.backgroundImage, color: css.color, align: css.textAlign };
     });
     expect(look).toEqual({
-      background: 'rgb(223, 227, 234)',
+      background: 'linear-gradient(rgb(243, 245, 248), rgb(211, 217, 227))',
       color: 'rgb(28, 35, 33)',
       align: 'center',
     });

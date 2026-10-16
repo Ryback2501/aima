@@ -47,3 +47,9 @@ test('the app asks only for the files the person picks, and for the email', () =
 test('the app ID belongs to the same Google Cloud project as the Client ID', () => {
   assert.ok(config.googleClientId.startsWith(`${config.googleAppId}-`));
 });
+
+// Without this, the released app would say "This app is not set up yet" to everyone.
+test('the real config is fully set up', () => {
+  assert.equal(isConfigured(config), true);
+  assert.match(config.googleApiKey, /^AIza/);
+});

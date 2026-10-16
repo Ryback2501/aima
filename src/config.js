@@ -10,7 +10,7 @@ export const config = {
   // The "API key" from Google Cloud (it starts with AIza). Only the Google file picker uses it.
   // It is public on purpose and works only on this app's web addresses, so the secret scanner
   // must not report it.
-  googleApiKey: 'REPLACE_WITH_GOOGLE_API_KEY', // gitleaks:allow
+  googleApiKey: 'AIzaSyA24kHWE3w9Wi0rc64RGX1XJrYezwXPkRo', // gitleaks:allow
 
   // The Google Cloud "project number". It is also the first part of the Client ID.
   googleAppId: '712077474606',

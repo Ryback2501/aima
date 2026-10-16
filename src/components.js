@@ -176,7 +176,7 @@ export const ICON_COLORS = {
   cocktail: '#b8338f',
   suitcase: '#7a4fd6',
   paw: '#b8860b',
-  cart: '#64748b',
+  cart: '#2b8a3e',
   sackEuro: '#4b5563',
 };
 

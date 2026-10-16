@@ -139,3 +139,19 @@ export function createMonthNamer(language) {
     return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
   };
 }
+
+// Returns a function that writes a date with its day of the week, starting with a capital
+// letter, for example (2026, 10, 20) → "Tuesday, October 20" in English and
+// "Martes, 20 de octubre" in Spanish. month is 1 to 12.
+export function createDayNamer(language) {
+  const format = new Intl.DateTimeFormat(language, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+  return (year, month, day) => {
+    const name = format.format(Date.UTC(year, month - 1, day));
+    return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
+  };
+}

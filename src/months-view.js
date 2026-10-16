@@ -40,7 +40,7 @@ export function createMonths({
   };
 
   // Builds one month item: the header row (calendar, amount, arrow) and its list of movements.
-  function buildMonth({ year, month, amount, movements }, index) {
+  function buildMonth({ year, month, amount, days }, index) {
     const item = make('div', 'month rise-in');
     const head = make('button', 'month-head');
     head.type = 'button';
@@ -59,7 +59,7 @@ export function createMonths({
     head.addEventListener('click', () => toggle(index));
 
     const list = make('div', 'month-list');
-    for (const movement of movements) {
+    for (const movement of days.flatMap(({ movements }) => movements)) {
       const row = make('div', 'movement');
       const text = make('span', 'movement-text');
       // textContent shows the sheet's words as plain text, never as page code.

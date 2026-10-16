@@ -173,7 +173,7 @@ test('a month without counted movements has no amount and no movements', () => {
     year: 2026,
     month: 11,
     amount: null,
-    movements: [],
+    days: [],
   });
   assert.equal(goalMonths(rows, goal)[0].amount, null);
 });
@@ -195,7 +195,7 @@ test('each month adds up its own spending, with the same rules as the goal', () 
   );
 });
 
-test('a month lists its movements as spending, newest first', () => {
+test('a month lists its movements as spending, grouped by day, newest day first', () => {
   const rows = [
     row('2026-10-05', -100, 'Food', 'Market'),
     [day('2026-10-20') + 0.5, 'Car', 'Petrol', -45.2],
@@ -203,9 +203,29 @@ test('a month lists its movements as spending, newest first', () => {
     row('2026-10-15', -999, 'Pay', 'Salary'),
   ];
 
-  assert.deepEqual(goalMonths(rows, goal)[0].movements, [
-    { category: 'Car', description: 'Petrol', amount: 45.2 },
-    { category: 'Food', description: 'Refund', amount: -10 },
-    { category: 'Food', description: 'Market', amount: 100 },
+  assert.deepEqual(goalMonths(rows, goal)[0].days, [
+    { day: 20, movements: [{ category: 'Car', description: 'Petrol', amount: 45.2 }] },
+    { day: 12, movements: [{ category: 'Food', description: 'Refund', amount: -10 }] },
+    { day: 5, movements: [{ category: 'Food', description: 'Market', amount: 100 }] },
   ]);
+});
+
+test('movements of the same day share one day, newest first, also late in the day', () => {
+  const rows = [
+    row('2026-10-05', -1, 'Food', 'Morning'),
+    row('2026-10-06', -2, 'Food', 'Next day'),
+    [day('2026-10-05') + 0.99, 'Food', 'Night', -3],
+    [day('2026-10-05') + 0.5, 'Food', 'Noon', -4],
+  ];
+
+  assert.deepEqual(
+    goalMonths(rows, goal)[0].days.map(({ day: date, movements }) => [
+      date,
+      movements.map(({ description }) => description),
+    ]),
+    [
+      [6, ['Next day']],
+      [5, ['Night', 'Noon', 'Morning']],
+    ],
+  );
 });

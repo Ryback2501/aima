@@ -26,10 +26,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-const session = createSession({
-  sessionStorage: storage('sessionStorage'),
-  localStorage: storage('localStorage'),
-});
+const session = createSession({ localStorage: storage('localStorage') });
 
 // The language chosen on this phone comes first. Without one, the phone's languages decide.
 const language = pickLanguage([session.getLanguage(), ...browserLanguages(navigator)]);

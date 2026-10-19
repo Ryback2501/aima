@@ -29,7 +29,6 @@ const brokenStorage = {
 function setup(start = 1_000_000) {
   let time = start;
   const session = createSession({
-    sessionStorage: memoryStorage(),
     localStorage: memoryStorage(),
     now: () => time,
   });
@@ -87,22 +86,33 @@ test('clear forgets both the token and the email', () => {
   assert.equal(session.getHint(), null);
 });
 
-test('the token survives reading it back from storage in a new session object', () => {
-  const sessionStorage = memoryStorage();
+test('the token stays after the app is closed and opened again, until it expires', () => {
+  const localStorage = memoryStorage();
+  let time = 0;
+  const now = () => time;
+  createSession({ localStorage, now }).saveToken({ token: 'abc', expiresAt: 3_600_000 });
+
+  const reopened = createSession({ localStorage, now });
+  assert.equal(reopened.getToken(), 'abc');
+
+  time = 3_600_000;
+  assert.equal(createSession({ localStorage, now }).getToken(), null);
+});
+
+test('after signing out, the app opened again has no token', () => {
+  const localStorage = memoryStorage();
   const now = () => 0;
-  createSession({ sessionStorage, localStorage: memoryStorage(), now }).saveToken({
-    token: 'abc',
-    expiresAt: 3_600_000,
-  });
+  const session = createSession({ localStorage, now });
+  session.saveToken({ token: 'abc', expiresAt: 3_600_000 });
 
-  const later = createSession({ sessionStorage, localStorage: memoryStorage(), now });
+  session.clear();
 
-  assert.equal(later.getToken(), 'abc');
+  assert.equal(createSession({ localStorage, now }).getToken(), null);
 });
 
 test('broken or missing storage never stops the app', () => {
   for (const storage of [brokenStorage, undefined]) {
-    const session = createSession({ sessionStorage: storage, localStorage: storage });
+    const session = createSession({ localStorage: storage });
 
     session.saveToken({ token: 'abc', expiresAt: Date.now() + 3_600_000 });
     session.saveHint('ana@example.com');
@@ -114,16 +124,16 @@ test('broken or missing storage never stops the app', () => {
 });
 
 test('damaged token data in storage is ignored', () => {
-  const sessionStorage = memoryStorage();
-  sessionStorage.setItem('aima.token', 'not json');
+  const localStorage = memoryStorage();
+  localStorage.setItem('aima.token', 'not json');
 
-  const session = createSession({ sessionStorage, localStorage: memoryStorage() });
+  const session = createSession({ localStorage });
 
   assert.equal(session.getToken(), null);
 });
 
 test('the token works during the visit even when the browser blocks storage', () => {
-  const session = createSession({ sessionStorage: brokenStorage, localStorage: brokenStorage });
+  const session = createSession({ localStorage: brokenStorage });
 
   session.saveToken({ token: 'abc', expiresAt: Date.now() + 3_600_000 });
 
@@ -133,7 +143,6 @@ test('the token works during the visit even when the browser blocks storage', ()
 test('a token kept only in memory also expires', () => {
   let time = 0;
   const session = createSession({
-    sessionStorage: undefined,
     localStorage: undefined,
     now: () => time,
   });
@@ -145,16 +154,16 @@ test('a token kept only in memory also expires', () => {
 });
 
 test('nothing is switched off at first', () => {
-  const session = createSession({ sessionStorage: memoryStorage(), localStorage: memoryStorage() });
+  const session = createSession({ localStorage: memoryStorage() });
 
   assert.deepEqual(session.getSwitchedOff(), []);
 });
 
 test('the parts of the Total that are switched off are remembered for the next visit', () => {
   const localStorage = memoryStorage();
-  createSession({ sessionStorage: memoryStorage(), localStorage }).saveSwitchedOff(['cash']);
+  createSession({ localStorage }).saveSwitchedOff(['cash']);
 
-  const next = createSession({ sessionStorage: memoryStorage(), localStorage });
+  const next = createSession({ localStorage });
 
   assert.deepEqual(next.getSwitchedOff(), ['cash']);
 });
@@ -162,30 +171,27 @@ test('the parts of the Total that are switched off are remembered for the next v
 test('damaged or blocked storage for the switched-off parts gives an empty list', () => {
   const damaged = memoryStorage();
   damaged.setItem('aima.off', '{not a list');
-  assert.deepEqual(
-    createSession({ sessionStorage: memoryStorage(), localStorage: damaged }).getSwitchedOff(),
-    [],
-  );
-  const blocked = createSession({ sessionStorage: brokenStorage, localStorage: brokenStorage });
+  assert.deepEqual(createSession({ localStorage: damaged }).getSwitchedOff(), []);
+  const blocked = createSession({ localStorage: brokenStorage });
   blocked.saveSwitchedOff(['bank']);
   assert.deepEqual(blocked.getSwitchedOff(), []);
 });
 
 test('the chosen language is kept on this phone, also after signing out', () => {
   const localStorage = memoryStorage();
-  const session = createSession({ sessionStorage: memoryStorage(), localStorage });
+  const session = createSession({ localStorage });
   assert.equal(session.getLanguage(), null);
 
   session.saveLanguage('es');
   session.clear();
 
-  const later = createSession({ sessionStorage: memoryStorage(), localStorage });
+  const later = createSession({ localStorage });
   assert.equal(later.getLanguage(), 'es');
 });
 
 test('broken or missing storage never stops the language choice', () => {
   for (const storage of [brokenStorage, undefined]) {
-    const session = createSession({ sessionStorage: storage, localStorage: storage });
+    const session = createSession({ localStorage: storage });
 
     session.saveLanguage('ru');
 

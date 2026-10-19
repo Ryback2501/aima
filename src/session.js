@@ -1,8 +1,10 @@
 // Remembers the sign-in between screens and visits.
-// - The access token is kept only while the app is open (sessionStorage). Google gives it for
-//   about one hour. There is no server, so the app cannot renew it alone.
-// - The Google account email is kept longer (localStorage). Next time, Google can sign the
-//   same person in with one tap, without asking which account to use.
+// - The access token is kept on this phone or computer (localStorage), also after the app is
+//   closed, until the person logs out. So opening the app again goes straight to the Total.
+//   Google gives the token for about one hour only. There is no server, so the app cannot renew
+//   it alone: after that hour, one tap on the button signs the person in again.
+// - The Google account email is kept too (localStorage), until the person logs out. Next time,
+//   Google can sign the same person in with one tap, without asking which account to use.
 // - The parts of the Total that the person switched off are kept on this phone (localStorage).
 // - The language chosen with the flag button is kept on this phone too (localStorage). It
 //   stays after signing out, because it belongs to the phone, not to the Google account.
@@ -43,8 +45,7 @@ function safe(storage) {
   };
 }
 
-export function createSession({ sessionStorage, localStorage, now = Date.now }) {
-  const short = safe(sessionStorage);
+export function createSession({ localStorage, now = Date.now }) {
   const long = safe(localStorage);
   // We also keep the token in memory, so sign-in works even when the browser blocks storage.
   let current = null;
@@ -54,7 +55,7 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
 
   function readSaved() {
     try {
-      return JSON.parse(short.get(TOKEN_KEY));
+      return JSON.parse(long.get(TOKEN_KEY));
     } catch {
       return null; // Damaged data: act as if there is no token.
     }
@@ -63,7 +64,7 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
   return {
     saveToken({ token, expiresAt }) {
       current = { token, expiresAt };
-      short.set(TOKEN_KEY, JSON.stringify(current));
+      long.set(TOKEN_KEY, JSON.stringify(current));
     },
 
     // Returns the token, or null when there is none or it is about to expire.
@@ -74,7 +75,7 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
 
     clearToken() {
       current = null;
-      short.remove(TOKEN_KEY);
+      long.remove(TOKEN_KEY);
     },
 
     saveHint(email) {
@@ -111,7 +112,7 @@ export function createSession({ sessionStorage, localStorage, now = Date.now }) 
     // Forgets everything, for example when the person signs out.
     clear() {
       current = null;
-      short.remove(TOKEN_KEY);
+      long.remove(TOKEN_KEY);
       long.remove(HINT_KEY);
     },
   };

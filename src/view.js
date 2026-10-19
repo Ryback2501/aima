@@ -175,9 +175,9 @@ export function createView(document, language) {
     return parseFloat(window.getComputedStyle(card).getPropertyValue('--expand-time')) || 0;
   }
 
-  // Moves the card from one place and size on the screen to another, and fades the black
+  // Moves the card from one place and size on the screen to another, and fades the white
   // backdrop at the same time. Both stay at their end state until we take the animations off.
-  function move(card, from, to, black) {
+  function move(card, from, to, cover) {
     const timing = { duration: moveTime(card), easing: 'ease-in-out', fill: 'forwards' };
     const place = ({ top, left, width, height }) => ({
       top: `${top}px`,
@@ -187,7 +187,7 @@ export function createView(document, language) {
     });
     return [
       card.animate([place(from), place(to)], timing),
-      backdrop.animate([{ opacity: black[0] }, { opacity: black[1] }], timing),
+      backdrop.animate([{ opacity: cover[0] }, { opacity: cover[1] }], timing),
     ];
   }
 

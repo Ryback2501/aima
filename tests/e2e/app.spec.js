@@ -1107,7 +1107,7 @@ test.describe('open a card full screen', () => {
       near(open.y, 0);
       near(open.width, screen.width);
       near(open.height, screen.height);
-      // Everything else is black.
+      // Everything else is white.
       const backdrop = page.locator('#backdrop');
       await expect(backdrop).toBeVisible();
       expect(
@@ -1115,7 +1115,7 @@ test.describe('open a card full screen', () => {
           getComputedStyle(node).opacity,
           getComputedStyle(node).backgroundColor,
         ]),
-      ).toEqual(['1', 'rgb(0, 0, 0)']);
+      ).toEqual(['1', 'rgb(255, 255, 255)']);
       // The back button: bottom-left, a card from its settings, with the back arrow inside.
       const backBox = await box(back);
       expect(backBox.x).toBeLessThan(40);

@@ -438,7 +438,7 @@ html:not(.loading) .label {
 }
 
 /* A tap on an expandable card opens it full screen (see view.js). It grows from its place to
-   the whole screen, above everything, while everything else fades to black. */
+   the whole screen, above everything, while everything else fades to white. */
 .label {
   /* How long opening and closing take. */
   --expand-time: 400ms;
@@ -470,7 +470,7 @@ html:not(.loading) .label {
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: #000;
+  background: #fff;
 }
 
 /* The back button of an open card, in the bottom-left corner, above the card. */

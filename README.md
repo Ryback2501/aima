@@ -141,7 +141,7 @@ The app has no extra libraries at run time. The files in `src/` are the files pe
 | `src/auth.js`          | Signs people in and out with Google.                            |
 | `src/picker.js`        | Shows the Google file picker, so a person can give aima the sheet. |
 | `src/sheets.js`        | Reads data from the Google Sheet. Later it will also write data. |
-| `src/session.js`       | Remembers the sign-in, so the next sign-in needs only one tap.  |
+| `src/session.js`       | Remembers the sign-in, also after the app is closed, until log out. |
 | `src/i18n.js`          | The words of the app in English, Spanish and Russian.           |
 | `src/config.js`        | The Google values, the Spreadsheet ID and the cells to read.    |
 | `src/no-zoom.js`       | Stops two-finger zoom on phones.                                |

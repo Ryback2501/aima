@@ -457,7 +457,7 @@ test.describe('sign-in', () => {
       // The person picked the sheet in the Google picker, but Google still says no. Cancelling
       // the token would also take back that pick, so the app only forgets it.
       expect((await googleLog(page)).revoked).toEqual([]);
-      expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
+      expect(await page.evaluate(() => localStorage.getItem('aima.token'))).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
     });
   }
@@ -541,13 +541,31 @@ test.describe('sign-in', () => {
     expect((await googleLog(page)).requests).toEqual([]);
   });
 
+  test('closing the app and opening it again goes straight to the Total, with no sign-in', async ({
+    page,
+  }) => {
+    await setUp(page);
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
+
+    // A new window shares only the things kept on the device, like after closing the app.
+    const reopened = await page.context().newPage();
+    await setUp(reopened);
+    await page.close();
+    await reopened.goto('./');
+
+    await expect(reopened.locator('#total-value')).toHaveText(FAKE_TOTAL);
+    expect((await googleLog(reopened)).requests).toEqual([]);
+  });
+
   test('the next sign-in uses the remembered account, for one tap', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
     await signInButton(page).click();
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
-    // A new visit: the token is gone, the remembered email stays.
-    await page.evaluate(() => sessionStorage.clear());
+    // Later: the token has expired and is gone, the remembered email stays.
+    await page.evaluate(() => localStorage.removeItem('aima.token'));
 
     await page.reload();
     await signInButton(page).click();
@@ -570,7 +588,7 @@ test.describe('sign-in', () => {
     await expect(page.locator('#main')).toBeHidden();
     expect((await googleLog(page)).revoked).toEqual([]);
     expect(await page.evaluate(() => localStorage.getItem('aima.hint'))).toBeNull();
-    expect(await page.evaluate(() => sessionStorage.getItem('aima.token'))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem('aima.token'))).toBeNull();
   });
 });
 

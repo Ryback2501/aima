@@ -6,7 +6,8 @@ import { config } from '../../src/config.js';
 
 // Made-up settings in the same shape as config.goal.
 const goal = {
-  movements: 'Sheet2!B:E',
+  movements: 'Sheet2!A:E',
+  sources: { Wallet: 'cash', Visa: 'card', 'My Bank': 'bank' },
   from: '2026-10-01',
   to: '2026-12-31',
   limit: 3000,
@@ -19,8 +20,9 @@ const goal = {
 // The sheet sends dates as day numbers: days since 30 December 1899.
 const day = (date) => (Date.parse(`${date}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
 
-// One movement row: date, category, description, amount.
-const row = (date, amount, category = 'Food', description = 'Shop') => [
+// One movement row: source, date, category, description, amount.
+const row = (date, amount, category = 'Food', description = 'Shop', source = '') => [
+  source,
   day(date),
   category,
   description,
@@ -45,7 +47,7 @@ test('counts only movements from the first to the last day of the period', () =>
 });
 
 test('a time of day in the date does not matter', () => {
-  const rows = [[day('2026-12-31') + 0.75, 'Food', 'Shop', -10]];
+  const rows = [['', day('2026-12-31') + 0.75, 'Food', 'Shop', -10]];
 
   assert.equal(goalStatus(rows, goal).amount, 10);
 });
@@ -90,10 +92,10 @@ test('a category named like a built-in word does not break the lists', () => {
 
 test('the heading row, empty rows and rows without a number are left out', () => {
   const rows = [
-    ['Date', 'Category', 'Description', 'Amount'],
+    ['Source', 'Date', 'Category', 'Description', 'Amount'],
     [],
-    [day('2026-10-05'), 'Food', 'Shop'],
-    [day('2026-10-05'), 'Food', 'Shop', 'unknown'],
+    ['', day('2026-10-05'), 'Food', 'Shop'],
+    ['', day('2026-10-05'), 'Food', 'Shop', 'unknown'],
     row('2026-10-05', -8),
   ];
 
@@ -198,15 +200,24 @@ test('each month adds up its own spending, with the same rules as the goal', () 
 test('a month lists its movements as spending, grouped by day, newest day first', () => {
   const rows = [
     row('2026-10-05', -100, 'Food', 'Market'),
-    [day('2026-10-20') + 0.5, 'Car', 'Petrol', -45.2],
+    ['', day('2026-10-20') + 0.5, 'Car', 'Petrol', -45.2],
     row('2026-10-12', 10, 'Food', 'Refund'),
     row('2026-10-15', -999, 'Pay', 'Salary'),
   ];
 
   assert.deepEqual(goalMonths(rows, goal)[0].days, [
-    { day: 20, movements: [{ category: 'Car', description: 'Petrol', amount: 45.2 }] },
-    { day: 12, movements: [{ category: 'Food', description: 'Refund', amount: -10 }] },
-    { day: 5, movements: [{ category: 'Food', description: 'Market', amount: 100 }] },
+    {
+      day: 20,
+      movements: [{ category: 'Car', description: 'Petrol', amount: 45.2, source: null }],
+    },
+    {
+      day: 12,
+      movements: [{ category: 'Food', description: 'Refund', amount: -10, source: null }],
+    },
+    {
+      day: 5,
+      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null }],
+    },
   ]);
 });
 
@@ -214,8 +225,8 @@ test('movements of the same day share one day, newest first, also late in the da
   const rows = [
     row('2026-10-05', -1, 'Food', 'Morning'),
     row('2026-10-06', -2, 'Food', 'Next day'),
-    [day('2026-10-05') + 0.99, 'Food', 'Night', -3],
-    [day('2026-10-05') + 0.5, 'Food', 'Noon', -4],
+    ['', day('2026-10-05') + 0.99, 'Food', 'Night', -3],
+    ['', day('2026-10-05') + 0.5, 'Food', 'Noon', -4],
   ];
 
   assert.deepEqual(
@@ -227,5 +238,37 @@ test('movements of the same day share one day, newest first, also late in the da
       [6, ['Next day']],
       [5, ['Night', 'Noon', 'Morning']],
     ],
+  );
+});
+
+test('each movement knows where its money came from, by the word in the first column', () => {
+  const rows = [
+    row('2026-10-03', -1, 'Food', 'A', 'Wallet'),
+    row('2026-10-02', -2, 'Food', 'B', ' Visa '),
+    row('2026-10-01', -3, 'Food', 'C', 'My Bank'),
+  ];
+
+  const [october] = goalMonths(rows, goal);
+
+  assert.deepEqual(
+    october.days.flatMap(({ movements }) => movements.map(({ source }) => source)),
+    ['cash', 'card', 'bank'],
+  );
+});
+
+test('an unknown, empty or missing source gives no source, and the movement still counts', () => {
+  const rows = [
+    row('2026-10-04', -1, 'Food', 'A', 'Piggy'),
+    row('2026-10-03', -2, 'Food', 'B', ''),
+    [undefined, day('2026-10-02'), 'Food', 'C', -3],
+    row('2026-10-01', -4, 'Food', 'D', 'constructor'),
+  ];
+
+  const [october] = goalMonths(rows, goal);
+
+  assert.equal(october.amount, 10);
+  assert.deepEqual(
+    october.days.flatMap(({ movements }) => movements.map(({ source }) => source)),
+    [null, null, null, null],
   );
 });

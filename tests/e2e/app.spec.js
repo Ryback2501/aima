@@ -115,7 +115,7 @@ test('no shadow in the app shows above or to the left of its item', async ({ pag
     expect(shadow.left).toBeLessThanOrEqual(0);
     checked.push(shadow);
   };
-  await setUp(page, { movements: [[sheetDay('2026-10-03'), 'General', 'Market', -10]] });
+  await setUp(page, { movements: [['', sheetDay('2026-10-03'), 'General', 'Market', -10]] });
   await page.goto('./');
   await expect.poll(() => locked(page)).toBe(false);
   await check(signInButton(page));
@@ -732,7 +732,7 @@ test.describe('language selector', () => {
   });
 
   test('the month names change language too', async ({ page }) => {
-    await setUp(page, { movements: [[sheetDay('2026-10-03'), 'General', 'Market', -10]] });
+    await setUp(page, { movements: [['', sheetDay('2026-10-03'), 'General', 'Market', -10]] });
     await page.goto('./');
     await signInButton(page).click();
     await expect.poll(() => locked(page)).toBe(false);
@@ -959,9 +959,9 @@ test.describe('spending goal', () => {
   // October spending: 150 counted. Salary is not spending, so it is left out.
   const movements = [
     ['Date', 'Category', 'Description', 'Amount'],
-    [sheetDay('2026-10-03'), 'Food', 'Market', -100],
-    [sheetDay('2026-10-04'), 'Leisure', 'Cinema', -50],
-    [sheetDay('2026-10-01'), 'Salary', 'October', 2500],
+    ['', sheetDay('2026-10-03'), 'Food', 'Market', -100],
+    ['', sheetDay('2026-10-04'), 'Leisure', 'Cinema', -50],
+    ['', sheetDay('2026-10-01'), 'Salary', 'October', 2500],
   ];
 
   async function openMain(page, rows) {
@@ -994,14 +994,14 @@ test.describe('spending goal', () => {
   });
 
   test('close to the limit for the time gone by, the amount is yellow', async ({ page }) => {
-    await openMain(page, [[sheetDay('2026-10-10'), 'Food', 'Market', -1500]]);
+    await openMain(page, [['', sheetDay('2026-10-10'), 'Food', 'Market', -1500]]);
 
     await expect(page.locator('#goal-value')).toHaveAttribute('data-level', 'close');
     expect(await colorOf(page.locator('#goal-value'))).toBe('rgb(180, 83, 9)');
   });
 
   test('over the limit, the amount is red', async ({ page }) => {
-    await openMain(page, [[sheetDay('2026-12-10'), 'Food', 'Market', -4000.5]]);
+    await openMain(page, [['', sheetDay('2026-12-10'), 'Food', 'Market', -4000.5]]);
 
     await expect(page.locator('#goal-value')).toHaveAttribute('data-level', 'over');
     expect(await colorOf(page.locator('#goal-value'))).toBe('rgb(220, 38, 38)');
@@ -1011,7 +1011,7 @@ test.describe('spending goal', () => {
     test.use({ locale: 'es-ES' });
 
     test('the amount is written the Spanish way', async ({ page }) => {
-      await setUp(page, { movements: [[sheetDay('2026-10-03'), 'Food', 'Market', -1234.5]] });
+      await setUp(page, { movements: [['', sheetDay('2026-10-03'), 'Food', 'Market', -1234.5]] });
       await page.goto('./');
       await page.getByRole('button', { name: 'Iniciar sesión con Google' }).click();
 
@@ -1520,11 +1520,11 @@ test.describe('the open goal card', () => {
   // October has three counted movements and one skipped (salary); November has none;
   // December has one.
   const movements = [
-    [sheetDay('2026-10-03'), 'General', 'Market', -100],
-    [sheetDay('2026-10-20'), 'Car', 'Petrol', -45.2],
-    [sheetDay('2026-10-12'), 'Leisure', 'Cinema refund', 10],
-    [sheetDay('2026-10-01'), 'Salary', 'October', 2500],
-    [sheetDay('2026-12-02'), 'Yoshi', 'Vet', -60],
+    ['', sheetDay('2026-10-03'), 'General', 'Market', -100],
+    ['', sheetDay('2026-10-20'), 'Car', 'Petrol', -45.2],
+    ['', sheetDay('2026-10-12'), 'Leisure', 'Cinema refund', 10],
+    ['', sheetDay('2026-10-01'), 'Salary', 'October', 2500],
+    ['', sheetDay('2026-12-02'), 'Yoshi', 'Vet', -60],
   ];
 
   async function openGoal(page, rows = movements) {
@@ -1674,8 +1674,8 @@ test.describe('the open goal card', () => {
     page,
   }) => {
     await openGoal(page, [
-      [sheetDay('2026-10-05'), 'General', 'Compra Mercadona', -80],
-      [sheetDay('2026-10-03'), 'General', 'Market', -100],
+      ['', sheetDay('2026-10-05'), 'General', 'Compra Mercadona', -80],
+      ['', sheetDay('2026-10-03'), 'General', 'Market', -100],
     ]);
     await tapMonth(page, 0);
 
@@ -1702,7 +1702,7 @@ test.describe('the open goal card', () => {
   }) => {
     await openGoal(page, [
       ...movements,
-      [sheetDay('2026-10-20') + 0.9, 'General', 'Market at night', -5],
+      ['', sheetDay('2026-10-20') + 0.9, 'General', 'Market at night', -5],
     ]);
     await tapMonth(page, 0);
 
@@ -1761,6 +1761,7 @@ test.describe('the open goal card', () => {
     // Three days in November with ten movements each.
     const many = [3, 2, 1].flatMap((date) =>
       Array.from({ length: 10 }, (_, index) => [
+        '',
         sheetDay(`2026-11-0${date}`) + index / 100,
         'General',
         `Shop ${date}-${index}`,
@@ -1810,6 +1811,7 @@ test.describe('the open goal card', () => {
     page,
   }) => {
     const many = Array.from({ length: 40 }, (_, index) => [
+      '',
       sheetDay('2026-11-01') + index / 100,
       'General',
       `Shop ${index}`,
@@ -1859,6 +1861,7 @@ test.describe('the open goal card', () => {
       page,
     }) => {
       const some = Array.from({ length: count }, (_, index) => [
+        '',
         sheetDay('2026-11-01') + index / 100,
         'General',
         `Shop ${index}`,
@@ -1954,6 +1957,7 @@ test.describe('the open goal card', () => {
     page,
   }) => {
     const many = Array.from({ length: 40 }, (_, index) => [
+      '',
       sheetDay('2026-11-01') + index / 100,
       'General',
       `Shop ${index}`,
@@ -2031,6 +2035,7 @@ test.describe('the open goal card', () => {
       page,
     }) => {
       const some = Array.from({ length: 7 }, (_, index) => [
+        '',
         sheetDay('2026-10-01') + index / 100,
         'General',
         `Shop ${index}`,

@@ -45,6 +45,12 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Playwright's own image already has the browser and its system fonts, so the job does not
+    # download them from Ubuntu's servers (that download sometimes hangs). The version must be
+    # the same as @playwright/test in package-lock.json (tests/unit/ci.test.js checks it).
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -52,7 +58,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: "npm ci"
-      - run: "npx playwright install --with-deps chromium && npm run test:e2e"
+      - run: "npm run test:e2e"
 
   build:
     name: build

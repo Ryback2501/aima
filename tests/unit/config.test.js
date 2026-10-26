@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { config, isConfigured } from '../../src/config.js';
+import { ICONS } from '../../src/icons.js';
 
 const real = {
   googleClientId: '123-abc.apps.googleusercontent.com',
@@ -52,4 +53,10 @@ test('the app ID belongs to the same Google Cloud project as the Client ID', () 
 test('the real config is fully set up', () => {
   assert.equal(isConfigured(config), true);
   assert.match(config.googleApiKey, /^AIza/);
+});
+
+test('the movements start at the source column, and each source has an icon of the Total', () => {
+  assert.equal(config.goal.movements, 'Movements!A:E');
+  assert.deepEqual(config.goal.sources, { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' });
+  for (const icon of Object.values(config.goal.sources)) assert.ok(ICONS[icon], icon);
 });

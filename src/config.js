@@ -30,8 +30,11 @@ export const config = {
 
   // The spending goal shown below the Total.
   goal: {
-    // The movements: date, category, description and amount, one movement per row.
-    movements: 'Movements!B:E',
+    // The movements: source, date, category, description and amount, one movement per row.
+    movements: 'Movements!A:E',
+    // Where the money came from: the word in the first column, and its icon (the same icons as
+    // the parts of the Total). A movement with another word, or none, shows no icon.
+    sources: { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' },
     // The first and the last day that count.
     from: '2026-10-01',
     to: '2026-12-31',

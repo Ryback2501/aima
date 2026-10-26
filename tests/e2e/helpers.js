@@ -12,7 +12,7 @@ export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
 // 1000 - 200.50 - 300 (Provisioned is taken away) + 50
 export const FAKE_TOTAL = '€549.50';
-export const FAKE_MOVEMENTS = 'Sheet2!B:E';
+export const FAKE_MOVEMENTS = 'Sheet2!A:E';
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
 export const sheetDay = (date) =>
@@ -27,7 +27,7 @@ export async function setUp(
     sheetStatus = 200,
     // The values of the four parts of the Total.
     cells = FAKE_AMOUNTS,
-    // Movement rows: date (sheetDay), category, description, amount.
+    // Movement rows: source, date (sheetDay), category, description, amount.
     movements = [],
     email = 'ana@example.com',
     // true: like the first sign-in, Google Sheets says no until the person picks the sheet.

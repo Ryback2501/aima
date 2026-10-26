@@ -32,23 +32,36 @@ function skipped(category, description, skip) {
 // and never -0.
 const spending = (sum) => Math.round(-sum * 100) / 100 + 0;
 
+// Where the money of a movement came from, as an icon name ("cash", "card" or "bank"), or null
+// when the word in the sheet is not in the list. Object.hasOwn: see skipped.
+function sourceOf(source, sources = {}) {
+  const word = text(source);
+  return Object.hasOwn(sources, word) ? sources[word] : null;
+}
+
 // The movements that count for the goal: in the period, with a number, and not skipped.
-// Returns { day, category, description, amount } for each one, amount as in the sheet.
-function countedMovements(rows, { from, to, skip }) {
+// Returns { day, category, description, amount, source } for each one, amount as in the sheet.
+function countedMovements(rows, { from, to, skip, sources }) {
   const first = dayNumber(from);
   const last = dayNumber(to);
   const counted = [];
-  for (const [date, category, description, amount] of rows) {
+  for (const [source, date, category, description, amount] of rows) {
     if (typeof date !== 'number' || typeof amount !== 'number') continue;
     const day = Math.floor(date);
     if (day < first || day > last) continue;
     if (skipped(text(category), text(description), skip)) continue;
-    counted.push({ day: date, category: text(category), description: text(description), amount });
+    counted.push({
+      day: date,
+      category: text(category),
+      description: text(description),
+      amount,
+      source: sourceOf(source, sources),
+    });
   }
   return counted;
 }
 
-// rows: the movements, one row each: date, category, description, amount.
+// rows: the movements, one row each: source, date, category, description, amount.
 // Returns { amount, level }. amount is the spending as a positive number. level is:
 // - "over": more than the limit (red).
 // - "close": under the limit, but more than the part of the limit for the time gone by
@@ -61,7 +74,7 @@ export function goalStatus(rows, goal) {
 
   // The newest movement of the whole sheet, counted or not.
   let newest = -Infinity;
-  for (const [date] of rows) if (typeof date === 'number') newest = Math.max(newest, date);
+  for (const [, date] of rows) if (typeof date === 'number') newest = Math.max(newest, date);
 
   const first = monthCount(dayNumber(from));
   const months = monthCount(dayNumber(to)) - first + 1;
@@ -80,10 +93,10 @@ const dayOfMonth = (day) => new Date(SHEET_START + Math.floor(day) * DAY).getUTC
 // Puts movements that are already newest first into days, newest day first.
 function byDay(movements) {
   const days = [];
-  for (const { day, category, description, amount } of movements) {
+  for (const { day, category, description, amount, source } of movements) {
     const date = dayOfMonth(day);
     if (days.at(-1)?.day !== date) days.push({ day: date, movements: [] });
-    days.at(-1).movements.push({ category, description, amount: spending(amount) });
+    days.at(-1).movements.push({ category, description, amount: spending(amount), source });
   }
   return days;
 }
@@ -91,8 +104,8 @@ function byDay(movements) {
 // The goal's spending month by month: one entry per month of the period, in order:
 // { year, month (1-12), amount, days }. amount is the month's spending, or null when the
 // month has no counted movements. days: the days with movements, newest first, each one
-// { day (1-31), movements }. movements: { category, description, amount } with the amount as
-// spending, newest first. The same rules as goalStatus decide what counts.
+// { day (1-31), movements }. movements: { category, description, amount, source } with the
+// amount as spending, newest first. The same rules as goalStatus decide what counts.
 export function goalMonths(rows, goal) {
   const counted = countedMovements(rows, goal);
   const first = monthCount(dayNumber(goal.from));

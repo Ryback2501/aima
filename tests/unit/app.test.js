@@ -18,7 +18,8 @@ const config = {
     { name: 'cash', cell: 'Sheet1!A4' },
   ],
   goal: {
-    movements: 'Sheet2!B:E',
+    movements: 'Sheet2!A:E',
+    sources: { Cash: 'cash' },
     from: '2026-10-01',
     to: '2026-12-31',
     limit: 3000,
@@ -41,7 +42,7 @@ function memoryStorage() {
 // Builds the app with fakes. Each test changes only what it needs.
 function setup({
   cells = async () => [1000, -200.5, 300, 50],
-  movements = async () => [[OCTOBER_5, 'Food', 'Shop', -12.5]],
+  movements = async () => [['Cash', OCTOBER_5, 'Food', 'Shop', -12.5]],
   signIn = async () => ({ token: 'tok', expiresAt: Date.now() + 3_600_000 }),
   email = 'ana@example.com',
   authFails = false,
@@ -148,7 +149,7 @@ test('a person with access sees the total after sign-in', async () => {
   ]);
   assert.deepEqual(log.tokens, ['tok']);
   assert.deepEqual(log.values, [
-    { spreadsheetId: 'sheet-1', range: 'Sheet2!B:E', options: { raw: true } },
+    { spreadsheetId: 'sheet-1', range: 'Sheet2!A:E', options: { raw: true } },
   ]);
   assert.deepEqual(last(), {
     screen: 'main',
@@ -169,7 +170,12 @@ test('a person with access sees the total after sign-in', async () => {
           year: 2026,
           month: 10,
           amount: 12.5,
-          days: [{ day: 5, movements: [{ category: 'Food', description: 'Shop', amount: 12.5 }] }],
+          days: [
+            {
+              day: 5,
+              movements: [{ category: 'Food', description: 'Shop', amount: 12.5, source: 'cash' }],
+            },
+          ],
         },
         { year: 2026, month: 11, amount: null, days: [] },
         { year: 2026, month: 12, amount: null, days: [] },

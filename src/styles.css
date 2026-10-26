@@ -831,14 +831,39 @@ html:not(.loading) .label {
 
 .movement-text {
   display: flex;
+  flex: 1;
+  /* The text may be narrower than its words, so a long description cannot push the source
+     icon out of the row. */
+  min-width: 0;
   flex-direction: column;
   text-align: left;
 }
 
+/* The description is always one line. When it does not fit, it ends with "…", or it moves
+   slowly to the left ("moving", see months-view.js). */
 .movement-description {
   color: #5b6662;
   font-size: 0.875rem;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* While it moves, the track is one block that can slide (plain text cannot). */
+.movement-description.moving .description-track {
+  display: inline-block;
+}
+
+/* The dot between the description and its copy, with space on both sides. */
+.description-dot {
+  margin: 0 1em;
+}
+
+/* Where the money came from (cash, card or bank): grey and see-through, at the right end of
+   the row, so it does not take attention from the amount. */
+.movement > svg.movement-source {
+  fill: #888888;
+  opacity: 0.25;
 }
 
 /* Soft fades over a month that is cut at the top or bottom edge of the area (see

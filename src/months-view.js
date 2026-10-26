@@ -14,6 +14,13 @@ import { monthLayout } from './month-layout.js';
 const CALENDAR_SIZE = 28;
 const ARROW_SIZE = 24;
 const MOVEMENT_ICON_SIZE = 20;
+const SOURCE_ICON_SIZE = 18;
+
+// How fast a description that does not fit on one line moves to the left, in pixels per second.
+export const DESCRIPTION_SPEED = 30;
+
+// An animation that repeats without end (a long description moving) is never waited for.
+export const endless = (animation) => animation.effect?.getComputedTiming().iterations === Infinity;
 
 export function createMonths({
   document,
@@ -24,6 +31,7 @@ export function createMonths({
   dayName,
   lockWhile,
   settled,
+  reduceMotion,
 }) {
   const window = document.defaultView;
   const column = room.querySelector('.month-column');
@@ -68,10 +76,13 @@ export function createMonths({
         const row = make('div', 'movement');
         const text = make('span', 'movement-text');
         // textContent shows the sheet's words as plain text, never as page code.
-        text.append(
-          make('span', 'movement-amount', formatMoney(movement.amount)),
-          make('span', 'movement-description', movement.description),
-        );
+        // The description sits in a "track": when it does not fit, the track moves (see
+        // fitDescriptions).
+        const description = make('span', 'movement-description');
+        const track = make('span', 'description-track');
+        track.append(make('span', 'description-text', movement.description));
+        description.append(track);
+        text.append(make('span', 'movement-amount', formatMoney(movement.amount)), description);
         const icon = createIcon(
           categoryIcon(movement.category, movement.description),
           MOVEMENT_ICON_SIZE,
@@ -82,6 +93,12 @@ export function createMonths({
           categoryColor(movement.category, movement.description),
         );
         row.append(icon, text);
+        // Where the money came from: cash, card or bank, with the same icon as the Total.
+        if (movement.source) {
+          const source = createIcon(movement.source, SOURCE_ICON_SIZE);
+          source.classList.add('movement-source');
+          row.append(source);
+        }
         list.append(row);
       }
     }
@@ -103,6 +120,43 @@ export function createMonths({
   // the language changed: the month names, the dates and the amounts then use the new language.
   function forget() {
     shown = '';
+  }
+
+  // A description that does not fit on one line moves slowly to the left without end: the
+  // text, a dot, and a copy of the text, again and again. One loop moves the track exactly to
+  // where the copy starts, so the copy takes the place of the text and nobody sees the jump.
+  // With "reduce motion" on the phone, it stays still and ends with "…" (styles.css).
+  function fitDescriptions(item) {
+    stopDescriptions(item);
+    if (reduceMotion()) return;
+    for (const description of item.querySelectorAll('.movement-description')) {
+      if (description.scrollWidth <= description.clientWidth) continue;
+      const track = description.firstElementChild;
+      const text = track.firstElementChild;
+      const dot = make('span', 'description-dot', '•');
+      const copy = make('span', 'description-text', text.textContent);
+      // Screen readers read the description only once.
+      dot.setAttribute('aria-hidden', 'true');
+      copy.setAttribute('aria-hidden', 'true');
+      track.append(dot, copy);
+      description.classList.add('moving');
+      const distance = copy.getBoundingClientRect().left - text.getBoundingClientRect().left;
+      track.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${distance}px)` }], {
+        duration: (distance / DESCRIPTION_SPEED) * 1000,
+        iterations: Infinity,
+        easing: 'linear',
+      });
+    }
+  }
+
+  // Stops the moving descriptions of a month and takes their copies away.
+  function stopDescriptions(item) {
+    for (const description of item.querySelectorAll('.movement-description.moving')) {
+      const track = description.firstElementChild;
+      for (const animation of track.getAnimations()) animation.cancel();
+      track.replaceChildren(track.firstElementChild);
+      description.classList.remove('moving');
+    }
   }
 
   // How tall a month is closed (header only) and open (with every movement).
@@ -147,8 +201,11 @@ export function createMonths({
       item.style.height = `${layout.heights[i]}px`;
       item.classList.toggle('open', i === open);
       item.querySelector('.month-head').setAttribute('aria-expanded', String(i === open));
-      // A closed month always shows the start of its list next time.
-      if (i !== open) item.querySelector('.month-list').scrollTop = 0;
+      // A closed month always shows the start of its list next time, with its descriptions still.
+      if (i !== open) {
+        item.querySelector('.month-list').scrollTop = 0;
+        stopDescriptions(item);
+      }
     });
     shift = layout.shift;
     column.style.transform = `translateY(${-shift}px)`;
@@ -177,6 +234,7 @@ export function createMonths({
 
     open = open === index ? null : index;
     place();
+    if (open !== null) fitDescriptions(items[open]);
     // Taps wait until the months have stopped moving. The fades follow them on every frame.
     const done = settled(room);
     lockWhile(done);
@@ -203,7 +261,10 @@ export function createMonths({
   // once, and the fades are checked again.
   window.addEventListener('resize', () => {
     if (!items.length) return;
-    if (open !== null) instantly(place);
+    if (open !== null) {
+      instantly(place);
+      fitDescriptions(items[open]);
+    }
     updateFades();
   });
 
@@ -236,7 +297,7 @@ export function createMonths({
     updateFades();
     const moving = room
       .getAnimations({ subtree: true })
-      .some((animation) => animation.playState !== 'finished');
+      .some((animation) => !endless(animation) && animation.playState !== 'finished');
     if (moving) window.requestAnimationFrame(followFades);
   }
 
@@ -247,6 +308,7 @@ export function createMonths({
     room.classList.remove('placed');
     room.scrollTop = 0;
     for (const item of items) {
+      stopDescriptions(item);
       item.style.height = '';
       item.classList.remove('open', 'sized');
       item.querySelector('.month-head').setAttribute('aria-expanded', 'false');

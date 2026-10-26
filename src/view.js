@@ -9,7 +9,7 @@ import {
   createTranslator,
 } from './i18n.js';
 import { ICONS } from './icons.js';
-import { createMonths } from './months-view.js';
+import { createMonths, endless } from './months-view.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 // How big the flags of the language selector are, in pixels.
@@ -144,9 +144,12 @@ export function createView(document, language) {
 
   // Waits until every animation on these elements (and inside them) has finished.
   // If a browser ever forgets to tell that an animation ended, taps still come back after
-  // 2 seconds, so the app can never stay stuck.
+  // 2 seconds, so the app can never stay stuck. An animation that repeats without end (a long
+  // description moving) never finishes, so we do not wait for it.
   async function still(...elements) {
-    const animations = elements.flatMap((node) => node.getAnimations({ subtree: true }));
+    const animations = elements
+      .flatMap((node) => node.getAnimations({ subtree: true }))
+      .filter((animation) => !endless(animation));
     await Promise.race([
       Promise.allSettled(animations.map((animation) => animation.finished)),
       new Promise((done) => window.setTimeout(done, 2000)),
@@ -311,6 +314,7 @@ export function createView(document, language) {
     dayName: (year, month, day) => dayName(year, month, day),
     lockWhile,
     settled: (node) => nextFrame().then(() => still(node)),
+    reduceMotion,
   });
 
   for (const card of document.querySelectorAll('[data-expandable]')) {

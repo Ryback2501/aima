@@ -14,6 +14,7 @@ import {
 } from './helpers.js';
 import { CARDS, hasIcon, ICON_COLORS, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
+import { DESCRIPTION_SPEED } from '../../src/months-view.js';
 
 const signInButton = (page) => page.getByRole('button', { name: 'Login with Google' });
 
@@ -1685,6 +1686,76 @@ test.describe('the open goal card', () => {
     await expect(rows.nth(1).locator('svg path')).toHaveAttribute('d', ICONS.sackEuro.path);
   });
 
+  // A description much too long for one line, on a phone and on a computer.
+  const LONG = 'Weekly shopping at the big supermarket in the mall, with extra bags '
+    .repeat(3)
+    .trim();
+
+  test('each movement shows where its money came from, with the same icon as the Total', async ({
+    page,
+  }) => {
+    await openGoal(page, [
+      ['Cash', sheetDay('2026-10-04'), 'General', 'Bakery', -4],
+      ['Después', sheetDay('2026-10-03'), 'General', 'Market', -100],
+      [' BBVA David ', sheetDay('2026-10-02'), 'House', 'Water bill', -38],
+      ['Piggy', sheetDay('2026-10-01'), 'General', 'Gift', -20],
+    ]);
+    await tapMonth(page, 0);
+
+    const rows = month(page, 0).locator('.movement');
+    await expect(rows).toHaveCount(4);
+    const sources = rows.locator('.movement-source');
+    await expect(sources).toHaveCount(3);
+    for (const [index, icon] of ['cash', 'card', 'bank'].entries()) {
+      await expect(rows.nth(index).locator('.movement-source path')).toHaveAttribute(
+        'd',
+        ICONS[icon].path,
+      );
+    }
+    // The same icons as the parts of the Total.
+    expect(PILLS.cash.icon).toBe('cash');
+    expect(PILLS.cards.icon).toBe('card');
+    expect(PILLS.bank.icon).toBe('bank');
+    // A word the app does not know: no icon.
+    await expect(rows.nth(3).locator('.movement-source')).toHaveCount(0);
+    // Grey and see-through, at the right end of the row, after the text.
+    const look = await sources.evaluateAll((icons) =>
+      icons.map((icon) => {
+        const css = getComputedStyle(icon);
+        return { fill: css.fill, opacity: Number(css.opacity) };
+      }),
+    );
+    for (const { fill, opacity } of look) {
+      expect(fill).toBe('rgb(136, 136, 136)');
+      expect(opacity).toBeGreaterThan(0);
+      expect(opacity).toBeLessThan(1);
+    }
+    const row = await rows.nth(0).boundingBox();
+    const icon = await sources.nth(0).boundingBox();
+    const text = await rows.nth(0).locator('.movement-text').boundingBox();
+    expect(icon.x).toBeGreaterThanOrEqual(text.x + text.width);
+    expect(row.x + row.width - (icon.x + icon.width)).toBeLessThan(20);
+  });
+
+  test('with "reduce motion", a long description stays still on one line and ends with "…"', async ({
+    page,
+  }) => {
+    await openGoal(page, [['Cash', sheetDay('2026-10-04'), 'General', LONG, -4]]);
+    await tapMonth(page, 0);
+
+    const description = month(page, 0).locator('.movement-description');
+    await expect(description).toHaveText(LONG);
+    const look = await description.evaluate((node) => ({
+      cut: node.scrollWidth > node.clientWidth,
+      ellipsis: getComputedStyle(node).textOverflow,
+      oneLine: node.offsetHeight < parseFloat(getComputedStyle(node).fontSize) * 2,
+      moving: node.getAnimations({ subtree: true }).length,
+    }));
+    expect(look).toEqual({ cut: true, ellipsis: 'ellipsis', oneLine: true, moving: 0 });
+    // The source icon still has its place at the right.
+    await expect(month(page, 0).locator('.movement-source')).toBeVisible();
+  });
+
   // What an open month's list shows, in order: a date, or the description of a movement.
   const listLines = (page, index) =>
     month(page, index)
@@ -2123,6 +2194,85 @@ test.describe('the open goal card', () => {
       expect(moving).toBeGreaterThan(0);
       await expect.poll(() => locked(page)).toBe(false);
       expect((await month(page, 0).boundingBox()).height).toBeGreaterThan(closedHeight);
+    });
+
+    test('a description that does not fit moves left without end, with a dot between the copies', async ({
+      page,
+    }) => {
+      await setUp(page, {
+        movements: [
+          ['Cash', sheetDay('2026-10-04'), 'General', LONG, -4],
+          ['Cash', sheetDay('2026-10-03'), 'General', 'Bread', -2],
+        ],
+      });
+      await page.goto('./');
+      await signInButton(page).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await goalCard(page).click();
+      await expect(page.locator('#back')).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+
+      await month(page, 0).locator('.month-head').click();
+
+      // The endless movement does not block taps: they come back when the month is open.
+      await expect.poll(() => locked(page), { timeout: 1500 }).toBe(false);
+      const [long, short] = await month(page, 0)
+        .locator('.movement-description')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => {
+            const track = node.firstElementChild;
+            const [text, dot, copy] = [...track.children];
+            const animation = track.getAnimations()[0];
+            if (!animation) return { parts: track.children.length };
+            const box = (part) => part.getBoundingClientRect();
+            const timing = animation.effect.getComputedTiming();
+            const [, end] = animation.effect.getKeyframes();
+            return {
+              parts: track.children.length,
+              text: text.textContent,
+              dot: dot.textContent,
+              copy: copy.textContent,
+              hidden: [dot.getAttribute('aria-hidden'), copy.getAttribute('aria-hidden')],
+              spaceBefore: box(dot).left - box(text).right,
+              spaceAfter: box(copy).left - box(dot).right,
+              copyStart: box(copy).left - box(text).left,
+              end: end.transform,
+              easing: timing.easing,
+              iterations: timing.iterations,
+              duration: timing.duration,
+              running: animation.playState,
+            };
+          }),
+        );
+      expect(long).toMatchObject({
+        parts: 3,
+        text: LONG,
+        dot: '•',
+        copy: LONG,
+        hidden: ['true', 'true'],
+        easing: 'linear',
+        iterations: Infinity,
+        running: 'running',
+      });
+      // Space on both sides of the dot, the same on each side.
+      expect(long.spaceBefore).toBeGreaterThan(8);
+      expect(Math.abs(long.spaceBefore - long.spaceAfter)).toBeLessThan(1);
+      // One loop moves the text exactly to where the copy starts, so the loop has no jump,
+      // at DESCRIPTION_SPEED pixels per second.
+      const [, moved] = long.end.match(/^translateX\(-([\d.]+)px\)$/);
+      expect(Number(moved)).toBeCloseTo(long.copyStart, 1);
+      expect(long.duration).toBeCloseTo((long.copyStart / DESCRIPTION_SPEED) * 1000, 0);
+      // A description that fits does not move.
+      expect(short).toEqual({ parts: 1 });
+
+      // Closing the month stops the movement.
+      await month(page, 0).locator('.month-head').click();
+      await expect.poll(() => locked(page), { timeout: 1500 }).toBe(false);
+      expect(
+        await month(page, 0)
+          .locator('.month-list')
+          .evaluate((node) => node.getAnimations({ subtree: true }).length),
+      ).toBe(0);
     });
   });
 });

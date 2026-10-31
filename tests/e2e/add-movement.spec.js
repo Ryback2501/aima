@@ -382,7 +382,7 @@ test.describe('the new movement form', () => {
     await expect(page.locator('.month')).toHaveCount(3);
     await expect(back(page)).toBeVisible();
     await expect(add(page)).toBeVisible();
-    expect(requests.filter(({ method }) => method !== 'GET')).toEqual([]);
+    expect(requests.methods.filter((method) => method !== 'GET')).toEqual([]);
   });
 
   test('when the lists cannot be read, the form says so, and Cancel still closes it', async ({

@@ -33,7 +33,7 @@ export const sheetDay = (date) =>
   (Date.parse(`${date}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
 
 // Prepares the page: fake IDs in the config, the Google stand-in, and fake Google answers.
-// Returns the list of requests the app sent to Google Sheets.
+// Returns the list of requests the app sent to Google Sheets, and their kinds in .methods.
 export async function setUp(
   page,
   {
@@ -55,6 +55,8 @@ export async function setUp(
   } = {},
 ) {
   const sheetRequests = [];
+  // The kind of each request (GET reads, the others change the sheet), in the same order.
+  sheetRequests.methods = [];
   let picked = !needsPick;
 
   await page.exposeFunction('__sheetPicked', () => (picked = true));
@@ -89,11 +91,8 @@ export async function setUp(
 
   await page.route('https://sheets.googleapis.com/**', async (route) => {
     const request = route.request();
-    sheetRequests.push({
-      url: request.url(),
-      method: request.method(),
-      authorization: request.headers().authorization,
-    });
+    sheetRequests.push({ url: request.url(), authorization: request.headers().authorization });
+    sheetRequests.methods.push(request.method());
     if (!picked) {
       await route.fulfill({ status: 403, json: { error: {} } });
       return;

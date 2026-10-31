@@ -166,6 +166,9 @@ export function createView(document, language) {
   const mainScreen = element('main');
   const backdrop = element('backdrop');
   const backButton = element('back');
+  // The "+" button shows in the open goal card, only for people who can edit the sheet.
+  const addButton = element('add');
+  let canAdd = false;
   let openCard = null;
   let placeholder = null;
   let moving = false;
@@ -212,14 +215,21 @@ export function createView(document, language) {
       part.style.setProperty('--rise-order', String(index));
       part.style.setProperty('--sink-order', String(parts.length - index));
     });
-    backButton.style.setProperty('--card-order', String(parts.length));
-    backButton.style.setProperty('--sink-order', '0');
+    // The "+" button rises in and sinks away together with the back button.
+    for (const button of [backButton, addButton]) {
+      button.style.setProperty('--card-order', String(parts.length));
+      button.style.setProperty('--sink-order', '0');
+    }
   }
 
-  // While a card is open, only the card and the back button react.
+  // The buttons at the bottom of an open card: the back button, and "+" in the goal card.
+  const bottomButtons = () =>
+    canAdd && openCard?.dataset.card === 'goal' ? [backButton, addButton] : [backButton];
+
+  // While a card is open, only the card and its buttons react.
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
-      node.inert = covered && node !== openCard && node !== backButton;
+      node.inert = covered && node !== openCard && !bottomButtons().includes(node);
     }
   }
 
@@ -253,8 +263,8 @@ export function createView(document, language) {
         // Now the parts rise in, one after the other, and the back button last.
         card.classList.add('settled');
         months.follow();
-        backButton.hidden = false;
-        await still(card, backButton);
+        for (const button of bottomButtons()) button.hidden = false;
+        await still(card, ...bottomButtons());
       })(),
     );
     moving = false;
@@ -269,8 +279,10 @@ export function createView(document, language) {
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
-    backButton.hidden = true;
-    backButton.classList.remove('sinking');
+    for (const button of [backButton, addButton]) {
+      button.hidden = true;
+      button.classList.remove('sinking');
+    }
     coverTheRest(false);
     const card = openCard;
     openCard = null;
@@ -283,11 +295,12 @@ export function createView(document, language) {
     moving = true;
     const card = await lockWhile(
       (async () => {
-        // First the back button and the parts sink away, in the reverse order.
+        // First the buttons and the parts sink away, in the reverse order.
         openCard.classList.add('closing');
-        backButton.classList.add('sinking');
-        await still(openCard, backButton);
-        backButton.hidden = true;
+        const buttons = bottomButtons();
+        for (const button of buttons) button.classList.add('sinking');
+        await still(openCard, ...buttons);
+        for (const button of buttons) button.hidden = true;
         // Then the card shrinks back to its place, and the number glides back down.
         const from = openCard.getBoundingClientRect();
         const to = placeholder.getBoundingClientRect();
@@ -471,6 +484,7 @@ export function createView(document, language) {
       loginMessage.hidden = !state.message;
     }
     if (state.screen === 'main') {
+      canAdd = Boolean(state.canAdd);
       showTotal(state.total);
       for (const { name, amount, on } of state.pills) {
         const pill = document.querySelector(`[data-pill="${name}"]`);
@@ -507,5 +521,6 @@ export function createView(document, language) {
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
     onTogglePill: (handler) => (togglePill = handler),
     onPickLanguage: (handler) => (pickLanguage = handler),
+    onAdd: (handler) => addButton.addEventListener('click', () => handler()),
   };
 }

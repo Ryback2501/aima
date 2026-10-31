@@ -481,6 +481,14 @@ html:not(.loading) .label {
   z-index: 30;
 }
 
+/* The "+" button of the open goal card: in the middle, at the same height as the back button. */
+#add {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(50% - var(--width) / 2);
+  z-index: 30;
+}
+
 /* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
    set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
    they sink away in the reverse order (--sink-order): the same movement, backwards. */
@@ -502,14 +510,16 @@ html:not(.loading) .label {
 }
 
 .label.open.settled.closing .rise-in,
-#back.sinking {
+#back.sinking,
+#add.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .label.open.settled .rise-in,
   .label.open.settled.closing .rise-in,
-  #back.sinking {
+  #back.sinking,
+  #add.sinking {
     animation: none;
   }
 }

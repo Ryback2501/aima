@@ -57,6 +57,13 @@ export const config = {
     },
   },
 
+  // The new movement form (only for people who can edit the sheet). Its Source and Category
+  // lists are the dropdown lists of these cells: the first movement row, under the headers.
+  form: {
+    sourceList: 'Movements!A2',
+    categoryList: 'Movements!C2',
+  },
+
   // What the app asks Google for.
   // "drive.file" lets the app open only the files the person picks for it in the Google file
   // picker: here, the one sheet. It also allows changes to that file, for when the app can add

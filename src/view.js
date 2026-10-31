@@ -8,6 +8,7 @@ import {
   createMonthNamer,
   createTranslator,
 } from './i18n.js';
+import { createForm } from './form-view.js';
 import { ICONS } from './icons.js';
 import { createMonths, endless } from './months-view.js';
 
@@ -226,10 +227,10 @@ export function createView(document, language) {
   const bottomButtons = () =>
     canAdd && openCard?.dataset.card === 'goal' ? [backButton, addButton] : [backButton];
 
-  // While a card is open, only the card and its buttons react.
+  // While a card is open, only the card (with the buttons inside it) and its buttons react.
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
-      node.inert = covered && node !== openCard && !bottomButtons().includes(node);
+      node.inert = covered && !openCard.contains(node) && !bottomButtons().includes(node);
     }
   }
 
@@ -275,7 +276,8 @@ export function createView(document, language) {
   // the end of closing).
   function putBack() {
     months.reset();
-    openCard.classList.remove('open', 'settled', 'closing');
+    formOpen = false;
+    openCard.classList.remove('open', 'settled', 'closing', 'adding');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
@@ -340,6 +342,34 @@ export function createView(document, language) {
     });
   }
   backButton.addEventListener('click', () => close());
+
+  // The new movement form takes the place of the months in the open goal card ("adding", see
+  // styles.css). The back and "+" buttons hide while it is open.
+  const form = createForm(document.querySelector('.movement-form'));
+  let formOpen = false;
+
+  // Shows the form with the lists, or with a message when they could not be read. Nothing
+  // happens when the goal card closed while the lists were loading.
+  function openForm(lists) {
+    if (formOpen || moving || openCard?.dataset.card !== 'goal') return;
+    formOpen = true;
+    form.reset(lists);
+    for (const button of bottomButtons()) button.hidden = true;
+    openCard.classList.add('adding');
+    form.fitConcept();
+    document.querySelector('.movement-form').focus();
+  }
+
+  // Cancel closes the form, changes nothing, and brings back the months and the buttons.
+  function closeForm() {
+    if (!formOpen) return;
+    formOpen = false;
+    openCard.classList.remove('adding');
+    for (const button of bottomButtons()) button.hidden = false;
+    months.follow();
+    addButton.focus();
+  }
+  document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows
   // the flag of the app's language. A tap opens it upward to show every flag. A tap on a flag
@@ -522,5 +552,6 @@ export function createView(document, language) {
     onTogglePill: (handler) => (togglePill = handler),
     onPickLanguage: (handler) => (pickLanguage = handler),
     onAdd: (handler) => addButton.addEventListener('click', () => handler()),
+    openForm,
   };
 }

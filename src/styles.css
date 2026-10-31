@@ -654,6 +654,19 @@ html:not(.loading) .label {
   display: block;
 }
 
+/* The new movement form (see view.js) takes the place of the months while it is open. */
+.movement-form {
+  display: none;
+}
+
+.label.open.adding .movement-form {
+  display: flex;
+}
+
+.label.open.adding .month-area {
+  display: none;
+}
+
 .month-room {
   height: 100%;
   margin: 0 -24px;

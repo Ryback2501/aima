@@ -340,8 +340,14 @@ test.describe('selecting movements', () => {
       await openGoal(page);
       await tapMonth(page, 0);
 
-      await hold(page, movement(page, 0, 0));
+      // The fade starts at half a second, so it is checked while the finger is still down.
+      const lift = await pressOn(page, movement(page, 0, 0));
+      // Checked on every frame, so the check is not late.
+      await page.waitForFunction(() => document.querySelector('.movement.selected'), null, {
+        timeout: 1000,
+      });
       expect(await borderFades(movement(page, 0, 0))).toEqual([250]);
+      await lift();
       await expect.poll(() => borderOf(movement(page, 0, 0)).then((b) => b.opacity)).toBe(1);
 
       await tap(movement(page, 0, 0));

@@ -154,7 +154,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         months: goalMonths(movements, config.goal),
       };
       canAdd = editor;
-      // The form's lists load now, so the form is ready when "+" is tapped.
+      // The form's lists load now, so the form is ready when "+" is tapped. They load again at
+      // every sign-in, because the sheet's dropdowns may have changed.
+      lists = null;
       if (canAdd) getLists().catch(() => {});
       showMain();
     } catch (error) {

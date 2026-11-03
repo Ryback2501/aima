@@ -277,6 +277,7 @@ export function createView(document, language) {
   function putBack() {
     months.reset();
     formOpen = false;
+    formAsked = false;
     openCard.classList.remove('open', 'settled', 'closing', 'adding');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
@@ -347,11 +348,14 @@ export function createView(document, language) {
   // styles.css). The back and "+" buttons hide while it is open.
   const form = createForm(document.querySelector('.movement-form'));
   let formOpen = false;
+  // True after a tap on "+", until the form opens or the goal card closes.
+  let formAsked = false;
 
   // Shows the form with the lists, or with a message when they could not be read. Nothing
-  // happens when the goal card closed while the lists were loading.
+  // happens when the goal card closed while the lists were loading, even if it is open again.
   function openForm(lists) {
-    if (formOpen || moving || openCard?.dataset.card !== 'goal') return;
+    if (!formAsked || formOpen || moving || openCard?.dataset.card !== 'goal') return;
+    formAsked = false;
     formOpen = true;
     form.reset(lists);
     for (const button of bottomButtons()) button.hidden = true;
@@ -551,7 +555,11 @@ export function createView(document, language) {
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
     onTogglePill: (handler) => (togglePill = handler),
     onPickLanguage: (handler) => (pickLanguage = handler),
-    onAdd: (handler) => addButton.addEventListener('click', () => handler()),
+    onAdd: (handler) =>
+      addButton.addEventListener('click', () => {
+        formAsked = true;
+        handler();
+      }),
     openForm,
   };
 }

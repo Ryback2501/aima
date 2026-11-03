@@ -79,7 +79,7 @@ const startAnimationLog = (page) =>
             who,
             step,
             name: event.animationName,
-            time: performance.now(),
+            time: window.performance.now(),
           });
         },
         true,

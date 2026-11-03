@@ -1040,6 +1040,38 @@ html:not(.loading) .label {
   fill: var(--movement-color, currentColor);
 }
 
+/* A selected movement gets the same blue-to-purple border as a form field in use. The border is
+   a layer over the movement (the mask keeps only its edge). It fades in and out as fast as the
+   pills of the Total. The movement's text can never be selected, and a long press on it never
+   opens the phone's own menu. */
+.movement {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.movement::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: linear-gradient(to bottom right, #60a5fa, #a78bfa) border-box;
+  -webkit-mask:
+    linear-gradient(#000000, #000000) padding-box,
+    linear-gradient(#000000, #000000);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000000, #000000) padding-box exclude,
+    linear-gradient(#000000, #000000);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--pill-fade) ease-in-out;
+}
+
+.movement.selected::after {
+  opacity: 1;
+}
+
 /* The date above the movements of a day: dark, centered text on a grey band (light at the top,
    a little darker at the bottom), so it is easy to see. While the list scrolls, it stays at the
    top of the list. The next date stops at the same place and covers it, because it comes later
@@ -1128,7 +1160,8 @@ html:not(.loading) .label {
 @media (prefers-reduced-motion: reduce) {
   .month-column,
   .month,
-  .month-arrow {
+  .month-arrow,
+  .movement::after {
     transition: none;
   }
 }

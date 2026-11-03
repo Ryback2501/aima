@@ -334,6 +334,8 @@ export function createView(document, language) {
     lockWhile,
     settled: (node) => nextFrame().then(() => still(node)),
     reduceMotion,
+    // Only people who can edit the sheet can select movements, like the "+" button.
+    canSelect: () => canAdd,
   });
 
   for (const card of document.querySelectorAll('[data-expandable]')) {
@@ -378,6 +380,8 @@ export function createView(document, language) {
           button.hidden = true;
           button.classList.remove('sinking');
         }
+        // The months are hidden now. When the form closes, no movement is selected.
+        months.unselectAll();
         form.reset(lists);
         card.classList.add('adding');
         card.classList.remove('hiding-months');

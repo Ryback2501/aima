@@ -24,9 +24,11 @@ const config = {
     to: '2026-12-31',
     limit: 3000,
     skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
+    sourceOrder: ['Bank', 'Cash'],
+    sourcePairs: {},
   },
   // The cells whose dropdown lists give the options of the new movement form.
-  form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2' },
+  form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2', sheet: 'Sheet2', firstRow: 2 },
 };
 
 // 5 October 2026 as the sheet sends it: days since 30 December 1899.
@@ -58,9 +60,18 @@ function setup({
   canEdit = async () => false,
   // The options of the dropdown list in a cell.
   dropdown = async (cell) => (cell === 'Sheet2!A2' ? ['Bank', 'Cash'] : ['Car', 'House']),
+  // The movement rows as the save reads them (formulas kept), from the first movement row.
+  formulas = async () => [['Cash', OCTOBER_5, 'Food', 'Shop', -12.5]],
+  // The number and the size of the movements sheet.
+  sheet = async () => ({ sheetId: 7, rowCount: 100 }),
+  // What happens when rows are written.
+  write = async () => {},
 } = {}) {
   const screens = [];
   const forms = [];
+  // What the form showed: the missing fields of each Save, the saving state, the failures and
+  // the closings after a save.
+  const formLog = { missing: [], saving: [], failed: 0, closed: 0 };
   const languages = [];
   const handlers = {};
   const view = {
@@ -72,6 +83,11 @@ function setup({
     onPickLanguage: (handler) => (handlers.pickLanguage = handler),
     onAdd: (handler) => (handlers.add = handler),
     openForm: (form) => forms.push(form),
+    onSave: (handler) => (handlers.save = handler),
+    showMissing: (names) => formLog.missing.push(names),
+    setSaving: (saving) => formLog.saving.push(saving),
+    saveFailed: () => (formLog.failed += 1),
+    closeForm: () => (formLog.closed += 1),
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -86,6 +102,7 @@ function setup({
     picks: [],
     edits: 0,
     dropdowns: [],
+    writes: [],
   };
   const auth = {
     signIn: (options) => {
@@ -122,7 +139,15 @@ function setup({
       },
       getValues: async (range, options) => {
         log.values.push({ spreadsheetId, range, options });
-        return movements(range);
+        return options?.formulas ? formulas(range) : movements(range);
+      },
+      getSheet: async (name) => {
+        log.sheets = [...(log.sheets ?? []), name];
+        return sheet(name);
+      },
+      writeRows: async (change) => {
+        log.writes.push(change);
+        return write(change);
       },
       canEdit: async () => {
         log.edits += 1;
@@ -135,7 +160,7 @@ function setup({
     }),
   });
   const last = () => screens.at(-1);
-  return { app, session, screens, languages, handlers, log, last, forms };
+  return { app, session, screens, languages, handlers, log, last, forms, formLog };
 }
 
 test('the app starts on the login page when nobody is signed in', async () => {
@@ -667,4 +692,127 @@ test('after the lists could not be read, the next tap on "+" tries again', async
   await handlers.add();
 
   assert.deepEqual(forms, [{ failed: true }, { sources: ['Cash'], categories: ['Car'] }]);
+});
+
+// A movement filled in the form: the amount is the typed numbers, the last two are the cents.
+const filled = {
+  source: 'Cash',
+  date: '2026-10-05',
+  category: 'Food',
+  concept: '  Bakery  ',
+  digits: '1250',
+  sign: 'minus',
+};
+
+async function signedInEditor(options = {}) {
+  const parts = setup({ canEdit: async () => true, ...options });
+  await parts.app.start();
+  await parts.handlers.signIn();
+  return parts;
+}
+
+test('Save with empty required fields says which ones, and writes nothing', async () => {
+  const { handlers, log, formLog } = await signedInEditor();
+
+  await handlers.save({ ...filled, source: '', digits: '' });
+
+  assert.deepEqual(formLog.missing, [['source', 'amount']]);
+  assert.deepEqual(log.writes, []);
+  assert.equal(formLog.closed, 0);
+});
+
+test('Save writes the movement sorted with its day and the later days, from its first row', async () => {
+  const { handlers, log } = await signedInEditor({
+    formulas: async () => [
+      ['Cash', OCTOBER_5 - 1, 'Food', 'Old', -1],
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Bank', OCTOBER_5 + 1, 'Food', 'Later', -3],
+    ],
+  });
+
+  await handlers.save({ ...filled, source: 'Bank' });
+
+  assert.deepEqual(log.sheets, ['Sheet2']);
+  assert.equal(log.values.at(-1).range, 'Sheet2!A2:E');
+  assert.deepEqual(log.writes, [
+    {
+      sheetId: 7,
+      rowCount: 100,
+      // The 3rd row of the sheet (counted from 0: row 2), where the day of the movement starts.
+      startRow: 2,
+      rows: [
+        ['Bank', OCTOBER_5, 'Food', 'Bakery', -12.5],
+        ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+        ['Bank', OCTOBER_5 + 1, 'Food', 'Later', -3],
+      ],
+    },
+  ]);
+});
+
+test('after saving, the Total and the goal are read again, and the form closes', async () => {
+  const { handlers, log, formLog, last } = await signedInEditor();
+  const reads = log.cells.length;
+
+  await handlers.save(filled);
+
+  assert.equal(log.cells.length, reads + 1);
+  assert.equal(last().screen, 'main');
+  assert.equal(formLog.closed, 1);
+  assert.equal(formLog.failed, 0);
+  assert.deepEqual(formLog.missing, [[]]);
+});
+
+test('while saving, Save and Cancel are blocked, and a second Save writes nothing more', async () => {
+  let finish;
+  const { handlers, log, formLog } = await signedInEditor({
+    write: () => new Promise((done) => (finish = done)),
+  });
+
+  const first = handlers.save(filled);
+  await settle();
+  await handlers.save(filled);
+  finish();
+  await first;
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(formLog.saving, [true, false]);
+  assert.equal(formLog.closed, 1);
+});
+
+test('when saving fails, the form stays open and says so, and the next Save writes once', async () => {
+  let online = false;
+  const { handlers, log, formLog } = await signedInEditor({
+    write: async () => {
+      if (!online) throw new SheetsError('Could not reach Google.');
+    },
+  });
+
+  await handlers.save(filled);
+
+  assert.equal(formLog.failed, 1);
+  assert.equal(formLog.closed, 0);
+
+  online = true;
+  await handlers.save(filled);
+
+  assert.equal(log.writes.length, 2);
+  assert.equal(formLog.failed, 1);
+  assert.equal(formLog.closed, 1);
+});
+
+test('when the save worked but the sheet cannot be read again, the form still closes', async () => {
+  let saved = false;
+  const { handlers, formLog } = await signedInEditor({
+    cells: async () => {
+      if (saved) throw new SheetsError('Could not reach Google.');
+      return [1000, -200.5, 300, 50];
+    },
+    write: async () => (saved = true),
+  });
+
+  await handlers.save(filled);
+
+  // The movement is in the sheet: saying "not saved" would make the person save it twice.
+  assert.equal(formLog.failed, 0);
+  assert.equal(formLog.closed, 1);
 });

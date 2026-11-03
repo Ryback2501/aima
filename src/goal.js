@@ -5,8 +5,8 @@ const DAY = 86_400_000;
 // The sheet counts dates in days since 30 December 1899.
 const SHEET_START = Date.UTC(1899, 11, 30);
 
-// "2026-10-01" → the sheet's day number for that date.
-function dayNumber(date) {
+// "2026-10-01" → the sheet's day number for that date. Saving a movement uses it too.
+export function dayNumber(date) {
   return (Date.parse(`${date}T00:00:00Z`) - SHEET_START) / DAY;
 }
 

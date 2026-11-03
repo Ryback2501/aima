@@ -4,12 +4,11 @@
 //
 // A movement row is: source, date (the sheet's day number), category, concept, amount.
 
-const DAY = 86_400_000;
-// The sheet counts dates in days since 30 December 1899.
-const SHEET_START = Date.UTC(1899, 11, 30);
+import { dayNumber } from './goal.js';
 
-// "2026-10-05" (a date of the form) → the sheet's day number for that date.
-export const sheetDay = (date) => (Date.parse(`${date}T00:00:00Z`) - SHEET_START) / DAY;
+// "2026-10-05" (a date of the form) → the sheet's day number for that date, the same way the
+// goal counts days.
+export const sheetDay = dayNumber;
 
 const text = (value) => String(value ?? '').trim();
 // The day of a movement row, without its time, or null when the row has no date.

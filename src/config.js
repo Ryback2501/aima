@@ -88,8 +88,8 @@ export const config = {
 
   // What the app asks Google for.
   // "drive.file" lets the app open only the files the person picks for it in the Google file
-  // picker: here, the one sheet. It also allows changes to that file, for when the app can add
-  // and change data. Today the app only reads.
+  // picker: here, the one sheet. It also allows changes to that file: the app saves new
+  // movements into it.
   scopes: [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',

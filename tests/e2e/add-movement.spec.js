@@ -360,17 +360,9 @@ test.describe('the new movement form', () => {
     near(await height(), oneLine);
   });
 
-  test('Amount opens a number keyboard with decimals, and has a "− / +" switch on "−"', async ({
-    page,
-  }) => {
+  test('Amount has a "− / +" switch on its left, set to "−"', async ({ page }) => {
     await openForm(page);
     const amount = field(page, 'amount');
-
-    await expect(amount).toHaveAttribute('inputmode', 'decimal');
-    await amount.fill('12,50');
-    await expect(amount).toHaveValue('12,50');
-    await amount.fill('12.50');
-    await expect(amount).toHaveValue('12.50');
 
     // The switch is left of the amount, and starts on "−".
     const switchBox = await sign(page).boundingBox();
@@ -566,6 +558,240 @@ test.describe('the new movement form', () => {
       }
       expect(await page.locator('#goal-value').boundingBox()).toEqual(number);
     });
+  });
+
+  test.describe('the amount field', () => {
+    // Types keys one after the other, like a person, in the Amount field.
+    async function typeAmount(page, keys) {
+      await field(page, 'amount').focus();
+      await page.keyboard.type(keys);
+    }
+    // Pastes a text into the Amount field, as the browser does it.
+    const paste = (page, text) =>
+      field(page, 'amount').evaluate((node, text) => {
+        const data = new window.DataTransfer();
+        data.setData('text/plain', text);
+        node.dispatchEvent(
+          new window.ClipboardEvent('paste', {
+            clipboardData: data,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }, text);
+    // Where the cursor or the selection is: [start, end].
+    const selection = (page) =>
+      field(page, 'amount').evaluate((node) => [node.selectionStart, node.selectionEnd]);
+    const selectAll = (page) => page.keyboard.press('ControlOrMeta+a');
+
+    test('on a phone, it opens a keyboard with only numbers', async ({ page }) => {
+      await openForm(page);
+
+      await expect(field(page, 'amount')).toHaveAttribute('inputmode', 'numeric');
+    });
+
+    test('before typing, it is empty and shows a grey 0.00 hint', async ({ page }) => {
+      await openForm(page);
+
+      await expect(field(page, 'amount')).toHaveValue('');
+      await expect(field(page, 'amount')).toHaveAttribute('placeholder', '0.00');
+    });
+
+    test('the last two numbers are the cents', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+
+      await typeAmount(page, '5');
+      await expect(amount).toHaveValue('0.05');
+      await page.keyboard.type('0');
+      await expect(amount).toHaveValue('0.50');
+      await page.keyboard.type('0');
+      await expect(amount).toHaveValue('5.00');
+    });
+
+    test('a 0 typed into the empty field is ignored', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+
+      await typeAmount(page, '0');
+      await expect(amount).toHaveValue('');
+      await page.keyboard.type('7');
+      await expect(amount).toHaveValue('0.07');
+    });
+
+    test('big amounts show the thousands mark, and only 8 numbers are taken', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+
+      await typeAmount(page, '123456');
+      await expect(amount).toHaveValue('1,234.56');
+      await page.keyboard.type('78');
+      await expect(amount).toHaveValue('123,456.78');
+      await page.keyboard.type('9');
+      await expect(amount).toHaveValue('123,456.78');
+    });
+
+    test('letters, spaces, signs, commas and dots are ignored', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+
+      await typeAmount(page, 'ab -+,.€');
+      await expect(amount).toHaveValue('');
+      await page.keyboard.type('1250');
+      await page.keyboard.type('x -+,.€');
+      await expect(amount).toHaveValue('12.50');
+    });
+
+    test('Backspace and the Delete key remove the last number', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '1250');
+
+      for (const shown of ['1.25', '0.12', '0.01', '']) {
+        await page.keyboard.press('Backspace');
+        await expect(amount).toHaveValue(shown);
+      }
+      await page.keyboard.type('1250');
+      await page.keyboard.press('Delete');
+      await expect(amount).toHaveValue('1.25');
+    });
+
+    test('the cursor always goes back to the end', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '1250');
+
+      // A click near the start of the number.
+      const box = await amount.boundingBox();
+      await amount.click({ position: { x: 2, y: box.height / 2 } });
+      await expect.poll(() => selection(page)).toEqual([5, 5]);
+      await page.keyboard.press('Home');
+      await expect.poll(() => selection(page)).toEqual([5, 5]);
+      await page.keyboard.type('3');
+      await expect(amount).toHaveValue('125.03');
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.press('Backspace');
+      await expect(amount).toHaveValue('12.50');
+    });
+
+    test('only the whole amount can be selected', async ({ page }) => {
+      await openForm(page);
+      await typeAmount(page, '1250');
+
+      await page.keyboard.press('Shift+ArrowLeft');
+      await expect.poll(() => selection(page)).toEqual([0, 5]);
+      await field(page, 'amount').evaluate((node) => node.setSelectionRange(1, 3));
+      await expect.poll(() => selection(page)).toEqual([0, 5]);
+    });
+
+    test('with all of it selected, delete and cut empty it, and typing or pasting replaces it', async ({
+      page,
+    }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+
+      await typeAmount(page, '1250');
+      await selectAll(page);
+      await page.keyboard.press('Backspace');
+      await expect(amount).toHaveValue('');
+
+      await page.keyboard.type('1250');
+      await selectAll(page);
+      await page.keyboard.press('ControlOrMeta+x');
+      await expect(amount).toHaveValue('');
+
+      await page.keyboard.type('1250');
+      await selectAll(page);
+      await page.keyboard.type('7');
+      await expect(amount).toHaveValue('0.07');
+
+      await selectAll(page);
+      await paste(page, '3,00');
+      await expect(amount).toHaveValue('3.00');
+    });
+
+    test('a paste adds only its numbers, at the end, as if they were typed', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await amount.focus();
+
+      await paste(page, 'Total: 12,50 €');
+      await expect(amount).toHaveValue('12.50');
+
+      await selectAll(page);
+      await page.keyboard.press('Backspace');
+      await page.keyboard.type('100');
+      await paste(page, '25');
+      await expect(amount).toHaveValue('100.25');
+    });
+
+    test('a paste that does not fit adds only the first numbers that fit', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '1234567');
+      await expect(amount).toHaveValue('12,345.67');
+
+      await paste(page, '89');
+      await expect(amount).toHaveValue('123,456.78');
+      await paste(page, '99');
+      await expect(amount).toHaveValue('123,456.78');
+    });
+
+    test('undo and redo do nothing', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '12');
+
+      await page.keyboard.press('ControlOrMeta+z');
+      await expect(amount).toHaveValue('0.12');
+      await page.keyboard.press('ControlOrMeta+y');
+      await page.keyboard.press('ControlOrMeta+Shift+z');
+      await expect(amount).toHaveValue('0.12');
+    });
+
+    test('the "− / +" switch does not change the amount', async ({ page }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '1250');
+
+      await sign(page).click();
+      await expect(sign(page)).toHaveAttribute('data-sign', 'plus');
+      await expect(amount).toHaveValue('12.50');
+    });
+
+    for (const [language, marks] of [
+      ['es', ['1.234,56', '123.456,78']],
+      // In Russian the thousands mark is a space that does not break the line.
+      ['ru', ['1\u00a0234,56', '123\u00a0456,78']],
+    ]) {
+      test(`in "${language}", it uses a comma for the cents and the language's thousands mark`, async ({
+        page,
+      }) => {
+        await openMain(page);
+        const picker = page.locator('#main [data-card="language"]');
+        await picker.locator('[aria-current="true"]').click();
+        await expect.poll(() => locked(page)).toBe(false);
+        await picker.locator(`[data-language="${language}"]`).click();
+        await expect.poll(() => locked(page)).toBe(false);
+        await goalCard(page).click();
+        await expect(back(page)).toBeVisible();
+        await expect.poll(() => locked(page)).toBe(false);
+        await add(page).click();
+        await expect(form(page)).toBeVisible();
+        await expect.poll(() => locked(page)).toBe(false);
+        const amount = form(page).getByLabel(STRINGS[language].amount, { exact: true });
+
+        await expect(amount).toHaveAttribute('placeholder', '0,00');
+        await amount.focus();
+        await page.keyboard.type('100');
+        await expect(amount).toHaveValue('1,00');
+        await selectAll(page);
+        await page.keyboard.type('123456');
+        await expect(amount).toHaveValue(marks[0]);
+        await page.keyboard.type('78');
+        await expect(amount).toHaveValue(marks[1]);
+      });
+    }
   });
 
   test.describe('on a narrow phone', () => {

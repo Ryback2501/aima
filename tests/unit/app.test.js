@@ -733,7 +733,8 @@ test('Save writes the movement sorted with its day and the later days, from its 
   await handlers.save({ ...filled, source: 'Bank' });
 
   assert.deepEqual(log.sheets, ['Sheet2']);
-  assert.equal(log.values.at(-1).range, 'Sheet2!A2:E');
+  // The save reads the rows again, with their formulas, just before writing.
+  assert.ok(log.values.some(({ range, options }) => range === 'Sheet2!A2:E' && options.formulas));
   assert.deepEqual(log.writes, [
     {
       sheetId: 7,

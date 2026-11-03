@@ -55,6 +55,42 @@ const PURPLE = 'rgb(167, 139, 250)';
 const backgroundOf = (locator) =>
   locator.evaluate((node) => getComputedStyle(node).backgroundImage);
 
+// Writes down every animation that starts or ends on the back and "+" buttons, the months
+// (month0 is the top one) and the form: which one, which animation, and when.
+const startAnimationLog = (page) =>
+  page.evaluate(() => {
+    window.__animationLog = [];
+    const nameOf = (node) => {
+      if (node.id === 'back' || node.id === 'add') return node.id;
+      if (node.classList.contains('movement-form')) return 'form';
+      if (node.classList.contains('month')) {
+        return `month${[...document.querySelectorAll('.month')].indexOf(node)}`;
+      }
+      return null;
+    };
+    for (const type of ['animationstart', 'animationend']) {
+      document.addEventListener(
+        type,
+        (event) => {
+          const who = nameOf(event.target);
+          if (!who) return;
+          const step = type === 'animationstart' ? 'start' : 'end';
+          window.__animationLog.push({
+            who,
+            step,
+            name: event.animationName,
+            time: performance.now(),
+          });
+        },
+        true,
+      );
+    }
+  });
+const animationLog = (page) => page.evaluate(() => window.__animationLog);
+// The moment an animation started or ended, from the log.
+const momentOf = (log, who, step, name) =>
+  log.find((entry) => entry.who === who && entry.step === step && entry.name === name)?.time;
+
 test.describe('the "+" button', () => {
   test('a person who can edit sees it at the bottom, in the middle, like the back button', async ({
     page,
@@ -441,6 +477,95 @@ test.describe('the new movement form', () => {
     await openForm(page, { dropdowns: 'none' });
 
     await expect(form(page).locator('.form-message')).toHaveText(STRINGS.en.listsFailed);
+  });
+
+  test('with "reduce motion" on, the form opens and closes at once, with no animation', async ({
+    page,
+  }) => {
+    await openGoal(page);
+    await startAnimationLog(page);
+
+    await add(page).click();
+    await expect(form(page)).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+    await cancel(page).click();
+    await expect(form(page)).toBeHidden();
+    await expect(back(page)).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+
+    expect((await animationLog(page)).filter(({ step }) => step === 'start')).toEqual([]);
+  });
+
+  test.describe('with motion', () => {
+    test.use({ reducedMotion: 'no-preference' });
+    const months = ['month0', 'month1', 'month2'];
+
+    test('a tap on "+" sinks the buttons, then the months from the bottom up, then the form rises in', async ({
+      page,
+    }) => {
+      await openGoal(page);
+      const number = await page.locator('#goal-value').boundingBox();
+      await startAnimationLog(page);
+
+      await add(page).click();
+      await expect(form(page)).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+
+      const log = await animationLog(page);
+      const at = (who, step, name) => momentOf(log, who, step, name);
+      // First the back and "+" buttons, with the sinking of a closing card.
+      for (const button of ['back', 'add']) {
+        expect(at(button, 'start', 'card-sink')).toBeLessThan(at('month2', 'start', 'card-sink'));
+      }
+      // Then the months, from the bottom up.
+      expect(at('month2', 'start', 'card-sink')).toBeLessThan(at('month1', 'start', 'card-sink'));
+      expect(at('month1', 'start', 'card-sink')).toBeLessThan(at('month0', 'start', 'card-sink'));
+      // The form rises in like a card (fades in and moves up), after every month has sunk.
+      for (const month of months) {
+        expect(at('form', 'start', 'card-rise')).toBeGreaterThanOrEqual(
+          at(month, 'end', 'card-sink'),
+        );
+      }
+      await expect(back(page)).toBeHidden();
+      await expect(add(page)).toBeHidden();
+      // The goal number does not move.
+      expect(await page.locator('#goal-value').boundingBox()).toEqual(number);
+    });
+
+    test('Cancel plays it in reverse: the form sinks, the months rise from the top, the buttons last', async ({
+      page,
+    }) => {
+      await openGoal(page);
+      await add(page).click();
+      await expect(form(page)).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+      const number = await page.locator('#goal-value').boundingBox();
+      await startAnimationLog(page);
+
+      await cancel(page).click();
+      await expect(back(page)).toBeVisible();
+      await expect.poll(() => locked(page)).toBe(false);
+
+      await expect(form(page)).toBeHidden();
+      const log = await animationLog(page);
+      const at = (who, step, name) => momentOf(log, who, step, name);
+      // First the form sinks away (fades out and moves down), then the months rise in.
+      for (const month of months) {
+        expect(at(month, 'start', 'card-rise')).toBeGreaterThanOrEqual(
+          at('form', 'end', 'card-sink'),
+        );
+      }
+      // The months rise from the top down.
+      expect(at('month0', 'start', 'card-rise')).toBeLessThan(at('month1', 'start', 'card-rise'));
+      expect(at('month1', 'start', 'card-rise')).toBeLessThan(at('month2', 'start', 'card-rise'));
+      // The back and "+" buttons rise in last.
+      for (const button of ['back', 'add']) {
+        expect(at(button, 'start', 'card-rise')).toBeGreaterThan(
+          at('month2', 'start', 'card-rise'),
+        );
+      }
+      expect(await page.locator('#goal-value').boundingBox()).toEqual(number);
+    });
   });
 
   test.describe('on a narrow phone', () => {

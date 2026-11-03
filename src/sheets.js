@@ -151,6 +151,17 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
         fields: 'userEnteredValue',
       },
     });
+    // Added rows have no format yet: they get the format of the last row that was there, so
+    // dates still look like dates and amounts like amounts.
+    if (endRow > rowCount) {
+      requests.push({
+        copyPaste: {
+          source: { sheetId, startRowIndex: rowCount - 1, endRowIndex: rowCount },
+          destination: { sheetId, startRowIndex: rowCount, endRowIndex: endRow },
+          pasteType: 'PASTE_FORMAT',
+        },
+      });
+    }
     await request(`${sheetUrl}:batchUpdate`, { requests });
   }
 

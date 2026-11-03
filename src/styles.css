@@ -791,6 +791,12 @@ html:not(.loading) .label {
   color: #9aa3a0;
 }
 
+/* The amount sits on the right, like on a shop card machine: the numbers grow to the left, and
+   the cursor is always on the right, also next to the grey hint when the field is empty. */
+#movement-amount {
+  text-align: right;
+}
+
 /* The amount, with the "− / +" switch on its left. */
 .amount-row {
   display: flex;

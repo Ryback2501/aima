@@ -4,6 +4,7 @@ import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from './components.js';
 import { FLAGS } from './flags.js';
 import {
   createDayNamer,
+  createAmountFormatter,
   createMoneyFormatter,
   createMonthNamer,
   createTranslator,
@@ -28,12 +29,13 @@ export function createView(document, language) {
 
   // The words, the amounts, the month names and the dates, in the app's language. useLanguage
   // changes them.
-  let appLanguage, t, formatMoney, monthName, dayName;
+  let appLanguage, t, formatMoney, formatAmount, monthName, dayName;
   function useLanguage(language) {
     appLanguage = language;
     document.documentElement.lang = language;
     t = createTranslator(language);
     formatMoney = createMoneyFormatter(language);
+    formatAmount = createAmountFormatter(language);
     monthName = createMonthNamer(language);
     dayName = createDayNamer(language);
     // Put the fixed words (button texts and so on) in the language.
@@ -348,7 +350,10 @@ export function createView(document, language) {
   // The new movement form takes the place of the months in the open goal card ("adding", see
   // styles.css). The back and "+" buttons hide while it is open.
   const formPanel = document.querySelector('.movement-form');
-  const form = createForm(formPanel);
+  const form = createForm(formPanel, {
+    // Always in the language of the moment, also after it changes.
+    formatAmount: (cents) => formatAmount(cents),
+  });
   let formOpen = false;
   // True after a tap on "+", until the form opens or the goal card closes.
   let formAsked = false;

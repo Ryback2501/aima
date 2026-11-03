@@ -6,6 +6,7 @@ import {
   browserLanguages,
   createTranslator,
   createMoneyFormatter,
+  createAmountFormatter,
   createMonthNamer,
   createDayNamer,
   STRINGS,
@@ -89,6 +90,20 @@ test('money is written the way each language writes euros', () => {
 test('small amounts and zero always show two decimals', () => {
   assert.equal(plain(createMoneyFormatter('es')(0)), '0,00 €');
   assert.equal(plain(createMoneyFormatter('en')(7)), '€7.00');
+});
+
+test('an amount being typed is written in cents with the marks of each language', () => {
+  assert.equal(createAmountFormatter('en')(123456), '1,234.56');
+  assert.equal(createAmountFormatter('es')(123456), '1.234,56');
+  // The same space as in the app's other amounts: one that does not break the line.
+  assert.equal(createAmountFormatter('ru')(123456), '1\u00a0234,56');
+  assert.equal(createAmountFormatter('es')(12345678), '123.456,78');
+});
+
+test('small amounts being typed always show two decimals, and no euro sign', () => {
+  assert.equal(createAmountFormatter('en')(5), '0.05');
+  assert.equal(createAmountFormatter('en')(0), '0.00');
+  assert.equal(createAmountFormatter('ru')(100), '1,00');
 });
 
 test('month names are in the app language, starting with a capital letter', () => {

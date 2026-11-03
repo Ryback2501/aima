@@ -93,8 +93,11 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     if (rule?.type === 'ONE_OF_LIST') {
       options = values;
     } else if (rule?.type === 'ONE_OF_RANGE' && values[0]) {
-      // The rule says where the options are, like "=Lists!A1:A9".
-      const rows = await getValues(values[0].replace(/^=/, ''));
+      // The rule says where the options are, like "=Lists!A1:A9". Without a sheet name, like
+      // "=$H$2:$H$9", the cells are on the same sheet as the dropdown.
+      const range = values[0].replace(/^=/, '');
+      const sheet = cell.slice(0, cell.lastIndexOf('!') + 1);
+      const rows = await getValues(range.includes('!') ? range : sheet + range);
       options = rows.flat().map(String);
     }
     options = options.map((option) => option.trim()).filter(Boolean);

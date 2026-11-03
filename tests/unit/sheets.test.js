@@ -349,3 +349,35 @@ function m5(source) {
   return [source, 46300, 'General', '', -1];
 }
 const oneRow = { sheetId: 7, rowCount: 10, startRow: 1, rows: [m5('Cash')] };
+
+test('writeRows writes a typed text that starts with "=" as text, not as a formula', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    ...oneRow,
+    rows: [['Cash', 46300, 'General', { text: '= dinner' }, -1]],
+  });
+
+  const { values } = JSON.parse(calls[0].options.body).requests[0].updateCells.rows[0];
+  assert.deepEqual(values[3], { userEnteredValue: { stringValue: '= dinner' } });
+});
+
+test('rows added at the end get the format of the last row, so dates still look like dates', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    sheetId: 7,
+    rowCount: 4,
+    startRow: 3,
+    rows: [m5('Cash'), m5('AMEX')],
+  });
+
+  const { requests } = JSON.parse(calls[0].options.body);
+  assert.deepEqual(requests.at(-1), {
+    copyPaste: {
+      source: { sheetId: 7, startRowIndex: 3, endRowIndex: 4 },
+      destination: { sheetId: 7, startRowIndex: 4, endRowIndex: 5 },
+      pasteType: 'PASTE_FORMAT',
+    },
+  });
+});

@@ -817,3 +817,11 @@ test('when the save worked but the sheet cannot be read again, the form still cl
   assert.equal(formLog.failed, 0);
   assert.equal(formLog.closed, 1);
 });
+
+test('a concept typed with "=" at the start is saved as text, never as a formula', async () => {
+  const { handlers, log } = await signedInEditor({ formulas: async () => [] });
+
+  await handlers.save({ ...filled, concept: '= dinner' });
+
+  assert.deepEqual(log.writes[0].rows, [['Cash', OCTOBER_5, 'Food', { text: '= dinner' }, -12.5]]);
+});

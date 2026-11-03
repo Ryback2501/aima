@@ -168,6 +168,22 @@ test('empty Source, Date, Category or Amount show a message under each, and noth
   expect(requests.saves).toEqual([]);
 });
 
+test('"Required" under a field goes away as soon as something is typed or picked in it', async ({
+  page,
+}) => {
+  await openForm(page);
+
+  await save(page).click();
+  await expect(fieldMessage(page, 'amount')).toBeVisible();
+  await expect(fieldMessage(page, 'source')).toBeVisible();
+
+  await field(page, 'amount').focus();
+  await page.keyboard.type('5');
+  await expect(fieldMessage(page, 'amount')).toBeHidden();
+  await field(page, 'source').selectOption('Cash');
+  await expect(fieldMessage(page, 'source')).toBeHidden();
+});
+
 test('a second tap on Save adds nothing, and Save and Cancel wait while it saves', async ({
   page,
 }) => {

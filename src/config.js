@@ -35,6 +35,25 @@ export const config = {
     // Where the money came from: the word in the first column, and its icon (the same icons as
     // the parts of the Total). A movement with another word, or none, shows no icon.
     sources: { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' },
+    // When a new movement is saved, the movements of one day are sorted by their source, in this
+    // order from top to bottom. A source that is not here goes last.
+    sourceOrder: [
+      'BBVA David',
+      'BBVA Común',
+      'Después',
+      'AMEX',
+      'ECI',
+      'ICON',
+      'Pluxee',
+      'Edenred',
+      'Cash',
+      'Polina',
+      'Provisioned',
+      'Deprovisioned',
+    ],
+    // Each Cash movement is followed right below by its Provisioned movement, the one with the
+    // same amount. A Provisioned movement with no Cash keeps its own place in the order above.
+    sourcePairs: { Cash: 'Provisioned' },
     // The first and the last day that count.
     from: '2026-10-01',
     to: '2026-12-31',
@@ -62,6 +81,9 @@ export const config = {
   form: {
     sourceList: 'Movements!A2',
     categoryList: 'Movements!C2',
+    // Where a new movement is saved: the sheet of the movements, and its first movement row.
+    sheet: 'Movements',
+    firstRow: 2,
   },
 
   // What the app asks Google for.

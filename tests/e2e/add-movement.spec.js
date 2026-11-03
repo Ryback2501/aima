@@ -710,6 +710,54 @@ test.describe('the new movement form', () => {
       await expect(amount).toHaveValue('3.00');
     });
 
+    test('with all of it selected, an ignored key or a paste with no numbers changes nothing', async ({
+      page,
+    }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '1250');
+
+      await selectAll(page);
+      await page.keyboard.type(',');
+      await expect(amount).toHaveValue('12.50');
+      await selectAll(page);
+      await page.keyboard.type('a');
+      await expect(amount).toHaveValue('12.50');
+      await selectAll(page);
+      await paste(page, 'abc');
+      await expect(amount).toHaveValue('12.50');
+    });
+
+    test('a phone keyboard that builds the text while typing still adds one number per key', async ({
+      page,
+    }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await typeAmount(page, '12');
+
+      // Such a keyboard sends a change that cannot be stopped, and the browser makes it itself.
+      await amount.evaluate((node) => {
+        const composing = { bubbles: true, isComposing: true, data: '5' };
+        node.dispatchEvent(new window.CompositionEvent('compositionstart', { bubbles: true }));
+        node.dispatchEvent(
+          new window.InputEvent('beforeinput', {
+            ...composing,
+            inputType: 'insertCompositionText',
+            cancelable: false,
+          }),
+        );
+        node.value += '5';
+        node.dispatchEvent(
+          new window.InputEvent('input', { ...composing, inputType: 'insertCompositionText' }),
+        );
+        node.dispatchEvent(
+          new window.CompositionEvent('compositionend', { bubbles: true, data: '5' }),
+        );
+      });
+
+      await expect(amount).toHaveValue('1.25');
+    });
+
     test('a paste adds only its numbers, at the end, as if they were typed', async ({ page }) => {
       await openForm(page);
       const amount = field(page, 'amount');

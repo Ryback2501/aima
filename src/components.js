@@ -60,6 +60,26 @@ export const CARDS = {
     colors: ['#6b7280', '#e5e7eb'],
     padding: { x: 0, y: 0 },
   },
+  // The "+" button of the open goal card, for people who can edit the sheet: it looks like the
+  // back button, in blue. Its content is the plus icon.
+  add: {
+    width: 56,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#3b82f6', '#93c5fd'],
+    padding: { x: 0, y: 0 },
+  },
+  // The Cancel button of the new movement form: it looks like the other buttons, in red, and
+  // fills the width of the form. Its content is the word.
+  cancel: {
+    width: 544,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#b91c1c', '#fca5a5'],
+    padding: { x: 16, y: 0 },
+  },
   // The language selector on the main screen: it looks like the back button, with the flag of
   // the app's language inside. A tap opens it upward to show every flag.
   language: {

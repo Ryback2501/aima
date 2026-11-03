@@ -120,6 +120,61 @@
               <div class="month-fade month-fade-top"></div>
               <div class="month-fade month-fade-bottom"></div>
             </div>
+            <!-- The new movement form. A tap on "+" shows it here, in place of the months. The
+                 lists are filled by form-view.js from the sheet's dropdowns. -->
+            <form class="movement-form" tabindex="-1" novalidate>
+              <h2 class="movement-form-title" data-i18n="newMovement">New movement</h2>
+              <div class="form-field">
+                <label for="movement-source" data-i18n="source">Source</label>
+                <div class="field-box"><select id="movement-source" name="source"></select></div>
+              </div>
+              <div class="form-field">
+                <label for="movement-date" data-i18n="date">Date</label>
+                <div class="field-box">
+                  <input id="movement-date" name="date" type="date" />
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="movement-category" data-i18n="category">Category</label>
+                <div class="field-box">
+                  <select id="movement-category" name="category"></select>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="movement-concept" data-i18n="concept">Concept</label>
+                <div class="field-box">
+                  <textarea id="movement-concept" name="concept" rows="1"></textarea>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="movement-amount" data-i18n="amount">Amount</label>
+                <!-- The switch says if the amount is taken away (−) or added (+). -->
+                <div class="amount-row">
+                  <button class="sign-switch" type="button" data-sign="minus">
+                    <span data-half="minus" class="chosen">−</span><span data-half="plus">+</span>
+                  </button>
+                  <div class="field-box">
+                    <input
+                      id="movement-amount"
+                      name="amount"
+                      type="text"
+                      inputmode="decimal"
+                      autocomplete="off"
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p class="form-message" role="status" data-i18n="listsFailed" hidden>
+                The lists could not be loaded.
+              </p>
+              <div class="form-buttons">
+                <!-- A card. Its look (sizes, colors) is set in components.js. -->
+                <button class="label card-button" data-card="cancel" type="button">
+                  <span data-i18n="cancel">Cancel</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
         <!-- Covers everything behind an open card in white. -->
@@ -135,6 +190,19 @@
           hidden
         >
           <span data-icon="back" data-icon-size="24"></span>
+        </button>
+        <!-- Opens the new movement form, in the open goal card, for people who can edit the
+             sheet. A card without a corner icon: its content is the plus icon. -->
+        <button
+          id="add"
+          class="label card-button"
+          data-card="add"
+          data-i18n-label="add"
+          aria-label="Add a movement"
+          type="button"
+          hidden
+        >
+          <span data-icon="plus" data-icon-size="24"></span>
         </button>
         <!-- While the language selector is open, covers the rest of the screen (see styles.css). -->
         <div id="picker-shield" hidden></div>

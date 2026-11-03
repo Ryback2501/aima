@@ -8,6 +8,7 @@ import {
   createMonthNamer,
   createTranslator,
 } from './i18n.js';
+import { createForm } from './form-view.js';
 import { ICONS } from './icons.js';
 import { createMonths, endless } from './months-view.js';
 
@@ -166,6 +167,9 @@ export function createView(document, language) {
   const mainScreen = element('main');
   const backdrop = element('backdrop');
   const backButton = element('back');
+  // The "+" button shows in the open goal card, only for people who can edit the sheet.
+  const addButton = element('add');
+  let canAdd = false;
   let openCard = null;
   let placeholder = null;
   let moving = false;
@@ -212,14 +216,21 @@ export function createView(document, language) {
       part.style.setProperty('--rise-order', String(index));
       part.style.setProperty('--sink-order', String(parts.length - index));
     });
-    backButton.style.setProperty('--card-order', String(parts.length));
-    backButton.style.setProperty('--sink-order', '0');
+    // The "+" button rises in and sinks away together with the back button.
+    for (const button of [backButton, addButton]) {
+      button.style.setProperty('--card-order', String(parts.length));
+      button.style.setProperty('--sink-order', '0');
+    }
   }
 
-  // While a card is open, only the card and the back button react.
+  // The buttons at the bottom of an open card: the back button, and "+" in the goal card.
+  const bottomButtons = () =>
+    canAdd && openCard?.dataset.card === 'goal' ? [backButton, addButton] : [backButton];
+
+  // While a card is open, only the card (with the buttons inside it) and its buttons react.
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
-      node.inert = covered && node !== openCard && node !== backButton;
+      node.inert = covered && !openCard.contains(node) && !bottomButtons().includes(node);
     }
   }
 
@@ -253,8 +264,8 @@ export function createView(document, language) {
         // Now the parts rise in, one after the other, and the back button last.
         card.classList.add('settled');
         months.follow();
-        backButton.hidden = false;
-        await still(card, backButton);
+        for (const button of bottomButtons()) button.hidden = false;
+        await still(card, ...bottomButtons());
       })(),
     );
     moving = false;
@@ -265,12 +276,17 @@ export function createView(document, language) {
   // the end of closing).
   function putBack() {
     months.reset();
-    openCard.classList.remove('open', 'settled', 'closing');
+    formOpen = false;
+    formAsked = false;
+    openCard.classList.remove('open', 'settled', 'closing', 'adding', 'hiding-months');
+    formPanel.classList.remove('sinking');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
-    backButton.hidden = true;
-    backButton.classList.remove('sinking');
+    for (const button of [backButton, addButton]) {
+      button.hidden = true;
+      button.classList.remove('sinking');
+    }
     coverTheRest(false);
     const card = openCard;
     openCard = null;
@@ -283,11 +299,12 @@ export function createView(document, language) {
     moving = true;
     const card = await lockWhile(
       (async () => {
-        // First the back button and the parts sink away, in the reverse order.
+        // First the buttons and the parts sink away, in the reverse order.
         openCard.classList.add('closing');
-        backButton.classList.add('sinking');
-        await still(openCard, backButton);
-        backButton.hidden = true;
+        const buttons = bottomButtons();
+        for (const button of buttons) button.classList.add('sinking');
+        await still(openCard, ...buttons);
+        for (const button of buttons) button.hidden = true;
         // Then the card shrinks back to its place, and the number glides back down.
         const from = openCard.getBoundingClientRect();
         const to = placeholder.getBoundingClientRect();
@@ -327,6 +344,69 @@ export function createView(document, language) {
     });
   }
   backButton.addEventListener('click', () => close());
+
+  // The new movement form takes the place of the months in the open goal card ("adding", see
+  // styles.css). The back and "+" buttons hide while it is open.
+  const formPanel = document.querySelector('.movement-form');
+  const form = createForm(formPanel);
+  let formOpen = false;
+  // True after a tap on "+", until the form opens or the goal card closes.
+  let formAsked = false;
+
+  // Shows the form with the lists, or with a message when they could not be read. Nothing
+  // happens when the goal card closed while the lists were loading, even if it is open again.
+  // First the buttons and the months sink away, like when a card closes ("hiding-months"). Then
+  // the form rises in, like a card.
+  async function openForm(lists) {
+    if (!formAsked || formOpen || moving || openCard?.dataset.card !== 'goal') return;
+    formAsked = false;
+    formOpen = true;
+    moving = true;
+    const card = openCard;
+    await lockWhile(
+      (async () => {
+        const buttons = bottomButtons();
+        for (const button of buttons) button.classList.add('sinking');
+        card.classList.add('hiding-months');
+        await still(card, ...buttons);
+        for (const button of buttons) {
+          button.hidden = true;
+          button.classList.remove('sinking');
+        }
+        form.reset(lists);
+        card.classList.add('adding');
+        card.classList.remove('hiding-months');
+        form.fitConcept();
+        await still(formPanel);
+      })(),
+    );
+    moving = false;
+    formPanel.focus();
+  }
+
+  // Cancel closes the form and changes nothing. The same movement in reverse: the form sinks
+  // away, then the months rise in from the top, and the back and "+" buttons last.
+  async function closeForm() {
+    if (!formOpen || moving) return;
+    moving = true;
+    const card = openCard;
+    await lockWhile(
+      (async () => {
+        formPanel.classList.add('sinking');
+        await still(formPanel);
+        formPanel.classList.remove('sinking');
+        formOpen = false;
+        card.classList.remove('adding');
+        const buttons = bottomButtons();
+        for (const button of buttons) button.hidden = false;
+        months.follow();
+        await still(card, ...buttons);
+      })(),
+    );
+    moving = false;
+    addButton.focus();
+  }
+  document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows
   // the flag of the app's language. A tap opens it upward to show every flag. A tap on a flag
@@ -471,6 +551,7 @@ export function createView(document, language) {
       loginMessage.hidden = !state.message;
     }
     if (state.screen === 'main') {
+      canAdd = Boolean(state.canAdd);
       showTotal(state.total);
       for (const { name, amount, on } of state.pills) {
         const pill = document.querySelector(`[data-pill="${name}"]`);
@@ -507,5 +588,11 @@ export function createView(document, language) {
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
     onTogglePill: (handler) => (togglePill = handler),
     onPickLanguage: (handler) => (pickLanguage = handler),
+    onAdd: (handler) =>
+      addButton.addEventListener('click', () => {
+        formAsked = true;
+        handler();
+      }),
+    openForm,
   };
 }

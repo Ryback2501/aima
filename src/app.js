@@ -19,6 +19,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // What the main screen shows, kept so a tap on a pill can show it again with new totals.
   let parts = [];
   let goal = null;
+  // True when this person may edit the sheet, so they may add movements.
+  let canAdd = false;
+  // The Source and Category lists of the new movement form, once they are loading or loaded.
+  let lists = null;
 
   const sheets = createSheets({
     spreadsheetId: config.spreadsheetId,
@@ -84,7 +88,33 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       return subtract ? sum - amount : sum + amount;
     }, 0);
     // Round to cents, so sums like 0.1 + 0.2 show as 0.30.
-    view.render({ screen: 'main', total: Math.round(total * 100) / 100, pills, goal });
+    view.render({ screen: 'main', total: Math.round(total * 100) / 100, pills, goal, canAdd });
+  }
+
+  // Reads the Source and Category lists from the sheet's dropdowns once. If it fails, the next
+  // call tries again.
+  function getLists() {
+    lists ??= Promise.all([
+      sheets.getDropdown(config.form.sourceList),
+      sheets.getDropdown(config.form.categoryList),
+    ]).then(
+      ([sources, categories]) => ({ sources, categories }),
+      (error) => {
+        lists = null;
+        throw error;
+      },
+    );
+    return lists;
+  }
+
+  // A tap on "+" opens the new movement form with the lists, or with a message when they
+  // cannot be read.
+  async function openForm() {
+    try {
+      view.openForm(await getLists());
+    } catch {
+      view.openForm({ failed: true });
+    }
   }
 
   // A tap on a pill switches that part of the Total on or off. The choice is remembered.
@@ -101,9 +131,11 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   async function check(token, { fresh = false, picked = false } = {}) {
     view.render({ screen: 'checking' });
     try {
-      const [amounts, movements] = await Promise.all([
+      const [amounts, movements, editor] = await Promise.all([
         sheets.getCells(config.pills.map(({ cell }) => cell)),
         sheets.getValues(config.goal.movements, { raw: true }),
+        // When Google cannot say, the person adds nothing, but the app still works.
+        sheets.canEdit().catch(() => false),
       ]);
       // We keep the account email only so the next sign-in can be one tap.
       if (fresh || !session.getHint()) {
@@ -121,6 +153,11 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         limit: config.goal.limit,
         months: goalMonths(movements, config.goal),
       };
+      canAdd = editor;
+      // The form's lists load now, so the form is ready when "+" is tapped. They load again at
+      // every sign-in, because the sheet's dropdowns may have changed.
+      lists = null;
+      if (canAdd) getLists().catch(() => {});
       showMain();
     } catch (error) {
       if (error instanceof NoAccessError && !picked) {
@@ -201,6 +238,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.onSignOut(signOut);
     view.onTogglePill(togglePill);
     view.onPickLanguage(chooseLanguage);
+    view.onAdd(openForm);
 
     const token = session.getToken();
     if (token) {

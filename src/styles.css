@@ -481,9 +481,19 @@ html:not(.loading) .label {
   z-index: 30;
 }
 
+/* The "+" button of the open goal card: in the middle, at the same height as the back button. */
+#add {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(50% - var(--width) / 2);
+  z-index: 30;
+}
+
 /* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
    set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
-   they sink away in the reverse order (--sink-order): the same movement, backwards. */
+   they sink away in the reverse order (--sink-order): the same movement, backwards.
+   The new movement form uses the same movements: before it appears, the months sink away
+   ("hiding-months"); then the form rises in, and on Cancel it sinks away ("sinking"). */
 @keyframes card-sink {
   to {
     opacity: 0;
@@ -496,20 +506,28 @@ html:not(.loading) .label {
   visibility: hidden;
 }
 
-.label.open.settled .rise-in {
+.label.open.settled .rise-in,
+.label.open.settled.adding .movement-form {
   animation: card-rise var(--rise-time) ease-out calc(var(--rise-order) * var(--rise-step))
     backwards;
 }
 
 .label.open.settled.closing .rise-in,
-#back.sinking {
+.label.open.settled.hiding-months .month,
+.label.open.settled.adding .movement-form.sinking,
+#back.sinking,
+#add.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .label.open.settled .rise-in,
+  .label.open.settled.adding .movement-form,
   .label.open.settled.closing .rise-in,
-  #back.sinking {
+  .label.open.settled.hiding-months .month,
+  .label.open.settled.adding .movement-form.sinking,
+  #back.sinking,
+  #add.sinking {
     animation: none;
   }
 }
@@ -642,6 +660,195 @@ html:not(.loading) .label {
 
 .label.open .month-area {
   display: block;
+}
+
+/* The new movement form (see view.js) takes the place of the months while it is open. */
+.movement-form {
+  display: none;
+}
+
+.label.open.adding .movement-form {
+  display: flex;
+}
+
+.label.open.adding .month-area {
+  display: none;
+}
+
+/* The back button is hidden while the form is open, so the card needs no room for it. */
+.label.open.adding {
+  padding-bottom: 16px;
+}
+
+/* The form: a light grey panel with a white border, like the months. When the screen is too
+   short for all of it, it scrolls inside its border. It rises in and sinks away with the open
+   card's movements (see above), without waiting for other parts. */
+.movement-form {
+  --rise-order: 0;
+  --sink-order: 0;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-height: 0;
+  width: min(100%, 360px);
+  margin-top: 16px;
+  padding: 12px 16px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 4px solid #ffffff;
+  border-radius: 24px;
+  background: #f5f6f8;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: default;
+}
+
+.movement-form:focus {
+  outline: none;
+}
+
+/* The title, with a thin line below it. */
+.movement-form-title {
+  margin: 0;
+  padding: 2px 0 10px;
+  border-bottom: 2px solid #e3e6ea;
+  color: #47524e;
+  font-size: 1.25rem;
+  font-weight: inherit;
+  text-align: center;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field label {
+  align-self: flex-start;
+  margin-left: 6px;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
+/* The grey box around each field. The field being used gets a blue-to-purple border. */
+.field-box {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: #e9ebef;
+}
+
+.field-box:focus-within {
+  background:
+    linear-gradient(#f3f5f8, #f3f5f8) padding-box,
+    linear-gradient(to bottom right, #60a5fa, #a78bfa) border-box;
+}
+
+/* The fields themselves have no look of their own: the box gives it. At least 16px, or
+   iPhones zoom in when a field is used. */
+.field-box select,
+.field-box input,
+.field-box textarea {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.0625rem;
+  outline: none;
+}
+
+/* A list to pick from, with a small arrow on the right. */
+.field-box select {
+  appearance: none;
+  padding-right: 24px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%235b6662' d='M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7L86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z'/%3E%3C/svg%3E")
+    right center / 16px no-repeat;
+  cursor: pointer;
+}
+
+/* The concept wraps onto more lines, and form-view.js makes the field as tall as its text. */
+.field-box textarea {
+  display: block;
+  padding: 9px 0;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.field-box input::placeholder {
+  color: #9aa3a0;
+}
+
+/* The amount, with the "− / +" switch on its left. */
+.amount-row {
+  display: flex;
+  gap: 10px;
+}
+
+.amount-row .field-box {
+  flex: 1;
+}
+
+/* A dark switch with two halves: the chosen sign is white. */
+.sign-switch {
+  display: flex;
+  flex: none;
+  width: 96px;
+  height: 46px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 23px;
+  background: var(--text-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sign-switch span {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  border-radius: 19px;
+  color: #ffffff;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sign-switch .chosen {
+  background: #ffffff;
+  color: var(--text);
+}
+
+/* Said when the lists cannot be read. */
+.form-message {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+/* The buttons at the bottom of the form. */
+.form-buttons {
+  display: flex;
+  flex: none;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.form-buttons .label {
+  flex: 1;
 }
 
 .month-room {

@@ -60,3 +60,11 @@ test('the movements start at the source column, and each source has an icon of t
   assert.deepEqual(config.goal.sources, { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' });
   for (const icon of Object.values(config.goal.sources)) assert.ok(ICONS[icon], icon);
 });
+
+// The dropdowns of the first movement row (row 2, under the headers) give the form's lists:
+// the source in the first column, the category in the third.
+test('the form reads its lists from the dropdowns of the first movement row', () => {
+  const sheet = config.goal.movements.split('!')[0];
+  assert.equal(config.form.sourceList, `${sheet}!A2`);
+  assert.equal(config.form.categoryList, `${sheet}!C2`);
+});

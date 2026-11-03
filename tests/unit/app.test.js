@@ -25,6 +25,8 @@ const config = {
     limit: 3000,
     skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
   },
+  // The cells whose dropdown lists give the options of the new movement form.
+  form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2' },
 };
 
 // 5 October 2026 as the sheet sends it: days since 30 December 1899.
@@ -52,8 +54,13 @@ function setup({
   // What the person does in the Google file picker: true = picks the sheet, false = closes it.
   pick = async () => true,
   pickerFails = false,
+  // What Google Drive says about editing the sheet: true, false, or it fails.
+  canEdit = async () => false,
+  // The options of the dropdown list in a cell.
+  dropdown = async (cell) => (cell === 'Sheet2!A2' ? ['Bank', 'Cash'] : ['Car', 'House']),
 } = {}) {
   const screens = [];
+  const forms = [];
   const languages = [];
   const handlers = {};
   const view = {
@@ -63,12 +70,23 @@ function setup({
     onSignOut: (handler) => (handlers.signOut = handler),
     onTogglePill: (handler) => (handlers.togglePill = handler),
     onPickLanguage: (handler) => (handlers.pickLanguage = handler),
+    onAdd: (handler) => (handlers.add = handler),
+    openForm: (form) => forms.push(form),
   };
   const session = createSession({
     sessionStorage: storage(),
     localStorage: storage(),
   });
-  const log = { signIns: [], revoked: [], cells: [], values: [], tokens: [], picks: [] };
+  const log = {
+    signIns: [],
+    revoked: [],
+    cells: [],
+    values: [],
+    tokens: [],
+    picks: [],
+    edits: 0,
+    dropdowns: [],
+  };
   const auth = {
     signIn: (options) => {
       log.signIns.push(options);
@@ -106,10 +124,18 @@ function setup({
         log.values.push({ spreadsheetId, range, options });
         return movements(range);
       },
+      canEdit: async () => {
+        log.edits += 1;
+        return canEdit();
+      },
+      getDropdown: async (cell) => {
+        log.dropdowns.push(cell);
+        return dropdown(cell);
+      },
     }),
   });
   const last = () => screens.at(-1);
-  return { app, session, screens, languages, handlers, log, last };
+  return { app, session, screens, languages, handlers, log, last, forms };
 }
 
 test('the app starts on the login page when nobody is signed in', async () => {
@@ -181,6 +207,7 @@ test('a person with access sees the total after sign-in', async () => {
         { year: 2026, month: 12, amount: null, days: [] },
       ],
     },
+    canAdd: false,
   });
 });
 
@@ -521,4 +548,123 @@ test('a language picked with the flag button is shown at once and kept on this p
   assert.equal(session.getLanguage(), 'es');
   // The words change, the numbers stay: the sheet is not read again.
   assert.equal(log.cells.length, reads);
+});
+
+// Waits until the work the app started in the background has finished.
+const settle = () => new Promise((done) => setTimeout(done, 0));
+
+test('a person who can edit the sheet may add movements', async () => {
+  const { app, handlers, log, last } = setup({ canEdit: async () => true });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(log.edits, 1);
+  assert.equal(last().screen, 'main');
+  assert.equal(last().canAdd, true);
+});
+
+test('a person who can only view the sheet may not add movements', async () => {
+  const { app, handlers, last } = setup({ canEdit: async () => false });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().screen, 'main');
+  assert.equal(last().canAdd, false);
+});
+
+test('when Google cannot say if the person can edit, the app works but adds nothing', async () => {
+  const { app, handlers, last } = setup({
+    canEdit: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().screen, 'main');
+  assert.equal(last().total, 549.5);
+  assert.equal(last().canAdd, false);
+});
+
+test('for a person who can edit, the lists of the form load in the background', async () => {
+  const { app, handlers, log } = setup({ canEdit: async () => true });
+  await app.start();
+
+  await handlers.signIn();
+  await settle();
+
+  assert.deepEqual(log.dropdowns.sort(), ['Sheet2!A2', 'Sheet2!C2']);
+});
+
+test('for a person who can only view, the lists of the form are never read', async () => {
+  const { app, handlers, log } = setup({ canEdit: async () => false });
+  await app.start();
+
+  await handlers.signIn();
+  await settle();
+
+  assert.deepEqual(log.dropdowns, []);
+});
+
+test('after signing out and in again, the lists of the form are read again', async () => {
+  const { app, handlers, log } = setup({ canEdit: async () => true });
+  await app.start();
+  await handlers.signIn();
+  await settle();
+
+  handlers.signOut();
+  await handlers.signIn();
+  await settle();
+
+  // The sheet's dropdowns may have changed: the lists are not kept from the first sign-in.
+  assert.equal(log.dropdowns.length, 4);
+});
+
+test('a tap on "+" opens the form with the source and category lists of the sheet', async () => {
+  const { app, handlers, log, forms } = setup({ canEdit: async () => true });
+  await app.start();
+  await handlers.signIn();
+
+  await handlers.add();
+
+  assert.deepEqual(forms, [{ sources: ['Bank', 'Cash'], categories: ['Car', 'House'] }]);
+  // The lists loaded in the background are used: they are not read again.
+  assert.equal(log.dropdowns.length, 2);
+});
+
+test('when the lists cannot be read, the form opens with a message', async () => {
+  const { app, handlers, forms } = setup({
+    canEdit: async () => true,
+    dropdown: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+  });
+  await app.start();
+  await handlers.signIn();
+
+  await handlers.add();
+
+  assert.deepEqual(forms, [{ failed: true }]);
+});
+
+test('after the lists could not be read, the next tap on "+" tries again', async () => {
+  let online = false;
+  const { app, handlers, forms } = setup({
+    canEdit: async () => true,
+    dropdown: async (cell) => {
+      if (!online) throw new SheetsError('Could not reach Google.');
+      return cell === 'Sheet2!A2' ? ['Cash'] : ['Car'];
+    },
+  });
+  await app.start();
+  await handlers.signIn();
+  await handlers.add();
+
+  online = true;
+  await handlers.add();
+
+  assert.deepEqual(forms, [{ failed: true }, { sources: ['Cash'], categories: ['Car'] }]);
 });

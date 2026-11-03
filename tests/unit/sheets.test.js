@@ -128,3 +128,104 @@ test('getCells also tells when the person cannot open the sheet', async () => {
 
   await assert.rejects(client(fetch).getCells(['Sheet1!A1']), NoAccessError);
 });
+
+// A fake fetch that answers each call with the next answer of the list: [status, body].
+function fakeFetchSteps(...answers) {
+  const calls = [];
+  const fetch = async (url, options) => {
+    calls.push({ url, options });
+    const [status, body] = answers[calls.length - 1];
+    return new Response(JSON.stringify(body), { status });
+  };
+  return { fetch, calls };
+}
+
+// The answer of Google Sheets for the dropdown rule of one cell.
+const ruleAnswer = (condition) => ({
+  sheets: [{ data: [{ rowData: [{ values: [{ dataValidation: { condition } }] }] }] }],
+});
+
+test('canEdit asks Google Drive if the signed-in person can edit the sheet', async () => {
+  const { fetch, calls } = fakeFetch(200, { capabilities: { canEdit: true } });
+
+  assert.equal(await client(fetch).canEdit(), true);
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].url,
+    'https://www.googleapis.com/drive/v3/files/sheet-123?fields=capabilities%2FcanEdit',
+  );
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token-abc');
+});
+
+test('canEdit is false for a person who can only view the sheet', async () => {
+  const { fetch } = fakeFetch(200, { capabilities: { canEdit: false } });
+
+  assert.equal(await client(fetch).canEdit(), false);
+});
+
+test('canEdit fails like the other requests when Google cannot answer', async () => {
+  const offline = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+
+  await assert.rejects(client(offline).canEdit(), SheetsError);
+  await assert.rejects(client(fakeFetch(403).fetch).canEdit(), NoAccessError);
+});
+
+test('getDropdown reads the options typed in the dropdown rule of a cell, in order', async () => {
+  const { fetch, calls } = fakeFetch(
+    200,
+    ruleAnswer({
+      type: 'ONE_OF_LIST',
+      values: [{ userEnteredValue: 'BBVA David' }, { userEnteredValue: 'Cash' }],
+    }),
+  );
+
+  assert.deepEqual(await client(fetch).getDropdown('My sheet!A2'), ['BBVA David', 'Cash']);
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123' +
+      '?ranges=My%20sheet!A2&fields=sheets.data.rowData.values.dataValidation',
+  );
+});
+
+test('getDropdown reads the options from the cells a dropdown rule points to', async () => {
+  const { fetch, calls } = fakeFetchSteps(
+    [200, ruleAnswer({ type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=Lists!B1:B5' }] })],
+    [200, { values: [['House'], [''], ['Car'], [' Leisure ']] }],
+  );
+
+  assert.deepEqual(await client(fetch).getDropdown('Sheet1!C2'), ['House', 'Car', 'Leisure']);
+  assert.equal(calls.length, 2);
+  assert.equal(
+    calls[1].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Lists!B1%3AB5',
+  );
+});
+
+test('getDropdown reads the cells of a rule with no sheet name on the sheet of its cell', async () => {
+  const { fetch, calls } = fakeFetchSteps(
+    [200, ruleAnswer({ type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=$H$2:$H$4' }] })],
+    [200, { values: [['House'], ['Car']] }],
+  );
+
+  assert.deepEqual(await client(fetch).getDropdown("'My sheet'!C2"), ['House', 'Car']);
+  assert.equal(
+    calls[1].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/' +
+      encodeURIComponent("'My sheet'!$H$2:$H$4"),
+  );
+});
+
+test('getDropdown fails when the cell has no dropdown rule', async () => {
+  const { fetch } = fakeFetch(200, { sheets: [{ data: [{ rowData: [{ values: [{}] }] }] }] });
+
+  await assert.rejects(client(fetch).getDropdown('Sheet1!A2'), SheetsError);
+});
+
+test('getDropdown fails when the dropdown has no options', async () => {
+  const { fetch } = fakeFetch(200, ruleAnswer({ type: 'ONE_OF_LIST', values: [] }));
+
+  await assert.rejects(client(fetch).getDropdown('Sheet1!A2'), SheetsError);
+});

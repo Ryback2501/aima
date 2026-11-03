@@ -13,13 +13,27 @@ export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
 // 1000 - 200.50 - 300 (Provisioned is taken away) + 50
 export const FAKE_TOTAL = '€549.50';
 export const FAKE_MOVEMENTS = 'Sheet2!A:E';
+// Made-up cells whose dropdowns give the source and category lists of the new movement form.
+export const FAKE_SOURCE_LIST = 'Sheet2!A2';
+export const FAKE_CATEGORY_LIST = 'Sheet2!C2';
+// The default dropdowns: the sources are typed in the rule, the categories come from cells.
+export const FAKE_SOURCES = ['BBVA David', 'BBVA Común', 'Después', 'Cash', 'Provisioned'];
+export const FAKE_CATEGORIES = ['Car', 'General', 'House', 'Leisure'];
+const FAKE_DROPDOWNS = {
+  [FAKE_SOURCE_LIST]: {
+    type: 'ONE_OF_LIST',
+    values: FAKE_SOURCES.map((value) => ({ userEnteredValue: value })),
+  },
+  [FAKE_CATEGORY_LIST]: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=Lists!A1:A5' }] },
+};
+const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
 export const sheetDay = (date) =>
   (Date.parse(`${date}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
 
 // Prepares the page: fake IDs in the config, the Google stand-in, and fake Google answers.
-// Returns the list of requests the app sent to Google Sheets.
+// Returns the list of requests the app sent to Google Sheets, and their kinds in .methods.
 export async function setUp(
   page,
   {
@@ -33,9 +47,16 @@ export async function setUp(
     // true: like the first sign-in, Google Sheets says no until the person picks the sheet.
     needsPick = false,
     google = {},
+    // What Google Drive says about editing the sheet: true, false, or 'offline' (no answer).
+    canEdit = false,
+    // The dropdowns of the form's lists: the default ones, 'offline' (no answer) or 'none'
+    // (the cells have no dropdown rule).
+    dropdowns = FAKE_DROPDOWNS,
   } = {},
 ) {
   const sheetRequests = [];
+  // The kind of each request (GET reads, the others change the sheet), in the same order.
+  sheetRequests.methods = [];
   let picked = !needsPick;
 
   await page.exposeFunction('__sheetPicked', () => (picked = true));
@@ -54,7 +75,9 @@ export async function setUp(
       .replace(/googleApiKey: '[^']*'/, `googleApiKey: '${FAKE_API_KEY}'`)
       .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
       .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
-      .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`);
+      .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`)
+      .replace(/sourceList: '[^']*'/, `sourceList: '${FAKE_SOURCE_LIST}'`)
+      .replace(/categoryList: '[^']*'/, `categoryList: '${FAKE_CATEGORY_LIST}'`);
     await route.fulfill({ response, body });
   });
 
@@ -69,8 +92,28 @@ export async function setUp(
   await page.route('https://sheets.googleapis.com/**', async (route) => {
     const request = route.request();
     sheetRequests.push({ url: request.url(), authorization: request.headers().authorization });
+    sheetRequests.methods.push(request.method());
     if (!picked) {
       await route.fulfill({ status: 403, json: { error: {} } });
+      return;
+    }
+    const url = new URL(request.url());
+    // The dropdown rule of one cell.
+    if (url.searchParams.has('fields')) {
+      if (dropdowns === 'offline') {
+        await route.abort();
+        return;
+      }
+      const condition =
+        dropdowns === 'none' ? undefined : dropdowns[url.searchParams.get('ranges')];
+      const cell = condition ? { dataValidation: { condition } } : {};
+      await route.fulfill({ json: { sheets: [{ data: [{ rowData: [{ values: [cell] }] }] }] } });
+      return;
+    }
+    // The cells a dropdown rule points to.
+    const listCells = FAKE_LIST_CELLS[decodeURIComponent(url.pathname.split('/values/')[1] ?? '')];
+    if (listCells) {
+      await route.fulfill({ json: { values: listCells } });
       return;
     }
     const askedForMovements = request.url().includes(encodeURIComponent(FAKE_MOVEMENTS));
@@ -83,6 +126,10 @@ export async function setUp(
 
   await page.route('https://www.googleapis.com/oauth2/v3/userinfo', (route) =>
     route.fulfill({ json: { email } }),
+  );
+
+  await page.route('https://www.googleapis.com/drive/v3/files/**', (route) =>
+    canEdit === 'offline' ? route.abort() : route.fulfill({ json: { capabilities: { canEdit } } }),
   );
 
   return sheetRequests;

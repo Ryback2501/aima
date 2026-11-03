@@ -111,9 +111,12 @@ export function createForm(form, { formatAmount }) {
   const allSelected = () =>
     end() > 0 && amount.selectionStart === 0 && amount.selectionEnd === end();
 
+  // The field stops the browser's own changes, so it says itself that the amount changed: then
+  // "Required" goes away, as under the other fields.
   function showAmount() {
     amount.value = digits ? formatAmount(Number(digits)) : '';
     amount.setSelectionRange(end(), end());
+    if (digits) messageOf('amount').hidden = true;
   }
 
   // A text with no numbers changes nothing, also when the whole amount is selected.

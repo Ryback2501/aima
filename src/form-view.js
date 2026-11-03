@@ -108,7 +108,9 @@ export function createForm(form, { formatAmount }) {
     amount.setSelectionRange(end(), end());
   }
 
+  // A text with no numbers changes nothing, also when the whole amount is selected.
   function addText(text) {
+    if (!/\d/.test(text)) return;
     digits = addDigits(allSelected() ? '' : digits, text);
     showAmount();
   }

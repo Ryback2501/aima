@@ -12,9 +12,31 @@ const add = (page) => page.locator('#add');
 const form = (page) => page.locator('.movement-form');
 const field = (page, name, words = STRINGS.en) =>
   form(page).getByLabel(words[name], { exact: true });
-// The short message under one field.
-const fieldMessage = (page, name) =>
-  field(page, name).locator('xpath=ancestor::*[@class="form-field"][1]').locator('.field-message');
+// The part of the form around one field, and the grey box of the field itself.
+const around = (page, name, part, words = STRINGS.en) =>
+  field(page, name, words).locator(
+    `xpath=ancestor::*[contains(concat(" ", @class, " "), " ${part} ")][1]`,
+  );
+const RED = 'rgb(220, 38, 38)';
+// How a field looks: the text of its name (with " - Required" when it is marked), the color of
+// its name, and its border when it is not in use.
+const markOf = async (page, name, words = STRINGS.en) => ({
+  text: (await around(page, name, 'form-field', words).locator('.field-name').innerText())
+    .replace(/\s+/g, ' ')
+    .trim(),
+  color: await around(page, name, 'form-field', words)
+    .locator('label')
+    .evaluate((node) => getComputedStyle(node).color),
+  border: await around(page, name, 'field-box', words).evaluate((node) => {
+    const css = getComputedStyle(node);
+    return `${css.borderTopWidth} ${css.borderTopColor}`;
+  }),
+});
+const markedAs = (words, name) => ({
+  text: `${words[name]} - ${words.required}`,
+  color: RED,
+  border: `3px ${RED}`,
+});
 const save = (page) => form(page).locator('[data-card="save"]');
 const cancel = (page) => form(page).locator('[data-card="cancel"]');
 const sign = (page) => form(page).locator('.sign-switch');
@@ -151,7 +173,16 @@ test('when no empty row is left, the same request first adds a row at the end', 
   expect(changes[1].updateCells.range.startRowIndex).toBe(2);
 });
 
-test('empty Source, Date, Category or Amount show a message under each, and nothing is saved', async ({
+test('before Save, no field is marked', async ({ page }) => {
+  await openForm(page);
+
+  const mark = await markOf(page, 'source');
+  expect(mark.text).toBe('Source');
+  expect(mark.color).not.toBe(RED);
+  expect(mark.border).toBe('3px rgba(0, 0, 0, 0)');
+});
+
+test('empty Source, Date, Category or Amount are marked red with " - Required", and nothing is saved', async ({
   page,
 }) => {
   const requests = await openForm(page);
@@ -160,28 +191,63 @@ test('empty Source, Date, Category or Amount show a message under each, and noth
   await save(page).click();
 
   for (const name of ['source', 'date', 'category', 'amount']) {
-    await expect(fieldMessage(page, name)).toHaveText(STRINGS.en.required);
+    await expect.poll(() => markOf(page, name)).toEqual(markedAs(STRINGS.en, name));
   }
-  // An empty Concept is fine.
-  await expect(fieldMessage(page, 'concept')).toBeHidden();
+  // An empty Concept is not marked. The red border is as thick as the border of a field in use.
+  expect((await markOf(page, 'concept')).text).toBe('Concept');
+  expect((await markOf(page, 'source')).border).toMatch(/^3px /);
   await expect(form(page)).toBeVisible();
   expect(requests.saves).toEqual([]);
 });
 
-test('"Required" under a field goes away as soon as something is typed or picked in it', async ({
+test('a marked field in use has the normal border, and the red one comes back when it is left', async ({
   page,
 }) => {
   await openForm(page);
-
   await save(page).click();
-  await expect(fieldMessage(page, 'amount')).toBeVisible();
-  await expect(fieldMessage(page, 'source')).toBeVisible();
+  await expect.poll(() => markOf(page, 'amount')).toEqual(markedAs(STRINGS.en, 'amount'));
 
   await field(page, 'amount').focus();
-  await page.keyboard.type('5');
-  await expect(fieldMessage(page, 'amount')).toBeHidden();
+
+  const box = around(page, 'amount', 'field-box');
+  expect(await box.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(
+    'rgba(0, 0, 0, 0)',
+  );
+  expect(await box.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain(
+    'rgb(167, 139, 250)',
+  );
+
+  await field(page, 'concept').focus();
+
+  expect((await markOf(page, 'amount')).border).toBe(`3px ${RED}`);
+});
+
+test('the marks stay until Save is tapped again, and go away when the form closes', async ({
+  page,
+}) => {
+  await openForm(page);
+  await save(page).click();
+  await expect.poll(() => markOf(page, 'source')).toEqual(markedAs(STRINGS.en, 'source'));
+
+  // Filled in, but still marked until Save.
   await field(page, 'source').selectOption('Cash');
-  await expect(fieldMessage(page, 'source')).toBeHidden();
+  await field(page, 'amount').focus();
+  await page.keyboard.type('5');
+  expect(await markOf(page, 'source')).toEqual(markedAs(STRINGS.en, 'source'));
+  expect(await markOf(page, 'amount')).toEqual(markedAs(STRINGS.en, 'amount'));
+
+  // Save again: only the field that is still empty stays marked.
+  await save(page).click();
+  await expect.poll(async () => (await markOf(page, 'source')).text).toBe('Source');
+  expect((await markOf(page, 'amount')).text).toBe('Amount');
+  expect(await markOf(page, 'category')).toEqual(markedAs(STRINGS.en, 'category'));
+
+  // Closed and opened again: nothing is marked.
+  await cancel(page).click();
+  await expect(form(page)).toBeHidden();
+  await add(page).click();
+  await expect(form(page)).toBeVisible();
+  expect((await markOf(page, 'category')).text).toBe('Category');
 });
 
 test('a second tap on Save adds nothing, and Save and Cancel wait while it saves', async ({
@@ -286,11 +352,9 @@ for (const language of ['es', 'ru']) {
 
     await expect(save(page)).toHaveText(words.save);
     await save(page).click();
-    await expect(
-      field(page, 'source', words)
-        .locator('xpath=ancestor::*[@class="form-field"][1]')
-        .locator('.field-message'),
-    ).toHaveText(words.required);
+    await expect
+      .poll(async () => (await markOf(page, 'source', words)).text)
+      .toBe(`${words.source} - ${words.required}`);
 
     await field(page, 'source', words).selectOption('Cash');
     await field(page, 'category', words).selectOption('General');

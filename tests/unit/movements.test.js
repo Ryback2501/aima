@@ -1,0 +1,214 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  missingFields,
+  movementRow,
+  planSave,
+  sheetDay,
+  sortMovements,
+} from '../../src/movements.js';
+
+// The source order of the issue, and the Provisioned movement that follows each Cash.
+const settings = {
+  sourceOrder: [
+    'BBVA David',
+    'BBVA Común',
+    'Después',
+    'AMEX',
+    'ECI',
+    'ICON',
+    'Pluxee',
+    'Edenred',
+    'Cash',
+    'Polina',
+    'Provisioned',
+    'Deprovisioned',
+  ],
+  sourcePairs: { Cash: 'Provisioned' },
+};
+
+const DAY = 46300;
+// A movement row as in the sheet: source, date, category, concept, amount.
+const m = (source, amount = -1, concept = '', day = DAY) => [
+  source,
+  day,
+  'General',
+  concept,
+  amount,
+];
+// The sources (and amounts, when they matter) of rows, to compare easily.
+const sources = (rows) => rows.map(([source]) => source);
+const withAmounts = (rows) => rows.map(([source, , , , amount]) => `${source} ${amount}`);
+
+test('inside a day, a BBVA David movement goes first, above BBVA Común', () => {
+  const day = [m('BBVA Común'), m('AMEX'), m('Cash'), m('BBVA David')];
+
+  assert.deepEqual(sources(sortMovements(day, settings)), [
+    'BBVA David',
+    'BBVA Común',
+    'AMEX',
+    'Cash',
+  ]);
+});
+
+test('a Después movement goes between BBVA David and AMEX', () => {
+  const day = [m('BBVA David'), m('AMEX'), m('Cash'), m('Después')];
+
+  assert.deepEqual(sources(sortMovements(day, settings)), [
+    'BBVA David',
+    'Después',
+    'AMEX',
+    'Cash',
+  ]);
+});
+
+test('a new movement goes after the movements of its source that are already there', () => {
+  const day = [m('Edenred', -1, 'first'), m('Edenred', -2, 'second'), m('Edenred', -3, 'new')];
+
+  assert.deepEqual(
+    sortMovements(day, settings).map(([, , , concept]) => concept),
+    ['first', 'second', 'new'],
+  );
+});
+
+test('a Provisioned movement goes right below the Cash with the same amount', () => {
+  const day = [m('Cash', -10), m('Provisioned', -10), m('Cash', -5), m('Provisioned', -5)];
+
+  assert.deepEqual(withAmounts(sortMovements(day, settings)), [
+    'Cash -10',
+    'Provisioned -10',
+    'Cash -5',
+    'Provisioned -5',
+  ]);
+});
+
+test('a new Cash goes after the Cash pairs already there, and its Provisioned right below it', () => {
+  const day = [m('Cash', -10), m('Provisioned', -10), m('Cash', -20)];
+  const sorted = sortMovements(day, settings);
+
+  assert.deepEqual(withAmounts(sorted), ['Cash -10', 'Provisioned -10', 'Cash -20']);
+  assert.deepEqual(withAmounts(sortMovements([...sorted, m('Provisioned', -20)], settings)), [
+    'Cash -10',
+    'Provisioned -10',
+    'Cash -20',
+    'Provisioned -20',
+  ]);
+});
+
+test('a Provisioned movement with no Cash to pair with goes between Polina and Deprovisioned', () => {
+  const day = [m('Polina'), m('Deprovisioned'), m('Provisioned', -7)];
+
+  assert.deepEqual(sources(sortMovements(day, settings)), [
+    'Polina',
+    'Provisioned',
+    'Deprovisioned',
+  ]);
+});
+
+test('a Provisioned movement pairs only with a Cash of the same sign', () => {
+  const day = [m('Cash', 10), m('Polina'), m('Provisioned', -10)];
+
+  assert.deepEqual(withAmounts(sortMovements(day, settings)), [
+    'Cash 10',
+    'Polina -1',
+    'Provisioned -10',
+  ]);
+});
+
+test('a source that is not in the order goes last, after every other source', () => {
+  const day = [m('Cash'), m('Polina'), m('Old bank'), m('Edenred')];
+
+  assert.deepEqual(sources(sortMovements(day, settings)), [
+    'Edenred',
+    'Cash',
+    'Polina',
+    'Old bank',
+  ]);
+});
+
+test('movements are sorted by day first, and a day with a time counts as that day', () => {
+  const rows = [m('Cash', -1, '', DAY + 1), m('AMEX', -1, '', DAY + 1.5), m('ECI', -1, '', DAY)];
+
+  assert.deepEqual(sources(sortMovements(rows, settings)), ['ECI', 'AMEX', 'Cash']);
+});
+
+test('a movement newer than every movement becomes the new last row', () => {
+  const rows = [m('Cash', -1, '', DAY), m('AMEX', -1, '', DAY + 1)];
+
+  const plan = planSave(rows, m('Polina', -1, '', DAY + 5), settings);
+
+  assert.equal(plan.start, 2);
+  assert.deepEqual(sources(plan.rows), ['Polina']);
+});
+
+test('a movement in the middle sorts its day and every later day, and leaves earlier days', () => {
+  const rows = [
+    m('Cash', -1, '', DAY),
+    m('AMEX', -1, '', DAY),
+    m('Cash', -1, '', DAY + 1),
+    // A later day out of order: Cash above AMEX.
+    m('Cash', -1, '', DAY + 2),
+    m('AMEX', -1, '', DAY + 2),
+  ];
+
+  const plan = planSave(rows, m('BBVA David', -1, '', DAY + 1), settings);
+
+  // The rows from the first movement of the new movement's day, to one row past the last.
+  assert.equal(plan.start, 2);
+  assert.deepEqual(sources(plan.rows), ['BBVA David', 'Cash', 'AMEX', 'Cash']);
+});
+
+test('rows below the last movement, with no date, are not movements', () => {
+  const rows = [m('Cash', -1, '', DAY), ['', '', '', '', '']];
+
+  const plan = planSave(rows, m('AMEX', -1, '', DAY), settings);
+
+  assert.equal(plan.start, 0);
+  assert.deepEqual(sources(plan.rows), ['AMEX', 'Cash']);
+});
+
+test('a date of the form becomes the day number the sheet uses', () => {
+  // 5 October 2026: days since 30 December 1899.
+  assert.equal(sheetDay('2026-10-05'), 46300);
+});
+
+test('a movement row has the source, the day, the category, the concept and the amount', () => {
+  const values = {
+    source: 'Cash',
+    date: '2026-10-05',
+    category: 'General',
+    concept: '  Bakery  ',
+    digits: '1250',
+    sign: 'minus',
+  };
+
+  assert.deepEqual(movementRow(values), ['Cash', 46300, 'General', 'Bakery', -12.5]);
+  assert.deepEqual(movementRow({ ...values, sign: 'plus', concept: '   ' }), [
+    'Cash',
+    46300,
+    'General',
+    '',
+    12.5,
+  ]);
+  assert.equal(movementRow({ ...values, digits: '123456' })[4], -1234.56);
+});
+
+test('source, date, category and amount are required; the concept may be empty', () => {
+  const values = {
+    source: 'Cash',
+    date: '2026-10-05',
+    category: 'General',
+    concept: '',
+    digits: '1250',
+    sign: 'minus',
+  };
+
+  assert.deepEqual(missingFields(values), []);
+  assert.deepEqual(missingFields({ ...values, source: '', category: '', date: '', digits: '' }), [
+    'source',
+    'date',
+    'category',
+    'amount',
+  ]);
+});

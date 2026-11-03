@@ -157,11 +157,13 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
   return { getValues, getCells, canEdit, getDropdown, getSheet, writeRows };
 }
 
-// One cell for writeRows: a number, a formula, a text, or nothing (an empty cell).
+// One cell for writeRows: a number, a formula, a text, or nothing (an empty cell). A value
+// { text } is always text, also when it starts with "=".
 function cell(value) {
   if (typeof value === 'number') return { userEnteredValue: { numberValue: value } };
   if (typeof value === 'boolean') return { userEnteredValue: { boolValue: value } };
   if (value === undefined || value === null || value === '') return {};
+  if (typeof value === 'object') return { userEnteredValue: { stringValue: String(value.text) } };
   const text = String(value);
   if (text.startsWith('=')) return { userEnteredValue: { formulaValue: text } };
   return { userEnteredValue: { stringValue: text } };

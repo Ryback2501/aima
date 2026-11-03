@@ -148,8 +148,13 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
         sheets.getSheet(sheet),
       ]);
-      const plan = planSave(rows, movementRow(values), config.goal);
-      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: plan.rows });
+      const row = movementRow(values);
+      const plan = planSave(rows, row, config.goal);
+      // What was typed is always text: a concept that starts with "=" must not become a formula.
+      const typed = (cell) =>
+        typeof cell === 'string' && cell.startsWith('=') ? { text: cell } : cell;
+      const written = plan.rows.map((each) => (each === row ? each.map(typed) : each));
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
       return true;
     } catch {
       return false;

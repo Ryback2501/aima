@@ -1,12 +1,14 @@
 // Reads data from the Google Sheet through the Google Sheets web API.
 // Google checks the sheet's sharing settings on every request, so this is also how the app
 // learns if the signed-in person may see the data. Google Drive tells if they may also edit it.
-// Later, the same client will also add and change data in the sheet.
+// The same client also writes new movements into the sheet.
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 // Asks for plain numbers and dates instead of the text the sheet shows (see getValues).
 const RAW = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
+// The same, but a cell with a formula gives its formula (see getValues).
+const FORMULAS = 'valueRenderOption=FORMULA&dateTimeRenderOption=SERIAL_NUMBER';
 
 // The person's Google account cannot open the sheet.
 export class NoAccessError extends Error {
@@ -36,10 +38,16 @@ export class SheetsError extends Error {
 export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis.fetch }) {
   const sheetUrl = `${API}/${encodeURIComponent(spreadsheetId)}`;
 
-  async function request(url) {
+  // Sends a request to Google. With a body, it is a change (POST), sent as JSON.
+  async function request(url, body) {
+    const headers = { Authorization: `Bearer ${getToken()}` };
+    const options = body
+      ? { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' } }
+      : { headers };
+    if (body) options.body = JSON.stringify(body);
     let response;
     try {
-      response = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+      response = await fetch(url, options);
     } catch (error) {
       throw new SheetsError('Could not reach Google.', { cause: error });
     }
@@ -58,8 +66,12 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
   // Normally each cell comes as the text the sheet shows (for example "-12,50 €").
   // With raw, numbers come as plain numbers (-12.5) and dates as day numbers (days since
   // 30 December 1899), the same whatever the sheet's number and date format is.
-  async function getValues(range, { raw = false } = {}) {
-    const query = raw ? `?${RAW}` : '';
+  // With formulas, the same, but a cell with a formula gives its formula ("=10+2.5"), so it can
+  // be written again as a formula.
+  async function getValues(range, { raw = false, formulas = false } = {}) {
+    let query = '';
+    if (formulas) query = `?${FORMULAS}`;
+    else if (raw) query = `?${RAW}`;
     const data = await request(`${sheetUrl}/values/${encodeURIComponent(range)}${query}`);
     return data.values ?? [];
   }
@@ -105,5 +117,52 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return options;
   }
 
-  return { getValues, getCells, canEdit, getDropdown };
+  // Returns the number Google gives a sheet of the file, found by its name, and how many rows
+  // it has: { sheetId, rowCount }. Fails with SheetsError when there is no such sheet.
+  async function getSheet(name) {
+    const fields = encodeURIComponent('sheets.properties(sheetId,title,gridProperties.rowCount)');
+    const data = await request(`${sheetUrl}?fields=${fields}`);
+    const found = data.sheets?.find(({ properties }) => properties?.title === name)?.properties;
+    if (!found) throw new SheetsError(`There is no sheet called ${name}.`);
+    return { sheetId: found.sheetId, rowCount: found.gridProperties?.rowCount ?? 0 };
+  }
+
+  // Writes rows of five values into the first five columns of a sheet, from the row startRow
+  // (counted from 0). Only the values change: each cell keeps its format. A formula ("=...")
+  // stays a formula, and an empty value empties its cell. When the sheet has too few rows, rows
+  // are added at its end first. Everything goes in one single request, so Google makes all of
+  // it or none of it.
+  async function writeRows({ sheetId, rowCount, startRow, rows }) {
+    const endRow = startRow + rows.length;
+    const requests = [];
+    if (endRow > rowCount) {
+      requests.push({ appendDimension: { sheetId, dimension: 'ROWS', length: endRow - rowCount } });
+    }
+    requests.push({
+      updateCells: {
+        range: {
+          sheetId,
+          startRowIndex: startRow,
+          endRowIndex: endRow,
+          startColumnIndex: 0,
+          endColumnIndex: 5,
+        },
+        rows: rows.map((row) => ({ values: [0, 1, 2, 3, 4].map((column) => cell(row[column])) })),
+        fields: 'userEnteredValue',
+      },
+    });
+    await request(`${sheetUrl}:batchUpdate`, { requests });
+  }
+
+  return { getValues, getCells, canEdit, getDropdown, getSheet, writeRows };
+}
+
+// One cell for writeRows: a number, a formula, a text, or nothing (an empty cell).
+function cell(value) {
+  if (typeof value === 'number') return { userEnteredValue: { numberValue: value } };
+  if (typeof value === 'boolean') return { userEnteredValue: { boolValue: value } };
+  if (value === undefined || value === null || value === '') return {};
+  const text = String(value);
+  if (text.startsWith('=')) return { userEnteredValue: { formulaValue: text } };
+  return { userEnteredValue: { stringValue: text } };
 }

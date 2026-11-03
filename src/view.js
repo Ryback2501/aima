@@ -412,6 +412,8 @@ export function createView(document, language) {
     addButton.focus();
   }
   document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());
+  // Save is handled by the app (see onSave).
+  const saveButton = document.querySelector('[data-card="save"]');
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows
   // the flag of the app's language. A tap opens it upward to show every flag. A tap on a flag
@@ -569,6 +571,8 @@ export function createView(document, language) {
       // "Goal 4K": the word in the app's language and the limit in thousands.
       goalTitle.textContent = `${t('goal')} ${state.goal.limit / 1000}K`;
       months.render(state.goal.months);
+      // Months built again while a card is open (after a save) need their place in the order.
+      if (openCard) lineUp(openCard);
     }
   }
 
@@ -593,6 +597,11 @@ export function createView(document, language) {
     onSignOut: (handler) => signOutButton.addEventListener('click', () => handler()),
     onTogglePill: (handler) => (togglePill = handler),
     onPickLanguage: (handler) => (pickLanguage = handler),
+    onSave: (handler) => saveButton.addEventListener('click', () => handler(form.values())),
+    showMissing: (names) => form.showMissing(names),
+    setSaving: (saving) => form.setSaving(saving),
+    saveFailed: () => form.saveFailed(),
+    closeForm,
     onAdd: (handler) =>
       addButton.addEventListener('click', () => {
         formAsked = true;

@@ -124,21 +124,25 @@
                  lists are filled by form-view.js from the sheet's dropdowns. -->
             <form class="movement-form" tabindex="-1" novalidate>
               <h2 class="movement-form-title" data-i18n="newMovement">New movement</h2>
+              <!-- A required field that is empty when Save is tapped shows "Required" below it. -->
               <div class="form-field">
                 <label for="movement-source" data-i18n="source">Source</label>
                 <div class="field-box"><select id="movement-source" name="source"></select></div>
+                <p class="field-message" data-i18n="required" hidden>Required</p>
               </div>
               <div class="form-field">
                 <label for="movement-date" data-i18n="date">Date</label>
                 <div class="field-box">
                   <input id="movement-date" name="date" type="date" />
                 </div>
+                <p class="field-message" data-i18n="required" hidden>Required</p>
               </div>
               <div class="form-field">
                 <label for="movement-category" data-i18n="category">Category</label>
                 <div class="field-box">
                   <select id="movement-category" name="category"></select>
                 </div>
+                <p class="field-message" data-i18n="required" hidden>Required</p>
               </div>
               <div class="form-field">
                 <label for="movement-concept" data-i18n="concept">Concept</label>
@@ -163,14 +167,21 @@
                     />
                   </div>
                 </div>
+                <p class="field-message" data-i18n="required" hidden>Required</p>
               </div>
               <p class="form-message" role="status" data-i18n="listsFailed" hidden>
                 The lists could not be loaded.
+              </p>
+              <p class="save-message" role="status" data-i18n="notSaved" hidden>
+                The movement was not saved. Please try again.
               </p>
               <div class="form-buttons">
                 <!-- A card. Its look (sizes, colors) is set in components.js. -->
                 <button class="label card-button" data-card="cancel" type="button">
                   <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button class="label card-button" data-card="save" type="button">
+                  <span data-i18n="save">Save</span>
                 </button>
               </div>
             </form>

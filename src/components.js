@@ -80,6 +80,15 @@ export const CARDS = {
     colors: ['#b91c1c', '#fca5a5'],
     padding: { x: 16, y: 0 },
   },
+  // The Save button of the new movement form: like Cancel, in teal, next to it.
+  save: {
+    width: 544,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#0d9488', '#5eead4'],
+    padding: { x: 16, y: 0 },
+  },
   // The language selector on the main screen: it looks like the back button, with the flag of
   // the app's language inside. A tap opens it upward to show every flag.
   language: {

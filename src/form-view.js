@@ -45,6 +45,16 @@ export function createForm(form, { formatAmount }) {
   const amount = field('amount');
   const sign = form.querySelector('.sign-switch');
   const message = form.querySelector('.form-message');
+  const saveMessage = form.querySelector('.save-message');
+  const buttons = [...form.querySelectorAll('.form-buttons button')];
+  // The "Required" message under each required field. It goes away when the field changes.
+  const required = { source, date, category, amount };
+  const messageOf = (name) => required[name].closest('.form-field').querySelector('.field-message');
+  for (const [name, input] of Object.entries(required)) {
+    for (const type of ['input', 'change']) {
+      input.addEventListener(type, () => (messageOf(name).hidden = true));
+    }
+  }
 
   concept.maxLength = CONCEPT_LIMIT;
   // The form never sends itself: that would load the page again.
@@ -159,6 +169,9 @@ export function createForm(form, { formatAmount }) {
     fillList(source, sources);
     fillList(category, categories);
     message.hidden = !failed;
+    showMissing([]);
+    saveMessage.hidden = true;
+    setSaving(false);
     date.value = today();
     concept.value = '';
     digits = '';
@@ -167,5 +180,29 @@ export function createForm(form, { formatAmount }) {
     setSign('minus');
   }
 
-  return { reset, fitConcept };
+  // What was typed, for Save: the amount as its typed numbers, and the sign.
+  const values = () => ({
+    source: source.value,
+    date: date.value,
+    category: category.value,
+    concept: concept.value,
+    digits,
+    sign: sign.dataset.sign,
+  });
+
+  // Shows "Required" under the given empty fields, and hides it under the others.
+  function showMissing(names) {
+    for (const name of Object.keys(required)) messageOf(name).hidden = !names.includes(name);
+  }
+
+  // While a movement is being saved, Save and Cancel cannot be tapped.
+  function setSaving(saving) {
+    for (const button of buttons) button.disabled = saving;
+    if (saving) saveMessage.hidden = true;
+  }
+
+  // The movement was not saved: the form stays as it is, and says so.
+  const saveFailed = () => (saveMessage.hidden = false);
+
+  return { reset, fitConcept, values, showMissing, setSaving, saveFailed };
 }

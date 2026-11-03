@@ -8,6 +8,25 @@ export const CONCEPT_LIMIT = 50;
 // A concept is always one line: line breaks become spaces, and only the first 50 characters stay.
 export const oneLine = (text) => text.replace(/\r\n|\r|\n/g, ' ').slice(0, CONCEPT_LIMIT);
 
+// An amount has at most this many numbers: up to 999,999.99.
+export const AMOUNT_DIGITS = 8;
+
+// Adds the numbers of a typed or pasted text at the end of the amount's numbers, as if they were
+// typed one by one. Everything else is ignored. A 0 with no number before it is ignored too, and
+// only the first numbers that fit are kept.
+export function addDigits(digits, text) {
+  let result = digits;
+  for (const digit of text.replace(/\D/g, '')) {
+    if (result.length === AMOUNT_DIGITS) break;
+    if (result === '' && digit === '0') continue;
+    result += digit;
+  }
+  return result;
+}
+
+// Deleting always removes the last number of the amount.
+export const removeDigit = (digits) => digits.slice(0, -1);
+
 // Today in the phone's own time, the way a date field writes it: "2026-10-31".
 function today() {
   const now = new Date();

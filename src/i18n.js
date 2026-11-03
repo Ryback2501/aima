@@ -154,6 +154,18 @@ export function createMoneyFormatter(language) {
   return (amount) => format.format(amount);
 }
 
+// Returns a function that writes an amount being typed, given in cents, with the marks of the
+// language and no euro sign, for example 123456 → "1,234.56" in English and "1.234,56" in
+// Spanish. Like the money above, it always shows two decimals and the thousands mark.
+export function createAmountFormatter(language) {
+  const format = new Intl.NumberFormat(language, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: 'always',
+  });
+  return (cents) => format.format(cents / 100);
+}
+
 // Returns a function that names a month in the language, starting with a capital letter,
 // for example (2026, 10) → "October" in English and "Octubre" in Spanish. month is 1 to 12.
 export function createMonthNamer(language) {

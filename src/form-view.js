@@ -116,6 +116,8 @@ export function createForm(form, { formatAmount }) {
   }
 
   amount.addEventListener('beforeinput', (event) => {
+    // A change that cannot be stopped is made by the browser itself (see below).
+    if (!event.cancelable) return;
     // Undo and redo do nothing either: delete is the way back.
     event.preventDefault();
     if (event.inputType.startsWith('insert')) {
@@ -129,12 +131,17 @@ export function createForm(form, { formatAmount }) {
     event.preventDefault();
     addText(event.clipboardData?.getData('text/plain') ?? '');
   });
-  // Some phone keyboards change the field in a way that cannot be stopped. Then the amount is
-  // read again from the numbers in the field.
-  amount.addEventListener('input', () => {
+  // Some phone keyboards change the field in a way that cannot be stopped, and some build the
+  // text while the person types. Then the amount is read again from the numbers in the field,
+  // once the keyboard has finished: writing to the field before that would disturb it.
+  function readAmount() {
     digits = addDigits('', amount.value);
     showAmount();
+  }
+  amount.addEventListener('input', (event) => {
+    if (!event.isComposing) readAmount();
   });
+  amount.addEventListener('compositionend', readAmount);
 
   // The cursor goes back to the end, and a selection of a part grows to the whole amount.
   function keepCursor() {

@@ -609,6 +609,20 @@ test('for a person who can only view, the lists of the form are never read', asy
   assert.deepEqual(log.dropdowns, []);
 });
 
+test('after signing out and in again, the lists of the form are read again', async () => {
+  const { app, handlers, log } = setup({ canEdit: async () => true });
+  await app.start();
+  await handlers.signIn();
+  await settle();
+
+  handlers.signOut();
+  await handlers.signIn();
+  await settle();
+
+  // The sheet's dropdowns may have changed: the lists are not kept from the first sign-in.
+  assert.equal(log.dropdowns.length, 4);
+});
+
 test('a tap on "+" opens the form with the source and category lists of the sheet', async () => {
   const { app, handlers, log, forms } = setup({ canEdit: async () => true });
   await app.start();

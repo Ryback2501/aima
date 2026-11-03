@@ -182,6 +182,45 @@ test.describe('the new movement form', () => {
     await expect(add(page)).toBeHidden();
   });
 
+  test('a tap on "+" before the goal card closed does not open the form after it opens again', async ({
+    page,
+  }) => {
+    await setUp(page, { canEdit: true });
+    // The lists answer only when the test says so.
+    let answer;
+    const held = new Promise((done) => (answer = done));
+    await page.route(
+      (url) => url.hostname === 'sheets.googleapis.com' && url.searchParams.has('fields'),
+      async (route) => {
+        await held;
+        await route.fallback();
+      },
+    );
+    await page.goto('./');
+    await signInButton(page).click();
+    await expect(page.locator('#total-value')).toHaveText(/\d/);
+    await expect.poll(() => locked(page)).toBe(false);
+    await goalCard(page).click();
+    await expect(back(page)).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+    await add(page).click();
+    await back(page).click();
+    await expect(back(page)).toBeHidden();
+    await expect.poll(() => locked(page)).toBe(false);
+    await goalCard(page).click();
+    await expect(back(page)).toBeVisible();
+    await expect.poll(() => locked(page)).toBe(false);
+
+    answer();
+    await page.waitForLoadState('networkidle');
+
+    await expect(form(page)).toBeHidden();
+    await expect(page.locator('.month')).toHaveCount(3);
+    // A new tap opens it.
+    await add(page).click();
+    await expect(form(page)).toBeVisible();
+  });
+
   test('Source offers the options of the sheet dropdown, in order, and starts empty', async ({
     page,
   }) => {

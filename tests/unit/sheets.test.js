@@ -204,6 +204,20 @@ test('getDropdown reads the options from the cells a dropdown rule points to', a
   );
 });
 
+test('getDropdown reads the cells of a rule with no sheet name on the sheet of its cell', async () => {
+  const { fetch, calls } = fakeFetchSteps(
+    [200, ruleAnswer({ type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=$H$2:$H$4' }] })],
+    [200, { values: [['House'], ['Car']] }],
+  );
+
+  assert.deepEqual(await client(fetch).getDropdown("'My sheet'!C2"), ['House', 'Car']);
+  assert.equal(
+    calls[1].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/' +
+      encodeURIComponent("'My sheet'!$H$2:$H$4"),
+  );
+});
+
 test('getDropdown fails when the cell has no dropdown rule', async () => {
   const { fetch } = fakeFetch(200, { sheets: [{ data: [{ rowData: [{ values: [{}] }] }] }] });
 

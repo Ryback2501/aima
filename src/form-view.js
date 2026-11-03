@@ -47,14 +47,8 @@ export function createForm(form, { formatAmount }) {
   const message = form.querySelector('.form-message');
   const saveMessage = form.querySelector('.save-message');
   const buttons = [...form.querySelectorAll('.form-buttons button')];
-  // The "Required" message under each required field. It goes away when the field changes.
+  // The required fields. An empty one is marked when Save is tapped (see showMissing).
   const required = { source, date, category, amount };
-  const messageOf = (name) => required[name].closest('.form-field').querySelector('.field-message');
-  for (const [name, input] of Object.entries(required)) {
-    for (const type of ['input', 'change']) {
-      input.addEventListener(type, () => (messageOf(name).hidden = true));
-    }
-  }
 
   concept.maxLength = CONCEPT_LIMIT;
   // The form never sends itself: that would load the page again.
@@ -111,12 +105,9 @@ export function createForm(form, { formatAmount }) {
   const allSelected = () =>
     end() > 0 && amount.selectionStart === 0 && amount.selectionEnd === end();
 
-  // The field stops the browser's own changes, so it says itself that the amount changed: then
-  // "Required" goes away, as under the other fields.
   function showAmount() {
     amount.value = digits ? formatAmount(Number(digits)) : '';
     amount.setSelectionRange(end(), end());
-    if (digits) messageOf('amount').hidden = true;
   }
 
   // A text with no numbers changes nothing, also when the whole amount is selected.
@@ -193,9 +184,15 @@ export function createForm(form, { formatAmount }) {
     sign: sign.dataset.sign,
   });
 
-  // Shows "Required" under the given empty fields, and hides it under the others.
+  // Marks the given empty fields, and only them: the name turns red with " - Required" after
+  // it, and the box gets a red border (see styles.css). The marks change only when Save is
+  // tapped, and go away when the form opens again.
   function showMissing(names) {
-    for (const name of Object.keys(required)) messageOf(name).hidden = !names.includes(name);
+    for (const [name, input] of Object.entries(required)) {
+      const part = input.closest('.form-field');
+      part.classList.toggle('missing', names.includes(name));
+      part.querySelector('.field-message').hidden = !names.includes(name);
+    }
   }
 
   // While a movement is being saved, Save and Cancel cannot be tapped.

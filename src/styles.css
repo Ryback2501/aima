@@ -725,19 +725,26 @@ html:not(.loading) .label {
   gap: 4px;
 }
 
-/* "Required", under a required field that was empty when Save was tapped. */
-.field-message {
-  align-self: flex-start;
-  margin: 0 0 0 6px;
-  color: var(--red);
-  font-size: 0.8125rem;
-}
-
-.form-field label {
+/* The name of a field, on the left above it. */
+.field-name {
   align-self: flex-start;
   margin-left: 6px;
   color: var(--text-soft);
   font-size: 0.8125rem;
+}
+
+/* A required field that was empty when Save was tapped: its name is red with " - Required"
+   after it, and its box has a red border. While it is in use, it has the normal border. */
+.form-field.missing .field-name {
+  color: var(--red);
+}
+
+.form-field.missing .field-box {
+  border-color: var(--red);
+}
+
+.form-field.missing .field-box:focus-within {
+  border-color: transparent;
 }
 
 /* The grey box around each field. The field being used gets a blue-to-purple border. */

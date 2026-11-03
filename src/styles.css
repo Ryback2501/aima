@@ -491,7 +491,9 @@ html:not(.loading) .label {
 
 /* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
    set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
-   they sink away in the reverse order (--sink-order): the same movement, backwards. */
+   they sink away in the reverse order (--sink-order): the same movement, backwards.
+   The new movement form uses the same movements: before it appears, the months sink away
+   ("hiding-months"); then the form rises in, and on Cancel it sinks away ("sinking"). */
 @keyframes card-sink {
   to {
     opacity: 0;
@@ -504,12 +506,15 @@ html:not(.loading) .label {
   visibility: hidden;
 }
 
-.label.open.settled .rise-in {
+.label.open.settled .rise-in,
+.label.open.settled.adding .movement-form {
   animation: card-rise var(--rise-time) ease-out calc(var(--rise-order) * var(--rise-step))
     backwards;
 }
 
 .label.open.settled.closing .rise-in,
+.label.open.settled.hiding-months .month,
+.label.open.settled.adding .movement-form.sinking,
 #back.sinking,
 #add.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
@@ -517,7 +522,10 @@ html:not(.loading) .label {
 
 @media (prefers-reduced-motion: reduce) {
   .label.open.settled .rise-in,
+  .label.open.settled.adding .movement-form,
   .label.open.settled.closing .rise-in,
+  .label.open.settled.hiding-months .month,
+  .label.open.settled.adding .movement-form.sinking,
   #back.sinking,
   #add.sinking {
     animation: none;
@@ -667,27 +675,11 @@ html:not(.loading) .label {
   display: none;
 }
 
-/* Before the form appears, the months sink away from the bottom up, like the parts of a closing
-   card (their order, --sink-order, is set by view.js). Then the form rises in like a card. When
-   it closes, it sinks away, and the months rise in again from the top. */
-.label.open.settled.hiding-months .month {
-  animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
-}
-
-.label.open.adding .movement-form {
-  animation: card-rise var(--rise-time) ease-out backwards;
-}
-
-.label.open.adding .movement-form.sinking {
-  animation: card-sink var(--rise-time) ease-in both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .label.open.settled.hiding-months .month,
-  .label.open.adding .movement-form,
-  .label.open.adding .movement-form.sinking {
-    animation: none;
-  }
+/* The form rises in and sinks away with the open card's movements (see above), without
+   waiting for other parts. */
+.movement-form {
+  --rise-order: 0;
+  --sink-order: 0;
 }
 
 /* The back button is hidden while the form is open, so the card needs no room for it. */

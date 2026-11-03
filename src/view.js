@@ -346,7 +346,8 @@ export function createView(document, language) {
 
   // The new movement form takes the place of the months in the open goal card ("adding", see
   // styles.css). The back and "+" buttons hide while it is open.
-  const form = createForm(document.querySelector('.movement-form'));
+  const formPanel = document.querySelector('.movement-form');
+  const form = createForm(formPanel);
   let formOpen = false;
   // True after a tap on "+", until the form opens or the goal card closes.
   let formAsked = false;
@@ -361,7 +362,7 @@ export function createView(document, language) {
     for (const button of bottomButtons()) button.hidden = true;
     openCard.classList.add('adding');
     form.fitConcept();
-    document.querySelector('.movement-form').focus();
+    formPanel.focus();
   }
 
   // Cancel closes the form, changes nothing, and brings back the months and the buttons.

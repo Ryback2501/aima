@@ -41,13 +41,13 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     try {
       response = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
     } catch (error) {
-      throw new SheetsError('Could not reach Google Sheets.', { cause: error });
+      throw new SheetsError('Could not reach Google.', { cause: error });
     }
     if (response.status === 401) throw new SignInExpiredError();
     // Google answers 404 instead of 403 when the person may not even know the sheet exists.
     if (response.status === 403 || response.status === 404) throw new NoAccessError();
     if (!response.ok) {
-      throw new SheetsError(`Google Sheets answered with error ${response.status}.`, {
+      throw new SheetsError(`Google answered with error ${response.status}.`, {
         status: response.status,
       });
     }

@@ -233,6 +233,8 @@ test('the marks stay until Save is tapped again, and go away when the form close
   await field(page, 'source').selectOption('Cash');
   await field(page, 'amount').focus();
   await page.keyboard.type('5');
+  // Leave the amount: a field in use has the normal border.
+  await field(page, 'concept').focus();
   expect(await markOf(page, 'source')).toEqual(markedAs(STRINGS.en, 'source'));
   expect(await markOf(page, 'amount')).toEqual(markedAs(STRINGS.en, 'amount'));
 

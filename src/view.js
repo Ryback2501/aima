@@ -278,7 +278,8 @@ export function createView(document, language) {
     months.reset();
     formOpen = false;
     formAsked = false;
-    openCard.classList.remove('open', 'settled', 'closing', 'adding');
+    openCard.classList.remove('open', 'settled', 'closing', 'adding', 'hiding-months');
+    formPanel.classList.remove('sinking');
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
@@ -354,24 +355,55 @@ export function createView(document, language) {
 
   // Shows the form with the lists, or with a message when they could not be read. Nothing
   // happens when the goal card closed while the lists were loading, even if it is open again.
-  function openForm(lists) {
+  // First the buttons and the months sink away, like when a card closes ("hiding-months"). Then
+  // the form rises in, like a card.
+  async function openForm(lists) {
     if (!formAsked || formOpen || moving || openCard?.dataset.card !== 'goal') return;
     formAsked = false;
     formOpen = true;
-    form.reset(lists);
-    for (const button of bottomButtons()) button.hidden = true;
-    openCard.classList.add('adding');
-    form.fitConcept();
+    moving = true;
+    const card = openCard;
+    await lockWhile(
+      (async () => {
+        const buttons = bottomButtons();
+        for (const button of buttons) button.classList.add('sinking');
+        card.classList.add('hiding-months');
+        await still(card, ...buttons);
+        for (const button of buttons) {
+          button.hidden = true;
+          button.classList.remove('sinking');
+        }
+        form.reset(lists);
+        card.classList.remove('hiding-months');
+        card.classList.add('adding');
+        form.fitConcept();
+        await still(formPanel);
+      })(),
+    );
+    moving = false;
     formPanel.focus();
   }
 
-  // Cancel closes the form, changes nothing, and brings back the months and the buttons.
-  function closeForm() {
-    if (!formOpen) return;
-    formOpen = false;
-    openCard.classList.remove('adding');
-    for (const button of bottomButtons()) button.hidden = false;
-    months.follow();
+  // Cancel closes the form and changes nothing. The same movement in reverse: the form sinks
+  // away, then the months rise in from the top, and the back and "+" buttons last.
+  async function closeForm() {
+    if (!formOpen || moving) return;
+    moving = true;
+    const card = openCard;
+    await lockWhile(
+      (async () => {
+        formPanel.classList.add('sinking');
+        await still(formPanel);
+        formPanel.classList.remove('sinking');
+        formOpen = false;
+        card.classList.remove('adding');
+        const buttons = bottomButtons();
+        for (const button of buttons) button.hidden = false;
+        months.follow();
+        await still(card, ...buttons);
+      })(),
+    );
+    moving = false;
     addButton.focus();
   }
   document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());

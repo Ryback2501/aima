@@ -667,6 +667,29 @@ html:not(.loading) .label {
   display: none;
 }
 
+/* Before the form appears, the months sink away from the bottom up, like the parts of a closing
+   card (their order, --sink-order, is set by view.js). Then the form rises in like a card. When
+   it closes, it sinks away, and the months rise in again from the top. */
+.label.open.settled.hiding-months .month {
+  animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
+}
+
+.label.open.adding .movement-form {
+  animation: card-rise var(--rise-time) ease-out backwards;
+}
+
+.label.open.adding .movement-form.sinking {
+  animation: card-sink var(--rise-time) ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label.open.settled.hiding-months .month,
+  .label.open.adding .movement-form,
+  .label.open.adding .movement-form.sinking {
+    animation: none;
+  }
+}
+
 /* The back button is hidden while the form is open, so the card needs no room for it. */
 .label.open.adding {
   padding-bottom: 16px;

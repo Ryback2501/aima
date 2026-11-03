@@ -161,7 +161,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
-  // A tap on Save. Empty required fields get a message, and nothing is saved. While a movement
+  // A tap on Save. Empty required fields are marked, and nothing is saved. While a movement
   // is being saved, Save and Cancel wait, and another tap does nothing. After the save, the
   // main screen is read again and the form closes. If the sheet cannot be read again, the form
   // closes anyway: the movement is saved, and saying otherwise would make the person save it

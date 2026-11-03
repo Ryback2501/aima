@@ -124,23 +124,20 @@
                  lists are filled by form-view.js from the sheet's dropdowns. -->
             <form class="movement-form" tabindex="-1" novalidate>
               <h2 class="movement-form-title" data-i18n="newMovement">New movement</h2>
-              <!-- When Save is tapped, a required field that is empty is marked (see form-view.js):
-                   its name turns red with " - Required" after it. -->
+              <!-- When Save is tapped, each required field that is empty is marked (see form-view.js):
+                   its name turns red with " - Required" after it, and its box gets a red border.
+                   The marks stay until the next Save, and go away when the form opens again. -->
               <div class="form-field">
                 <div class="field-name">
                   <label for="movement-source" data-i18n="source">Source</label>
-                  <span class="field-message" hidden
-                    >- <span data-i18n="required">Required</span></span
-                  >
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
                 </div>
                 <div class="field-box"><select id="movement-source" name="source"></select></div>
               </div>
               <div class="form-field">
                 <div class="field-name">
                   <label for="movement-date" data-i18n="date">Date</label>
-                  <span class="field-message" hidden
-                    >- <span data-i18n="required">Required</span></span
-                  >
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
                 </div>
                 <div class="field-box">
                   <input id="movement-date" name="date" type="date" />
@@ -149,9 +146,7 @@
               <div class="form-field">
                 <div class="field-name">
                   <label for="movement-category" data-i18n="category">Category</label>
-                  <span class="field-message" hidden
-                    >- <span data-i18n="required">Required</span></span
-                  >
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
                 </div>
                 <div class="field-box">
                   <select id="movement-category" name="category"></select>
@@ -168,9 +163,7 @@
               <div class="form-field">
                 <div class="field-name">
                   <label for="movement-amount" data-i18n="amount">Amount</label>
-                  <span class="field-message" hidden
-                    >- <span data-i18n="required">Required</span></span
-                  >
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
                 </div>
                 <!-- The switch says if the amount is taken away (−) or added (+). -->
                 <div class="amount-row">

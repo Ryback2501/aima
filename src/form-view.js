@@ -189,9 +189,7 @@ export function createForm(form, { formatAmount }) {
   // tapped, and go away when the form opens again.
   function showMissing(names) {
     for (const [name, input] of Object.entries(required)) {
-      const part = input.closest('.form-field');
-      part.classList.toggle('missing', names.includes(name));
-      part.querySelector('.field-message').hidden = !names.includes(name);
+      input.closest('.form-field').classList.toggle('missing', names.includes(name));
     }
   }
 

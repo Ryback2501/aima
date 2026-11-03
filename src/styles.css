@@ -733,18 +733,22 @@ html:not(.loading) .label {
   font-size: 0.8125rem;
 }
 
-/* A required field that was empty when Save was tapped: its name is red with " - Required"
-   after it, and its box has a red border. While it is in use, it has the normal border. */
+/* A required field that was empty when Save was tapped ("missing"): its name is red with
+   " - Required" after it, and its box has a red border, except while it is in use. */
+.field-message {
+  display: none;
+}
+
+.form-field.missing .field-message {
+  display: inline;
+}
+
 .form-field.missing .field-name {
   color: var(--red);
 }
 
-.form-field.missing .field-box {
+.form-field.missing .field-box:not(:focus-within) {
   border-color: var(--red);
-}
-
-.form-field.missing .field-box:focus-within {
-  border-color: transparent;
 }
 
 /* The grey box around each field. The field being used gets a blue-to-purple border. */

@@ -176,10 +176,12 @@ test('when no empty row is left, the same request first adds a row at the end', 
 test('before Save, no field is marked', async ({ page }) => {
   await openForm(page);
 
-  const mark = await markOf(page, 'source');
-  expect(mark.text).toBe('Source');
-  expect(mark.color).not.toBe(RED);
-  expect(mark.border).toBe('3px rgba(0, 0, 0, 0)');
+  for (const name of ['source', 'date', 'category', 'amount']) {
+    const mark = await markOf(page, name);
+    expect(mark.text).toBe(STRINGS.en[name]);
+    expect(mark.color).not.toBe(RED);
+    expect(mark.border).toBe('3px rgba(0, 0, 0, 0)');
+  }
 });
 
 test('empty Source, Date, Category or Amount are marked red with " - Required", and nothing is saved', async ({
@@ -250,6 +252,22 @@ test('the marks stay until Save is tapped again, and go away when the form close
   await add(page).click();
   await expect(form(page)).toBeVisible();
   expect((await markOf(page, 'category')).text).toBe('Category');
+});
+
+test('after a successful Save, the form opens again with nothing marked', async ({ page }) => {
+  await openForm(page);
+  await save(page).click();
+  await expect.poll(() => markOf(page, 'source')).toEqual(markedAs(STRINGS.en, 'source'));
+  await fillMovement(page);
+
+  await save(page).click();
+  await expect(form(page)).toBeHidden();
+  await add(page).click();
+  await expect(form(page)).toBeVisible();
+
+  for (const name of ['source', 'date', 'category', 'amount']) {
+    expect((await markOf(page, name)).text).toBe(STRINGS.en[name]);
+  }
 });
 
 test('a second tap on Save adds nothing, and Save and Cancel wait while it saves', async ({

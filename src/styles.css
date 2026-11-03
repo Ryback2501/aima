@@ -725,6 +725,14 @@ html:not(.loading) .label {
   gap: 4px;
 }
 
+/* "Required", under a required field that was empty when Save was tapped. */
+.field-message {
+  align-self: flex-start;
+  margin: 0 0 0 6px;
+  color: var(--red);
+  font-size: 0.8125rem;
+}
+
 .form-field label {
   align-self: flex-start;
   margin-left: 6px;
@@ -837,8 +845,9 @@ html:not(.loading) .label {
   color: var(--text);
 }
 
-/* Said when the lists cannot be read. */
-.form-message {
+/* Said when the lists cannot be read, or when the movement was not saved. */
+.form-message,
+.save-message {
   margin: 0;
   color: var(--red);
   font-size: 0.9375rem;

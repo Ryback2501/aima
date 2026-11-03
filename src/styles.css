@@ -725,11 +725,30 @@ html:not(.loading) .label {
   gap: 4px;
 }
 
-.form-field label {
+/* The name of a field, on the left above it. */
+.field-name {
   align-self: flex-start;
   margin-left: 6px;
   color: var(--text-soft);
   font-size: 0.8125rem;
+}
+
+/* A required field that was empty when Save was tapped ("missing"): its name is red with
+   " - Required" after it, and its box has a red border, except while it is in use. */
+.field-message {
+  display: none;
+}
+
+.form-field.missing .field-message {
+  display: inline;
+}
+
+.form-field.missing .field-name {
+  color: var(--red);
+}
+
+.form-field.missing .field-box:not(:focus-within) {
+  border-color: var(--red);
 }
 
 /* The grey box around each field. The field being used gets a blue-to-purple border. */
@@ -837,8 +856,9 @@ html:not(.loading) .label {
   color: var(--text);
 }
 
-/* Said when the lists cannot be read. */
-.form-message {
+/* Said when the lists cannot be read, or when the movement was not saved. */
+.form-message,
+.save-message {
   margin: 0;
   color: var(--red);
   font-size: 0.9375rem;

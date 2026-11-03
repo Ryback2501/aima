@@ -68,3 +68,29 @@ test('the form reads its lists from the dropdowns of the first movement row', ()
   assert.equal(config.form.sourceList, `${sheet}!A2`);
   assert.equal(config.form.categoryList, `${sheet}!C2`);
 });
+
+// The order of the movements of one day, from top to bottom. Each Cash movement is followed by
+// its Provisioned movement.
+test('the movements of one day are sorted by their source, in the order of the issue', () => {
+  assert.deepEqual(config.goal.sourceOrder, [
+    'BBVA David',
+    'BBVA Común',
+    'Después',
+    'AMEX',
+    'ECI',
+    'ICON',
+    'Pluxee',
+    'Edenred',
+    'Cash',
+    'Polina',
+    'Provisioned',
+    'Deprovisioned',
+  ]);
+  assert.deepEqual(config.goal.sourcePairs, { Cash: 'Provisioned' });
+});
+
+test('new movements are written on the movements sheet, from the first movement row', () => {
+  const sheet = config.goal.movements.split('!')[0];
+  assert.equal(config.form.sheet, sheet);
+  assert.equal(`${config.form.sheet}!A${config.form.firstRow}`, config.form.sourceList);
+});

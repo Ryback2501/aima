@@ -229,3 +229,155 @@ test('getDropdown fails when the dropdown has no options', async () => {
 
   await assert.rejects(client(fetch).getDropdown('Sheet1!A2'), SheetsError);
 });
+
+test('getValues with formulas asks for the formulas, and for dates as day numbers', async () => {
+  const { fetch, calls } = fakeFetch(200, { values: [['Cash', 46300, 'General', '', '=10+2.5']] });
+
+  const rows = await client(fetch).getValues('Sheet1!A2:E', { formulas: true });
+
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/Sheet1!A2%3AE' +
+      '?valueRenderOption=FORMULA&dateTimeRenderOption=SERIAL_NUMBER',
+  );
+  assert.deepEqual(rows, [['Cash', 46300, 'General', '', '=10+2.5']]);
+});
+
+test('getSheet finds the number and the size of a sheet by its name', async () => {
+  const { fetch, calls } = fakeFetch(200, {
+    sheets: [
+      { properties: { sheetId: 0, title: 'Other', gridProperties: { rowCount: 10 } } },
+      { properties: { sheetId: 7, title: 'Sheet1', gridProperties: { rowCount: 500 } } },
+    ],
+  });
+
+  assert.deepEqual(await client(fetch).getSheet('Sheet1'), { sheetId: 7, rowCount: 500 });
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123?fields=' +
+      encodeURIComponent('sheets.properties(sheetId,title,gridProperties.rowCount)'),
+  );
+});
+
+test('getSheet fails when there is no sheet with that name', async () => {
+  const { fetch } = fakeFetch(200, { sheets: [] });
+
+  await assert.rejects(client(fetch).getSheet('Sheet1'), SheetsError);
+});
+
+test('writeRows writes only the values of the first five columns, in one single request', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    sheetId: 7,
+    rowCount: 500,
+    startRow: 3,
+    rows: [
+      ['Cash', 46300, 'General', 'Bakery', -12.5],
+      ['AMEX', 46301, 'House', '', '=10+2.5'],
+    ],
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://sheets.googleapis.com/v4/spreadsheets/sheet-123:batchUpdate');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token-abc');
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    requests: [
+      {
+        updateCells: {
+          // Rows 4 and 5 of the sheet (counted from 0), columns A to E.
+          range: {
+            sheetId: 7,
+            startRowIndex: 3,
+            endRowIndex: 5,
+            startColumnIndex: 0,
+            endColumnIndex: 5,
+          },
+          rows: [
+            {
+              values: [
+                { userEnteredValue: { stringValue: 'Cash' } },
+                { userEnteredValue: { numberValue: 46300 } },
+                { userEnteredValue: { stringValue: 'General' } },
+                { userEnteredValue: { stringValue: 'Bakery' } },
+                { userEnteredValue: { numberValue: -12.5 } },
+              ],
+            },
+            {
+              values: [
+                { userEnteredValue: { stringValue: 'AMEX' } },
+                { userEnteredValue: { numberValue: 46301 } },
+                { userEnteredValue: { stringValue: 'House' } },
+                // An empty concept empties its cell.
+                {},
+                // A formula stays a formula.
+                { userEnteredValue: { formulaValue: '=10+2.5' } },
+              ],
+            },
+          ],
+          // Only the values change: each cell keeps its own format.
+          fields: 'userEnteredValue',
+        },
+      },
+    ],
+  });
+});
+
+test('writeRows first adds rows at the end, in the same request, when the sheet is too short', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    sheetId: 7,
+    rowCount: 4,
+    startRow: 3,
+    rows: [m5('Cash'), m5('AMEX')],
+  });
+
+  const { requests } = JSON.parse(calls[0].options.body);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(requests[0], { appendDimension: { sheetId: 7, dimension: 'ROWS', length: 1 } });
+  assert.ok(requests[1].updateCells);
+});
+
+test('writeRows tells when Google refuses the change', async () => {
+  await assert.rejects(client(fakeFetch(403).fetch).writeRows(oneRow), NoAccessError);
+  await assert.rejects(client(fakeFetch(500).fetch).writeRows(oneRow), SheetsError);
+});
+
+function m5(source) {
+  return [source, 46300, 'General', '', -1];
+}
+const oneRow = { sheetId: 7, rowCount: 10, startRow: 1, rows: [m5('Cash')] };
+
+test('writeRows writes a typed text that starts with "=" as text, not as a formula', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    ...oneRow,
+    rows: [['Cash', 46300, 'General', { text: '= dinner' }, -1]],
+  });
+
+  const { values } = JSON.parse(calls[0].options.body).requests[0].updateCells.rows[0];
+  assert.deepEqual(values[3], { userEnteredValue: { stringValue: '= dinner' } });
+});
+
+test('rows added at the end get the format of the last row, so dates still look like dates', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).writeRows({
+    sheetId: 7,
+    rowCount: 4,
+    startRow: 3,
+    rows: [m5('Cash'), m5('AMEX')],
+  });
+
+  const { requests } = JSON.parse(calls[0].options.body);
+  assert.deepEqual(requests.at(-1), {
+    copyPaste: {
+      source: { sheetId: 7, startRowIndex: 3, endRowIndex: 4 },
+      destination: { sheetId: 7, startRowIndex: 4, endRowIndex: 5 },
+      pasteType: 'PASTE_FORMAT',
+    },
+  });
+});

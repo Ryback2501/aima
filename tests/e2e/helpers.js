@@ -13,6 +13,11 @@ export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
 // 1000 - 200.50 - 300 (Provisioned is taken away) + 50
 export const FAKE_TOTAL = '€549.50';
 export const FAKE_MOVEMENTS = 'Sheet2!A:E';
+// The made-up movements sheet: its name, its number, and the range the save reads (the rows
+// under the headers).
+const FAKE_SHEET = 'Sheet2';
+const FAKE_SHEET_NUMBER = 7;
+const FAKE_SAVE_RANGE = 'Sheet2!A2:E';
 // Made-up cells whose dropdowns give the source and category lists of the new movement form.
 export const FAKE_SOURCE_LIST = 'Sheet2!A2';
 export const FAKE_CATEGORY_LIST = 'Sheet2!C2';
@@ -52,11 +57,19 @@ export async function setUp(
     // The dropdowns of the form's lists: the default ones, 'offline' (no answer) or 'none'
     // (the cells have no dropdown rule).
     dropdowns = FAKE_DROPDOWNS,
+    // How many rows the movements sheet has. By default there are empty rows left.
+    rowCount = 100,
+    // What Google answers to each save, in order: 200, another status, or 'offline'. The
+    // last one is used for the saves after it.
+    saves = [200],
   } = {},
 ) {
   const sheetRequests = [];
   // The kind of each request (GET reads, the others change the sheet), in the same order.
   sheetRequests.methods = [];
+  // What the app asked Google to change in each save, and if Google did it.
+  sheetRequests.saves = [];
+  let rows = rowCount;
   let picked = !needsPick;
 
   await page.exposeFunction('__sheetPicked', () => (picked = true));
@@ -77,7 +90,8 @@ export async function setUp(
       .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
       .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`)
       .replace(/sourceList: '[^']*'/, `sourceList: '${FAKE_SOURCE_LIST}'`)
-      .replace(/categoryList: '[^']*'/, `categoryList: '${FAKE_CATEGORY_LIST}'`);
+      .replace(/categoryList: '[^']*'/, `categoryList: '${FAKE_CATEGORY_LIST}'`)
+      .replace(/\bsheet: '[^']*'/, `sheet: '${FAKE_SHEET}'`);
     await route.fulfill({ response, body });
   });
 
@@ -98,6 +112,29 @@ export async function setUp(
       return;
     }
     const url = new URL(request.url());
+    // A save: the change is made on the fake movements, as Google would do it.
+    if (url.pathname.endsWith(':batchUpdate')) {
+      const answer = saves[Math.min(sheetRequests.saves.length, saves.length - 1)];
+      const body = request.postDataJSON();
+      sheetRequests.saves.push({ body, done: answer === 200 });
+      if (answer === 'offline') {
+        await route.abort();
+        return;
+      }
+      if (answer === 200) applySave(body);
+      await route.fulfill({ status: answer, json: answer === 200 ? {} : { error: {} } });
+      return;
+    }
+    // The number and the size of each sheet.
+    if (url.searchParams.get('fields')?.startsWith('sheets.properties')) {
+      const properties = {
+        sheetId: FAKE_SHEET_NUMBER,
+        title: FAKE_SHEET,
+        gridProperties: { rowCount: rows },
+      };
+      await route.fulfill({ json: { sheets: [{ properties }] } });
+      return;
+    }
     // The dropdown rule of one cell.
     if (url.searchParams.has('fields')) {
       if (dropdowns === 'offline') {
@@ -116,7 +153,9 @@ export async function setUp(
       await route.fulfill({ json: { values: listCells } });
       return;
     }
-    const askedForMovements = request.url().includes(encodeURIComponent(FAKE_MOVEMENTS));
+    const askedForMovements = [FAKE_MOVEMENTS, FAKE_SAVE_RANGE].some((range) =>
+      request.url().includes(encodeURIComponent(range)),
+    );
     const answer = askedForMovements
       ? { values: movements }
       : { valueRanges: cells.map((value) => ({ values: [[value]] })) };
@@ -131,6 +170,21 @@ export async function setUp(
   await page.route('https://www.googleapis.com/drive/v3/files/**', (route) =>
     canEdit === 'offline' ? route.abort() : route.fulfill({ json: { capabilities: { canEdit } } }),
   );
+
+  // Makes a saved change on the fake movements: rows added at the end, and the values of the
+  // first five columns written. Row 2 of the sheet is the first movement.
+  function applySave({ requests }) {
+    for (const { appendDimension, updateCells } of requests) {
+      if (appendDimension) rows += appendDimension.length;
+      if (!updateCells) continue;
+      updateCells.rows.forEach(({ values }, index) => {
+        movements[updateCells.range.startRowIndex - 1 + index] = values.map(
+          ({ userEnteredValue = {} }) =>
+            userEnteredValue.numberValue ?? userEnteredValue.stringValue ?? '',
+        );
+      });
+    }
+  }
 
   return sheetRequests;
 }

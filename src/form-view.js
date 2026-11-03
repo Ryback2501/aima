@@ -45,6 +45,10 @@ export function createForm(form, { formatAmount }) {
   const amount = field('amount');
   const sign = form.querySelector('.sign-switch');
   const message = form.querySelector('.form-message');
+  const saveMessage = form.querySelector('.save-message');
+  const buttons = [...form.querySelectorAll('.form-buttons button')];
+  // The required fields. An empty one is marked when Save is tapped (see showMissing).
+  const required = { source, date, category, amount };
 
   concept.maxLength = CONCEPT_LIMIT;
   // The form never sends itself: that would load the page again.
@@ -159,6 +163,9 @@ export function createForm(form, { formatAmount }) {
     fillList(source, sources);
     fillList(category, categories);
     message.hidden = !failed;
+    showMissing([]);
+    saveMessage.hidden = true;
+    setSaving(false);
     date.value = today();
     concept.value = '';
     digits = '';
@@ -167,5 +174,33 @@ export function createForm(form, { formatAmount }) {
     setSign('minus');
   }
 
-  return { reset, fitConcept };
+  // What was typed, for Save: the amount as its typed numbers, and the sign.
+  const values = () => ({
+    source: source.value,
+    date: date.value,
+    category: category.value,
+    concept: concept.value,
+    digits,
+    sign: sign.dataset.sign,
+  });
+
+  // Marks the given empty fields, and only them: the name turns red with " - Required" after
+  // it, and the box gets a red border (see styles.css). The marks change only when Save is
+  // tapped, and go away when the form opens again.
+  function showMissing(names) {
+    for (const [name, input] of Object.entries(required)) {
+      input.closest('.form-field').classList.toggle('missing', names.includes(name));
+    }
+  }
+
+  // While a movement is being saved, Save and Cancel cannot be tapped.
+  function setSaving(saving) {
+    for (const button of buttons) button.disabled = saving;
+    if (saving) saveMessage.hidden = true;
+  }
+
+  // The movement was not saved: the form stays as it is, and says so.
+  const saveFailed = () => (saveMessage.hidden = false);
+
+  return { reset, fitConcept, values, showMissing, setSaving, saveFailed };
 }

@@ -35,6 +35,25 @@ export const config = {
     // Where the money came from: the word in the first column, and its icon (the same icons as
     // the parts of the Total). A movement with another word, or none, shows no icon.
     sources: { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' },
+    // When a new movement is saved, the movements of one day are sorted by their source, in this
+    // order from top to bottom. A source that is not here goes last.
+    sourceOrder: [
+      'BBVA David',
+      'BBVA Común',
+      'Después',
+      'AMEX',
+      'ECI',
+      'ICON',
+      'Pluxee',
+      'Edenred',
+      'Cash',
+      'Polina',
+      'Provisioned',
+      'Deprovisioned',
+    ],
+    // Each Cash movement is followed right below by its Provisioned movement, the one with the
+    // same amount. A Provisioned movement with no Cash keeps its own place in the order above.
+    sourcePairs: { Cash: 'Provisioned' },
     // The first and the last day that count.
     from: '2026-10-01',
     to: '2026-12-31',
@@ -62,12 +81,15 @@ export const config = {
   form: {
     sourceList: 'Movements!A2',
     categoryList: 'Movements!C2',
+    // Where a new movement is saved: the sheet of the movements, and its first movement row.
+    sheet: 'Movements',
+    firstRow: 2,
   },
 
   // What the app asks Google for.
   // "drive.file" lets the app open only the files the person picks for it in the Google file
-  // picker: here, the one sheet. It also allows changes to that file, for when the app can add
-  // and change data. Today the app only reads.
+  // picker: here, the one sheet. It also allows changes to that file: the app saves new
+  // movements into it.
   scopes: [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',

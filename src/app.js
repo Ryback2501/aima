@@ -11,6 +11,7 @@ import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
 import { goalStatus, goalMonths } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
+import { missingFields, movementRow, planSave } from './movements.js';
 
 export function createApp({ config, view, session, loadAuth, loadPicker, createSheets }) {
   let auth = null;
@@ -117,6 +118,75 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
+  // Reads the parts of the Total and the movements, both at the same time, and works out what
+  // the main screen shows.
+  async function load() {
+    const [amounts, movements] = await Promise.all([
+      sheets.getCells(config.pills.map(({ cell }) => cell)),
+      sheets.getValues(config.goal.movements, { raw: true }),
+    ]);
+    // A cell that is empty or not a number counts as 0.
+    parts = config.pills.map(({ name, subtract = false }, index) => ({
+      name,
+      subtract,
+      amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
+    }));
+    goal = {
+      ...goalStatus(movements, config.goal),
+      limit: config.goal.limit,
+      months: goalMonths(movements, config.goal),
+    };
+  }
+
+  // Writes a new movement into the sheet: its day and every later day are sorted again (see
+  // movements.js). The rows are read again just before, so the newest sheet is used. Returns
+  // false when Google could not be reached or refused the change: then nothing was saved.
+  async function write(values) {
+    const { sheet, firstRow } = config.form;
+    try {
+      const [rows, place] = await Promise.all([
+        sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
+        sheets.getSheet(sheet),
+      ]);
+      const row = movementRow(values);
+      const plan = planSave(rows, row, config.goal);
+      // What was typed is always text: a concept that starts with "=" must not become a formula.
+      const typed = (cell) =>
+        typeof cell === 'string' && cell.startsWith('=') ? { text: cell } : cell;
+      const written = plan.rows.map((each) => (each === row ? each.map(typed) : each));
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // A tap on Save. Empty required fields are marked, and nothing is saved. While a movement
+  // is being saved, Save and Cancel wait, and another tap does nothing. After the save, the
+  // main screen is read again and the form closes. If the sheet cannot be read again, the form
+  // closes anyway: the movement is saved, and saying otherwise would make the person save it
+  // twice.
+  let saving = false;
+  async function saveMovement(values) {
+    if (saving) return;
+    const missing = missingFields(values);
+    view.showMissing(missing);
+    if (missing.length > 0) return;
+    saving = true;
+    view.setSaving(true);
+    try {
+      if (await write(values)) {
+        await load().then(showMain, () => {});
+        view.closeForm();
+      } else {
+        view.saveFailed();
+      }
+    } finally {
+      saving = false;
+      view.setSaving(false);
+    }
+  }
+
   // A tap on a pill switches that part of the Total on or off. The choice is remembered.
   function togglePill(name) {
     const off = session.getSwitchedOff();
@@ -131,9 +201,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   async function check(token, { fresh = false, picked = false } = {}) {
     view.render({ screen: 'checking' });
     try {
-      const [amounts, movements, editor] = await Promise.all([
-        sheets.getCells(config.pills.map(({ cell }) => cell)),
-        sheets.getValues(config.goal.movements, { raw: true }),
+      const [, editor] = await Promise.all([
+        load(),
         // When Google cannot say, the person adds nothing, but the app still works.
         sheets.canEdit().catch(() => false),
       ]);
@@ -142,17 +211,6 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         const email = await (await loadedAuth())?.getEmail(token);
         if (email) session.saveHint(email);
       }
-      // A cell that is empty or not a number counts as 0.
-      parts = config.pills.map(({ name, subtract = false }, index) => ({
-        name,
-        subtract,
-        amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
-      }));
-      goal = {
-        ...goalStatus(movements, config.goal),
-        limit: config.goal.limit,
-        months: goalMonths(movements, config.goal),
-      };
       canAdd = editor;
       // The form's lists load now, so the form is ready when "+" is tapped. They load again at
       // every sign-in, because the sheet's dropdowns may have changed.
@@ -239,6 +297,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.onTogglePill(togglePill);
     view.onPickLanguage(chooseLanguage);
     view.onAdd(openForm);
+    view.onSave(saveMovement);
 
     const token = session.getToken();
     if (token) {

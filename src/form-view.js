@@ -92,8 +92,6 @@ export function createForm(form, { formatAmount }) {
   }
   sign.addEventListener('click', () => setSign(sign.dataset.sign === 'minus' ? 'plus' : 'minus'));
 
-  // Starts the form again, empty: the lists from the sheet (or a message when they could not
-  // be read), the date at today, and the amount below 0.
   // The amount works like the card machines in shops: it takes only numbers, and the last two
   // are the cents. The form keeps the numbers itself and stops every change the browser would
   // make to the field, so the cursor always stays at the end, and only the whole amount can be
@@ -155,6 +153,8 @@ export function createForm(form, { formatAmount }) {
     amount.addEventListener(type, keepCursor);
   }
 
+  // Starts the form again, empty: the lists from the sheet (or a message when they could not
+  // be read), the date at today, and the amount below 0.
   function reset({ sources, categories, failed = false }) {
     fillList(source, sources);
     fillList(category, categories);

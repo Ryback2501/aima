@@ -597,6 +597,23 @@ test.describe('the new movement form', () => {
       await expect(field(page, 'amount')).toHaveAttribute('placeholder', '0.00');
     });
 
+    test('the amount, its hint and its cursor sit on the right side of the box', async ({
+      page,
+    }) => {
+      await openForm(page);
+      const amount = field(page, 'amount');
+      await amount.focus();
+      const alignOf = (part) =>
+        amount.evaluate((node, part) => getComputedStyle(node, part).textAlign, part);
+
+      // Empty, the grey hint is on the right, and so is the cursor (at the end of the field).
+      expect(await alignOf('::placeholder')).toBe('right');
+      expect(await alignOf(null)).toBe('right');
+      await page.keyboard.type('5');
+      await expect(amount).toHaveValue('0.05');
+      expect(await alignOf(null)).toBe('right');
+    });
+
     test('the last two numbers are the cents', async ({ page }) => {
       await openForm(page);
       const amount = field(page, 'amount');

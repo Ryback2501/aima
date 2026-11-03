@@ -675,21 +675,17 @@ html:not(.loading) .label {
   display: none;
 }
 
-/* The form rises in and sinks away with the open card's movements (see above), without
-   waiting for other parts. */
-.movement-form {
-  --rise-order: 0;
-  --sink-order: 0;
-}
-
 /* The back button is hidden while the form is open, so the card needs no room for it. */
 .label.open.adding {
   padding-bottom: 16px;
 }
 
 /* The form: a light grey panel with a white border, like the months. When the screen is too
-   short for all of it, it scrolls inside its border. */
+   short for all of it, it scrolls inside its border. It rises in and sinks away with the open
+   card's movements (see above), without waiting for other parts. */
 .movement-form {
+  --rise-order: 0;
+  --sink-order: 0;
   flex-direction: column;
   gap: 8px;
   flex: 0 1 auto;

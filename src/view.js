@@ -374,8 +374,8 @@ export function createView(document, language) {
           button.classList.remove('sinking');
         }
         form.reset(lists);
-        card.classList.remove('hiding-months');
         card.classList.add('adding');
+        card.classList.remove('hiding-months');
         form.fitConcept();
         await still(formPanel);
       })(),

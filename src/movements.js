@@ -93,7 +93,9 @@ const EMPTY = ['', '', '', '', ''];
 // the sheet keeps its number of rows. Rows below the last movement do not change.
 // Returns { start, rows }: the first deleted row, and the rows to write from there.
 export function planDelete(rows, indexes) {
-  const movements = rows.slice(0, rows.findLastIndex((row) => dayOf(row) !== null) + 1);
+  // A date can also be a formula here (the rows come with their formulas), so every row down
+  // to the last one with anything in its date cell is a movement.
+  const movements = rows.slice(0, rows.findLastIndex((row) => text(row[1]) !== '') + 1);
   const deleted = new Set(indexes);
   const start = Math.min(...indexes);
   const kept = movements.slice(start).filter((row, index) => !deleted.has(start + index));

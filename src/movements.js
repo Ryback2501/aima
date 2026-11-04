@@ -1,6 +1,6 @@
-// What happens to the movements of the sheet when one is saved or changed, or some are deleted: the
-// rules that sort them, the rows that change, and the checks of the form. It only works with
-// values. It does not read the sheet or touch the page.
+// What happens to the movements of the sheet when one is saved or changed, or some are
+// deleted: the rules that sort them, the rows that change, and the checks of the form. It only
+// works with values. It does not read the sheet or touch the page.
 //
 // A movement row is: source, date (the sheet's day number), category, concept, amount.
 

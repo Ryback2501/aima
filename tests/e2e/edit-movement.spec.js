@@ -495,10 +495,11 @@ test.describe('the edit form', () => {
 
     for (const name of ['source', 'category']) {
       await expect(field(page, name)).toHaveValue('');
+      // The field is looked for inside each marked part of the form.
       await expect(
         form(page)
           .locator('.form-field.missing')
-          .filter({ has: field(page, name) }),
+          .filter({ has: page.getByLabel(STRINGS.en[name], { exact: true }) }),
       ).toHaveCount(1);
     }
     await expect(form(page).locator('.form-field.missing')).toHaveCount(2);
@@ -763,7 +764,8 @@ test.describe('saving a change', () => {
     expect(requests.saves).toEqual([]);
     expect(movements[4][1]).toBe(sheetDay('2026-10-20') + 0.5);
 
-    await tapMonth(page, 0);
+    // Nothing was read again, so October is still open.
+    await expect(month(page, 0).locator('.month-list')).toBeVisible();
     await select(page, 0, [1]);
     await tapAndWait(page, edit(page));
     await typeAmount(page, '1100');

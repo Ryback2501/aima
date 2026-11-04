@@ -32,6 +32,10 @@ function skipped(category, description, skip) {
 // and never -0.
 const spending = (sum) => Math.round(-sum * 100) / 100 + 0;
 
+// True when an amount has more than two decimals (12.345). The sheet should never have one.
+export const hasExtraDecimals = (amount) =>
+  Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-6;
+
 // Where the money of a movement came from, as an icon name ("cash", "card" or "bank"), or null
 // when the word in the sheet is not in the list. Object.hasOwn: see skipped.
 function sourceOf(source, sources = {}) {
@@ -41,7 +45,8 @@ function sourceOf(source, sources = {}) {
 
 // The movements that count for the goal: in the period, with a number, and not skipped.
 // Returns { day, category, description, amount, source, row } for each one, amount as in the
-// sheet. row is the place of the movement in rows (from 0), so it can be deleted later.
+// sheet. row is the place of the movement in rows (from 0), so it can be changed or deleted
+// later. extraDecimals is there, and true, only when the amount has more than two decimals.
 function countedMovements(rows, { from, to, skip, sources }) {
   const first = dayNumber(from);
   const last = dayNumber(to);
@@ -58,6 +63,7 @@ function countedMovements(rows, { from, to, skip, sources }) {
       amount,
       source: sourceOf(source, sources),
       row,
+      ...(hasExtraDecimals(amount) && { extraDecimals: true }),
     });
   }
   return counted;
@@ -95,10 +101,10 @@ const dayOfMonth = (day) => new Date(SHEET_START + Math.floor(day) * DAY).getUTC
 // Puts movements that are already newest first into days, newest day first.
 function byDay(movements) {
   const days = [];
-  for (const { day, category, description, amount, source, row } of movements) {
+  for (const { day, amount, ...movement } of movements) {
     const date = dayOfMonth(day);
     if (days.at(-1)?.day !== date) days.push({ day: date, movements: [] });
-    days.at(-1).movements.push({ category, description, amount: spending(amount), source, row });
+    days.at(-1).movements.push({ ...movement, amount: spending(amount) });
   }
   return days;
 }
@@ -106,9 +112,9 @@ function byDay(movements) {
 // The goal's spending month by month: one entry per month of the period, in order:
 // { year, month (1-12), amount, days }. amount is the month's spending, or null when the
 // month has no counted movements. days: the days with movements, newest first, each one
-// { day (1-31), movements }. movements: { category, description, amount, source, row } with the
-// amount as spending, newest first, and row the place of the movement in rows. The same rules
-// as goalStatus decide what counts.
+// { day (1-31), movements }. movements: { category, description, amount, source, row,
+// extraDecimals } (see countedMovements), newest first, with the amount as spending. The same
+// rules as goalStatus decide what counts.
 export function goalMonths(rows, goal) {
   const counted = countedMovements(rows, goal);
   const first = monthCount(dayNumber(goal.from));

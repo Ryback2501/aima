@@ -38,6 +38,7 @@ export function createMonths({
   settled,
   reduceMotion,
   canSelect,
+  selectionChanged,
 }) {
   const window = document.defaultView;
   const column = room.querySelector('.month-column');
@@ -80,6 +81,8 @@ export function createMonths({
       list.append(make('div', 'movement-date', dayName(year, month, day)));
       for (const movement of movements) {
         const row = make('div', 'movement');
+        // The movement's place in the rows read from the sheet, to delete it.
+        row.dataset.row = String(movement.row);
         const text = make('span', 'movement-text');
         // textContent shows the sheet's words as plain text, never as page code.
         // The description sits in a "track": when it does not fit, the track moves (see
@@ -112,14 +115,39 @@ export function createMonths({
     return item;
   }
 
-  // Shows the months. Nothing changes when the months are the same as before.
-  function render(months) {
+  // Shows the months. Nothing changes when the months are the same as before. keepOpen (after a
+  // delete): the open month stays open, at the same place, unless it has no movements now.
+  function render(months, { keepOpen = false } = {}) {
     const key = JSON.stringify(months);
     if (key === shown) return;
     shown = key;
+    const kept =
+      keepOpen && open !== null
+        ? { index: open, shift, scroll: items[open].querySelector('.month-list').scrollTop }
+        : null;
     reset();
     items = months.map(buildMonth);
     column.replaceChildren(...items);
+    if (kept && months[kept.index].amount !== null) reopen(kept);
+  }
+
+  // Opens a month of months just built, at once, as it was before: the same shift of the
+  // column and the same scrolled place in its list. The months are already on the screen, so
+  // they do not rise in again.
+  function reopen({ index, shift: kept, scroll }) {
+    for (const animation of column.getAnimations({ subtree: true })) {
+      if (!endless(animation)) animation.finish();
+    }
+    instantly(() => {
+      for (const item of items) item.classList.add('sized');
+      room.classList.add('placed');
+      open = index;
+      shift = kept;
+      place();
+      items[open].querySelector('.month-list').scrollTop = scroll;
+    });
+    fitDescriptions(items[open]);
+    updateFades();
   }
 
   // Forgets which months are shown, so the next render builds them again, for example after
@@ -315,7 +343,7 @@ export function createMonths({
   let held = null;
 
   const rowOf = (event) => event.target.closest('.movement');
-  const anySelected = () => Boolean(column.querySelector('.movement.selected'));
+  const selectedCount = () => column.querySelectorAll('.movement.selected').length;
 
   function stopPress() {
     if (!press) return;
@@ -332,6 +360,7 @@ export function createMonths({
       press = null;
       held = row;
       row.classList.add('selected');
+      selectionChanged(selectedCount());
     };
     const { pointerId, clientX: x, clientY: y } = event;
     press = { pointerId, x, y, timer: window.setTimeout(select, HOLD_TIME) };
@@ -357,7 +386,9 @@ export function createMonths({
       held = null;
       return;
     }
-    if (canSelect() && anySelected()) row.classList.toggle('selected');
+    if (!canSelect() || selectedCount() === 0) return;
+    row.classList.toggle('selected');
+    selectionChanged(selectedCount());
   });
 
   // The phone's own long-press menu never opens on a movement.
@@ -372,6 +403,62 @@ export function createMonths({
     for (const row of column.querySelectorAll('.movement.selected')) {
       row.classList.remove('selected');
     }
+    selectionChanged(0);
+  }
+
+  // The places in the rows read from the sheet of the selected movements.
+  const selectedRows = () =>
+    [...column.querySelectorAll('.movement.selected')].map((row) => Number(row.dataset.row));
+
+  // After a delete: the selected movements fade out, then get shorter until they are gone, so
+  // the movements below move up. A date with no movement left goes the same way. Then the open
+  // month gets shorter, or closes when it has no movement left. With "reduce motion" on the
+  // phone, all of it happens at once. The next render shows the months without them.
+  async function removeSelected() {
+    const rows = [...column.querySelectorAll('.movement.selected')];
+    const dates = [...column.querySelectorAll('.movement-date')].filter((date) => {
+      for (let next = date.nextElementSibling; next?.classList.contains('movement');) {
+        if (!next.classList.contains('selected')) return false;
+        next = next.nextElementSibling;
+      }
+      return true;
+    });
+    const going = [...rows, ...dates];
+    if (!reduceMotion()) {
+      const css = window.getComputedStyle(room);
+      const timing = (name) => ({
+        duration: parseFloat(css.getPropertyValue(name)) || 0,
+        easing: 'ease-in-out',
+        fill: 'forwards',
+      });
+      const play = (frames, name) =>
+        Promise.allSettled(going.map((node) => node.animate(frames(node), timing(name)).finished));
+      await play(() => [{ opacity: 1 }, { opacity: 0 }], '--pill-fade');
+      await play((node) => {
+        const box = window.getComputedStyle(node);
+        const full = {};
+        for (const side of ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom']) {
+          full[side] = box[side];
+        }
+        const none = Object.fromEntries(Object.keys(full).map((side) => [side, '0px']));
+        return [
+          { ...full, opacity: 0, overflow: 'hidden' },
+          { ...none, opacity: 0, overflow: 'hidden' },
+        ];
+      }, '--rise-time');
+    }
+    for (const node of going) {
+      node.style.display = 'none';
+      for (const animation of node.getAnimations()) animation.cancel();
+    }
+    if (open === null) return;
+    if (items[open].querySelector('.movement:not(.selected)')) {
+      place();
+      window.requestAnimationFrame(followFades);
+    } else {
+      toggle(open);
+    }
+    await settled(room);
   }
 
   // Puts every month back to closed at once (when the goal card closes).
@@ -397,5 +484,5 @@ export function createMonths({
   // they rise into view when the goal card opens).
   const follow = () => window.requestAnimationFrame(followFades);
 
-  return { render, forget, reset, follow, unselectAll };
+  return { render, forget, reset, follow, unselectAll, selectedRows, removeSelected };
 }

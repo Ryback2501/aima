@@ -19,6 +19,11 @@ const SOURCE_ICON_SIZE = 18;
 // How fast a description that does not fit on one line moves to the left, in pixels per second.
 export const DESCRIPTION_SPEED = 30;
 
+// A finger (or the mouse button) kept this long on a movement selects it, in milliseconds,
+// if it moves less than HOLD_DISTANCE pixels meanwhile. A finger that moves more is scrolling.
+export const HOLD_TIME = 500;
+export const HOLD_DISTANCE = 10;
+
 // An animation that repeats without end (a long description moving) is never waited for.
 export const endless = (animation) => animation.effect?.getComputedTiming().iterations === Infinity;
 
@@ -32,6 +37,7 @@ export function createMonths({
   lockWhile,
   settled,
   reduceMotion,
+  canSelect,
 }) {
   const window = document.defaultView;
   const column = room.querySelector('.month-column');
@@ -301,8 +307,76 @@ export function createMonths({
     if (moving) window.requestAnimationFrame(followFades);
   }
 
+  // Selecting movements, for people who can edit the sheet. Keeping a finger (or the mouse
+  // button) on a movement selects it. While one or more are selected, a tap selects another
+  // one, or unselects a selected one. With nothing selected, a tap does nothing.
+  let press = null;
+  // The movement just selected by holding it: the tap that ends the hold does not unselect it.
+  let held = null;
+
+  const rowOf = (event) => event.target.closest('.movement');
+  const anySelected = () => Boolean(column.querySelector('.movement.selected'));
+
+  function stopPress() {
+    if (!press) return;
+    window.clearTimeout(press.timer);
+    press = null;
+  }
+
+  column.addEventListener('pointerdown', (event) => {
+    stopPress();
+    held = null;
+    const row = rowOf(event);
+    if (!row || !canSelect() || event.button !== 0) return;
+    const select = () => {
+      press = null;
+      held = row;
+      row.classList.add('selected');
+    };
+    const { pointerId, clientX: x, clientY: y } = event;
+    press = { pointerId, x, y, timer: window.setTimeout(select, HOLD_TIME) };
+  });
+
+  column.addEventListener('pointermove', (event) => {
+    if (!press || event.pointerId !== press.pointerId) return;
+    const distance = Math.hypot(event.clientX - press.x, event.clientY - press.y);
+    if (distance > HOLD_DISTANCE) stopPress();
+  });
+
+  // The finger lifts, or the browser takes it to scroll the list.
+  for (const type of ['pointerup', 'pointercancel']) {
+    column.addEventListener(type, (event) => {
+      if (press && event.pointerId === press.pointerId) stopPress();
+    });
+  }
+
+  column.addEventListener('click', (event) => {
+    const row = rowOf(event);
+    if (!row) return;
+    if (row === held) {
+      held = null;
+      return;
+    }
+    if (canSelect() && anySelected()) row.classList.toggle('selected');
+  });
+
+  // The phone's own long-press menu never opens on a movement.
+  column.addEventListener('contextmenu', (event) => {
+    if (rowOf(event)) event.preventDefault();
+  });
+
+  // Forgets the selection (when the new movement form opens, or the goal card closes).
+  function unselectAll() {
+    stopPress();
+    held = null;
+    for (const row of column.querySelectorAll('.movement.selected')) {
+      row.classList.remove('selected');
+    }
+  }
+
   // Puts every month back to closed at once (when the goal card closes).
   function reset() {
+    unselectAll();
     open = null;
     shift = 0;
     room.classList.remove('placed');
@@ -323,5 +397,5 @@ export function createMonths({
   // they rise into view when the goal card opens).
   const follow = () => window.requestAnimationFrame(followFades);
 
-  return { render, forget, reset, follow };
+  return { render, forget, reset, follow, unselectAll };
 }

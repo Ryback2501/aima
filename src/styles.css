@@ -481,11 +481,26 @@ html:not(.loading) .label {
   z-index: 30;
 }
 
-/* The "+" button of the open goal card: in the middle, at the same height as the back button. */
+/* The "+" button of the open goal card: in the middle, at the same height as the back button.
+   While movements are selected it slides to the left ("paired"), and the Delete button shows on
+   its right, 14px away, so the two are in the middle together. "translate" moves it, so the
+   rise and sink movements (which use "transform") still work while it is on the left. */
 #add {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
   left: calc(50% - var(--width) / 2);
+  z-index: 30;
+  transition: translate var(--rise-time) ease-in-out;
+}
+
+#add.paired {
+  translate: calc(-1 * (var(--width) / 2 + 7px)) 0;
+}
+
+#delete {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(50% + 7px);
   z-index: 30;
 }
 
@@ -493,7 +508,8 @@ html:not(.loading) .label {
    set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
    they sink away in the reverse order (--sink-order): the same movement, backwards.
    The new movement form uses the same movements: before it appears, the months sink away
-   ("hiding-months"); then the form rises in, and on Cancel it sinks away ("sinking"). */
+   ("hiding-months"); then the form rises in, and on Cancel it sinks away ("sinking"). The
+   delete question does the same ("asking"). */
 @keyframes card-sink {
   to {
     opacity: 0;
@@ -507,7 +523,8 @@ html:not(.loading) .label {
 }
 
 .label.open.settled .rise-in,
-.label.open.settled.adding .movement-form {
+.label.open.settled.adding .movement-form,
+.label.open.settled.asking .delete-panel {
   animation: card-rise var(--rise-time) ease-out calc(var(--rise-order) * var(--rise-step))
     backwards;
 }
@@ -515,8 +532,10 @@ html:not(.loading) .label {
 .label.open.settled.closing .rise-in,
 .label.open.settled.hiding-months .month,
 .label.open.settled.adding .movement-form.sinking,
+.label.open.settled.asking .delete-panel.sinking,
 #back.sinking,
-#add.sinking {
+#add.sinking,
+#delete.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
 
@@ -526,9 +545,16 @@ html:not(.loading) .label {
   .label.open.settled.closing .rise-in,
   .label.open.settled.hiding-months .month,
   .label.open.settled.adding .movement-form.sinking,
+  .label.open.settled.asking .delete-panel,
+  .label.open.settled.asking .delete-panel.sinking,
   #back.sinking,
-  #add.sinking {
+  #add.sinking,
+  #delete.sinking {
     animation: none;
+  }
+
+  #add {
+    transition: none;
   }
 }
 
@@ -662,28 +688,35 @@ html:not(.loading) .label {
   display: block;
 }
 
-/* The new movement form (see view.js) takes the place of the months while it is open. */
-.movement-form {
+/* The new movement form and the delete question (see view.js) take the place of the months
+   while they are open. */
+.movement-form,
+.delete-panel {
   display: none;
 }
 
-.label.open.adding .movement-form {
+.label.open.adding .movement-form,
+.label.open.asking .delete-panel {
   display: flex;
 }
 
-.label.open.adding .month-area {
+.label.open.adding .month-area,
+.label.open.asking .month-area {
   display: none;
 }
 
-/* The back button is hidden while the form is open, so the card needs no room for it. */
-.label.open.adding {
+/* The back button is hidden while the form or the question is open, so the card needs no room
+   for it. */
+.label.open.adding,
+.label.open.asking {
   padding-bottom: 16px;
 }
 
-/* The form: a light grey panel with a white border, like the months. When the screen is too
-   short for all of it, it scrolls inside its border. It rises in and sinks away with the open
-   card's movements (see above), without waiting for other parts. */
-.movement-form {
+/* The form, and the delete question: a light grey panel with a white border, like the months.
+   When the screen is too short for all of it, it scrolls inside its border. It rises in and
+   sinks away with the open card's movements (see above), without waiting for other parts. */
+.movement-form,
+.delete-panel {
   --rise-order: 0;
   --sink-order: 0;
   flex-direction: column;
@@ -704,8 +737,33 @@ html:not(.loading) .label {
   cursor: default;
 }
 
-.movement-form:focus {
+.movement-form:focus,
+.delete-panel:focus {
   outline: none;
+}
+
+/* The delete question, as big as the form's title. */
+.delete-question {
+  margin: 0;
+  padding: 6px 0 4px;
+  color: #47524e;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+/* Said when nothing was deleted. It rises in like a card. */
+.delete-message {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.9375rem;
+  text-align: center;
+  animation: card-rise var(--rise-time) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delete-message {
+    animation: none;
+  }
 }
 
 /* The title, with a thin line below it. */

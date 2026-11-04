@@ -70,6 +70,16 @@ export const CARDS = {
     colors: ['#3b82f6', '#93c5fd'],
     padding: { x: 0, y: 0 },
   },
+  // The Delete button of the open goal card, next to "+" while movements are selected: it looks
+  // like the back button, in red like Log out. Its content is the delete icon.
+  delete: {
+    width: 56,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#b91c1c', '#fca5a5'],
+    padding: { x: 0, y: 0 },
+  },
   // The Cancel button of the new movement form: it looks like the other buttons, in red, and
   // fills the width of the form. Its content is the word.
   cancel: {
@@ -87,6 +97,24 @@ export const CARDS = {
     border: 3,
     radius: 16,
     colors: ['#0d9488', '#5eead4'],
+    padding: { x: 16, y: 0 },
+  },
+  // The No button of the delete question: like Cancel, in grey like the back button.
+  no: {
+    width: 544,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#6b7280', '#e5e7eb'],
+    padding: { x: 16, y: 0 },
+  },
+  // The Yes button of the delete question: like No, in red like Log out, next to it.
+  yes: {
+    width: 544,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#b91c1c', '#fca5a5'],
     padding: { x: 16, y: 0 },
   },
   // The language selector on the main screen: it looks like the back button, with the flag of

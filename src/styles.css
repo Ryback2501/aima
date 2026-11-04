@@ -929,12 +929,36 @@ html:not(.loading) .label {
 }
 
 /* Said when the lists cannot be read, or when the movement was not saved. */
+/* Said when a changed movement had more than two decimals: small, in orange, under Amount. */
+.amount-note {
+  margin: 0;
+  color: #ea580c;
+  font-size: 0.8125rem;
+}
+
 .form-message,
 .save-message {
   margin: 0;
   color: var(--red);
   font-size: 0.9375rem;
   text-align: center;
+}
+
+/* The message after Save rises in like a card. When the sheet was changed by hand, Save sinks
+   away like a card. */
+.save-message {
+  animation: card-rise var(--rise-time) ease-out;
+}
+
+.movement-form [data-card='save'].sinking {
+  animation: card-sink var(--rise-time) ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-message,
+  .movement-form [data-card='save'].sinking {
+    animation: none;
+  }
 }
 
 /* The buttons at the bottom of the form. */
@@ -1115,6 +1139,18 @@ html:not(.loading) .label {
 
 .movement > svg {
   fill: var(--movement-color, currentColor);
+}
+
+/* A small red warning right after an amount with more than two decimals (months-view.js). */
+.amount-warning {
+  display: inline-flex;
+  flex: none;
+  margin-left: 4px;
+  color: var(--red);
+}
+
+.amount-warning svg {
+  fill: currentColor;
 }
 
 /* A selected movement gets the same blue-to-purple border as a form field in use. The border is

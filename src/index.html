@@ -180,6 +180,10 @@
                     />
                   </div>
                 </div>
+                <!-- When a changed movement had more than two decimals (see form-view.js). -->
+                <p class="amount-note" data-i18n="amountCut" hidden>
+                  This amount had more than two decimals. Only the first two are kept.
+                </p>
               </div>
               <p class="form-message" role="status" data-i18n="listsFailed" hidden>
                 The lists could not be loaded.
@@ -253,6 +257,20 @@
           hidden
         >
           <span data-icon="trash" data-icon-size="24"></span>
+        </button>
+        <!-- Changes the selected movement, in the open goal card: it shows on the left of "+"
+             while exactly one movement is selected. A card without a corner icon: its content
+             is the pen icon. -->
+        <button
+          id="edit"
+          class="label card-button"
+          data-card="edit"
+          data-i18n-label="edit"
+          aria-label="Edit"
+          type="button"
+          hidden
+        >
+          <span data-icon="pen" data-icon-size="24"></span>
         </button>
         <!-- While the language selector is open, covers the rest of the screen (see styles.css). -->
         <div id="picker-shield" hidden></div>

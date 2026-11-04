@@ -11,7 +11,14 @@ import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
 import { goalStatus, goalMonths } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
-import { missingFields, movementRow, planSave } from './movements.js';
+import {
+  firstRowOf,
+  missingFields,
+  movementRow,
+  planDelete,
+  planSave,
+  sameMovements,
+} from './movements.js';
 
 export function createApp({ config, view, session, loadAuth, loadPicker, createSheets }) {
   let auth = null;
@@ -20,6 +27,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // What the main screen shows, kept so a tap on a pill can show it again with new totals.
   let parts = [];
   let goal = null;
+  // The movement rows the goal was worked out from, as they were read. A movement on the
+  // screen knows its place in them, so it can be found again to delete it.
+  let movementRows = [];
   // True when this person may edit the sheet, so they may add movements.
   let canAdd = false;
   // The Source and Category lists of the new movement form, once they are loading or loaded.
@@ -131,6 +141,12 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       subtract,
       amount: typeof amounts[index] === 'number' ? amounts[index] : 0,
     }));
+    showGoalOf(movements);
+  }
+
+  // Works out the goal from the movement rows, and keeps the rows.
+  function showGoalOf(movements) {
+    movementRows = movements;
     goal = {
       ...goalStatus(movements, config.goal),
       limit: config.goal.limit,
@@ -184,6 +200,80 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     } finally {
       saving = false;
       view.setSaving(false);
+    }
+  }
+
+  // Deletes the movements at indexes (their places in movementRows), after the person said Yes.
+  // The rows are read again first. If one of them holds another movement now, the sheet was
+  // changed by hand: nothing is deleted, and the screen shows the sheet as it is now.
+  // Otherwise every movement below moves up (see movements.js), in one write. While it runs,
+  // another Yes does nothing.
+  let deleting = false;
+  async function deleteMovements(indexes) {
+    if (deleting) return;
+    deleting = true;
+    view.setDeleting(true);
+    try {
+      const fresh = await removeRows(indexes);
+      if (fresh === 'failed') {
+        view.deleteFailed();
+      } else if (fresh === 'changed') {
+        view.deleteChanged();
+        await load().then(showMain, () => {});
+      } else {
+        // The sheet is read again while the view takes the deleted rows away. If it cannot be
+        // read, the goal is worked out from the rows read just before, without the deleted ones.
+        const reloaded = load().then(
+          () => true,
+          () => false,
+        );
+        await view.deleted();
+        if (!(await reloaded)) {
+          const gone = new Set(indexes);
+          showGoalOf(fresh.filter((row, index) => !gone.has(index)));
+        }
+        showMain();
+      }
+    } finally {
+      deleting = false;
+      view.setDeleting(false);
+    }
+  }
+
+  // Reads the rows again, checks the movements are still where they were, and deletes them.
+  // Returns the movement rows read just before the delete, or "changed" when one of them holds
+  // another movement now, or "failed" when Google could not be reached or refused the change.
+  async function removeRows(indexes) {
+    const { sheet, firstRow } = config.form;
+    try {
+      const [fresh, rows, place] = await Promise.all([
+        sheets.getValues(config.goal.movements, { raw: true }),
+        sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
+        sheets.getSheet(sheet),
+      ]);
+      if (!sameMovements(movementRows, fresh, indexes)) return 'changed';
+      // A place in the goal's rows → its row in the sheet → its place in the rows read here.
+      const offset = firstRowOf(config.goal.movements) - firstRow;
+      const plan = planDelete(
+        rows,
+        indexes.map((index) => index + offset),
+      );
+      // The rows come with their formulas, so a text that starts with "=" looks like a formula.
+      // In the plain read a formula gives its result, and a text stays the same: then it is
+      // written as text again.
+      const placeOf = new Map(rows.map((row, index) => [row, index]));
+      const written = plan.rows.map((row) => {
+        const plain = fresh[placeOf.get(row) - offset] ?? [];
+        return row.map((cell, column) =>
+          typeof cell === 'string' && cell.startsWith('=') && plain[column] === cell
+            ? { text: cell }
+            : cell,
+        );
+      });
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
+      return fresh;
+    } catch {
+      return 'failed';
     }
   }
 
@@ -298,6 +388,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.onPickLanguage(chooseLanguage);
     view.onAdd(openForm);
     view.onSave(saveMovement);
+    view.onDelete(deleteMovements);
 
     const token = session.getToken();
     if (token) {

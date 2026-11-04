@@ -208,15 +208,15 @@ test('a month lists its movements as spending, grouped by day, newest day first'
   assert.deepEqual(goalMonths(rows, goal)[0].days, [
     {
       day: 20,
-      movements: [{ category: 'Car', description: 'Petrol', amount: 45.2, source: null }],
+      movements: [{ category: 'Car', description: 'Petrol', amount: 45.2, source: null, row: 1 }],
     },
     {
       day: 12,
-      movements: [{ category: 'Food', description: 'Refund', amount: -10, source: null }],
+      movements: [{ category: 'Food', description: 'Refund', amount: -10, source: null, row: 2 }],
     },
     {
       day: 5,
-      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null }],
+      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null, row: 0 }],
     },
   ]);
 });
@@ -270,5 +270,27 @@ test('an unknown, empty or missing source gives no source, and the movement stil
   assert.deepEqual(
     october.days.flatMap(({ movements }) => movements.map(({ source }) => source)),
     [null, null, null, null],
+  );
+});
+
+test('each movement knows its place in the rows read, also after skipped rows', () => {
+  const rows = [
+    ['Source', 'Date', 'Category', 'Concept', 'Amount'],
+    row('2026-10-05', -1, 'Food', 'First'),
+    row('2026-09-30', -2, 'Food', 'Before the goal'),
+    row('2026-10-06', -999, 'Pay', 'Salary'),
+    row('2026-10-07', -3, 'Food', 'Last'),
+  ];
+
+  const [october] = goalMonths(rows, goal);
+
+  assert.deepEqual(
+    october.days.flatMap(({ movements }) =>
+      movements.map(({ description, row: at }) => [description, at]),
+    ),
+    [
+      ['Last', 4],
+      ['First', 1],
+    ],
   );
 });

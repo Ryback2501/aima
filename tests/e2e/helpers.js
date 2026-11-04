@@ -18,6 +18,8 @@ export const FAKE_MOVEMENTS = 'Sheet2!A:E';
 const FAKE_SHEET = 'Sheet2';
 const FAKE_SHEET_NUMBER = 7;
 const FAKE_SAVE_RANGE = 'Sheet2!A2:E';
+// The headers in the first row of the movements sheet.
+const FAKE_HEADERS = ['Source', 'Date', 'Category', 'Concept', 'Amount'];
 // Made-up cells whose dropdowns give the source and category lists of the new movement form.
 export const FAKE_SOURCE_LIST = 'Sheet2!A2';
 export const FAKE_CATEGORY_LIST = 'Sheet2!C2';
@@ -153,12 +155,12 @@ export async function setUp(
       await route.fulfill({ json: { values: listCells } });
       return;
     }
-    const askedForMovements = [FAKE_MOVEMENTS, FAKE_SAVE_RANGE].some((range) =>
-      request.url().includes(encodeURIComponent(range)),
-    );
-    const answer = askedForMovements
-      ? { values: movements }
-      : { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    // The goal reads the whole columns, with the headers in the first row; the save and the
+    // delete read from the first movement row.
+    const range = decodeURIComponent(url.pathname.split('/values/')[1] ?? '');
+    let answer = { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    if (range === FAKE_MOVEMENTS) answer = { values: [FAKE_HEADERS, ...movements] };
+    if (range === FAKE_SAVE_RANGE) answer = { values: movements };
     const body = sheetStatus === 200 ? answer : { error: {} };
     await route.fulfill({ status: sheetStatus, json: body });
   });

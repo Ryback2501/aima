@@ -38,6 +38,7 @@ export function createMonths({
   settled,
   reduceMotion,
   canSelect,
+  selectionChanged,
 }) {
   const window = document.defaultView;
   const column = room.querySelector('.month-column');
@@ -45,6 +46,9 @@ export function createMonths({
   const fadeBottom = room.parentElement.querySelector('.month-fade-bottom');
   let items = [];
   let shown = '';
+  // The months shown, and the places in the rows of the movements deleted since (see update).
+  let shownMonths = [];
+  let removed = new Set();
   let open = null;
 
   const make = (tag, className, text) => {
@@ -54,6 +58,17 @@ export function createMonths({
     return node;
   };
 
+  // Shows the amount of a month in its header, or "--" when it has no movements: then it cannot
+  // be opened.
+  function showAmount(head, name, amount) {
+    const empty = amount === null;
+    const total = head.querySelector('.month-amount');
+    total.textContent = empty ? '--' : formatMoney(amount);
+    total.toggleAttribute('data-empty', empty);
+    head.setAttribute('aria-label', `${name}: ${total.textContent}`);
+    head.disabled = empty;
+  }
+
   // Builds one month item: the header row (calendar, amount, arrow) and its list of movements.
   function buildMonth({ year, month, amount, days }, index) {
     const item = make('div', 'month rise-in');
@@ -62,15 +77,11 @@ export function createMonths({
     const name = monthName(year, month);
     const calendar = make('span', 'month-calendar');
     calendar.append(createIcon('calendar', CALENDAR_SIZE), make('span', 'month-letter', name[0]));
-    const empty = amount === null;
-    const total = make('span', 'month-amount', empty ? '--' : formatMoney(amount));
-    total.toggleAttribute('data-empty', empty);
     const arrow = createIcon('chevron', ARROW_SIZE);
     arrow.classList.add('month-arrow');
-    head.append(calendar, total, arrow);
-    head.setAttribute('aria-label', `${name}: ${total.textContent}`);
+    head.append(calendar, make('span', 'month-amount'), arrow);
+    showAmount(head, name, amount);
     head.setAttribute('aria-expanded', 'false');
-    head.disabled = empty;
     head.addEventListener('click', () => toggle(index));
 
     // Each day: its date, then its movements. The dates stay at the top while the list
@@ -80,6 +91,8 @@ export function createMonths({
       list.append(make('div', 'movement-date', dayName(year, month, day)));
       for (const movement of movements) {
         const row = make('div', 'movement');
+        // The movement's place in the rows read from the sheet, to delete it.
+        row.dataset.row = String(movement.row);
         const text = make('span', 'movement-text');
         // textContent shows the sheet's words as plain text, never as page code.
         // The description sits in a "track": when it does not fit, the track moves (see
@@ -112,14 +125,55 @@ export function createMonths({
     return item;
   }
 
-  // Shows the months. Nothing changes when the months are the same as before.
-  function render(months) {
+  // Shows the months. Nothing changes when the months are the same as before. keepOpen (after a
+  // delete): the months on the screen stay, and only their amounts change (see update).
+  function render(months, { keepOpen = false } = {}) {
     const key = JSON.stringify(months);
     if (key === shown) return;
     shown = key;
+    const kept = keepOpen && update(months);
+    shownMonths = months;
+    removed = new Set();
+    if (kept) return;
     reset();
     items = months.map(buildMonth);
     column.replaceChildren(...items);
+  }
+
+  // After a delete, the months on the screen already show the movements that are left, in the
+  // same places: only the amounts, and the places of the movements in the rows read from the
+  // sheet, change. So the months are not built again, and nothing moves or rises in again.
+  // Returns false when the new months are not the ones shown without the deleted movements (the
+  // sheet was changed in other ways too): then the months are built again.
+  function update(months) {
+    const left = shownMonths.map((month) => ({
+      ...month,
+      days: month.days
+        .map((day) => ({ ...day, movements: day.movements.filter((m) => !removed.has(m.row)) }))
+        .filter((day) => day.movements.length > 0),
+    }));
+    // Everything but the amounts of the months and the places in the rows.
+    const looks = (list) =>
+      JSON.stringify(
+        list.map(({ year, month, days }) => ({
+          year,
+          month,
+          days: days.map(({ day, movements }) => ({
+            day,
+            // JSON leaves out a field that is undefined.
+            movements: movements.map((movement) => ({ ...movement, row: undefined })),
+          })),
+        })),
+      );
+    if (looks(left) !== looks(months)) return false;
+    months.forEach(({ year, month, amount, days }, index) => {
+      showAmount(items[index].querySelector('.month-head'), monthName(year, month), amount);
+      const rows = items[index].querySelectorAll('.movement');
+      days
+        .flatMap(({ movements }) => movements)
+        .forEach((movement, at) => (rows[at].dataset.row = String(movement.row)));
+    });
+    return true;
   }
 
   // Forgets which months are shown, so the next render builds them again, for example after
@@ -176,7 +230,21 @@ export function createMonths({
     const head = item.querySelector('.month-head').offsetHeight;
     const list = item.querySelector('.month-list');
     const listGap = parseFloat(window.getComputedStyle(list).marginTop);
-    return { closed: frame + head, full: frame + head + listGap + list.scrollHeight };
+    return { closed: frame + head, full: frame + head + listGap + contentHeight(list) };
+  }
+
+  // How tall the movements of a list are. scrollHeight is never less than the list's own height,
+  // so it cannot tell that the list needs less room (after a delete): the end of its last row
+  // on the screen can.
+  function contentHeight(list) {
+    let last = list.lastElementChild;
+    // Only while a delete measures, the last rows may be hidden.
+    while (last && !last.getClientRects().length) last = last.previousElementSibling;
+    if (!last || !list.getClientRects().length) return list.scrollHeight;
+    const start = list.getBoundingClientRect().top + list.clientTop - list.scrollTop;
+    const end =
+      last.getBoundingClientRect().bottom + parseFloat(window.getComputedStyle(last).marginBottom);
+    return end - start;
   }
 
   // How far the column is moved up by the layout (while a month is open, or moving).
@@ -315,7 +383,7 @@ export function createMonths({
   let held = null;
 
   const rowOf = (event) => event.target.closest('.movement');
-  const anySelected = () => Boolean(column.querySelector('.movement.selected'));
+  const selectedCount = () => column.querySelectorAll('.movement.selected').length;
 
   function stopPress() {
     if (!press) return;
@@ -332,6 +400,7 @@ export function createMonths({
       press = null;
       held = row;
       row.classList.add('selected');
+      selectionChanged(selectedCount());
     };
     const { pointerId, clientX: x, clientY: y } = event;
     press = { pointerId, x, y, timer: window.setTimeout(select, HOLD_TIME) };
@@ -357,7 +426,9 @@ export function createMonths({
       held = null;
       return;
     }
-    if (canSelect() && anySelected()) row.classList.toggle('selected');
+    if (!canSelect() || selectedCount() === 0) return;
+    row.classList.toggle('selected');
+    selectionChanged(selectedCount());
   });
 
   // The phone's own long-press menu never opens on a movement.
@@ -372,6 +443,81 @@ export function createMonths({
     for (const row of column.querySelectorAll('.movement.selected')) {
       row.classList.remove('selected');
     }
+    selectionChanged(0);
+  }
+
+  // The places in the rows read from the sheet of the selected movements.
+  const selectedRows = () =>
+    [...column.querySelectorAll('.movement.selected')].map((row) => Number(row.dataset.row));
+
+  // After a delete: the selected movements fade out, all at once. A date with no movement left
+  // fades with them. Then, all at the same time, they get shorter until they are gone, the
+  // movements below move up, and the open month gets shorter (or closes when it has no movement
+  // left). With "reduce motion" on the phone, all of it happens at once.
+  async function removeSelected() {
+    const rows = [...column.querySelectorAll('.movement.selected')];
+    for (const row of rows) removed.add(Number(row.dataset.row));
+    const dates = [...column.querySelectorAll('.movement-date')].filter((date) => {
+      for (let next = date.nextElementSibling; next?.classList.contains('movement');) {
+        if (!next.classList.contains('selected')) return false;
+        next = next.nextElementSibling;
+      }
+      return true;
+    });
+    const going = [...rows, ...dates];
+    const motion = !reduceMotion();
+    const css = window.getComputedStyle(room);
+    const timing = (name) => ({
+      duration: parseFloat(css.getPropertyValue(name)) || 0,
+      easing: 'ease-in-out',
+      fill: 'forwards',
+    });
+    if (motion) {
+      const fade = timing('--pill-fade');
+      await Promise.allSettled(
+        going.map((node) => node.animate([{ opacity: 1 }, { opacity: 0 }], fade).finished),
+      );
+    }
+    // Their sizes now, to shrink from.
+    const sides = ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom'];
+    const full = motion
+      ? going.map((node) => {
+          const box = window.getComputedStyle(node);
+          return Object.fromEntries(sides.map((side) => [side, box[side]]));
+        })
+      : [];
+    // The open month gets its new height, measured without them: the browser moves it there
+    // with the same time as the months (styles.css), while they shrink below.
+    for (const node of going) node.style.display = 'none';
+    if (open !== null) {
+      if (items[open].querySelector('.movement:not(.selected)')) {
+        place();
+        window.requestAnimationFrame(followFades);
+      } else {
+        toggle(open);
+      }
+    }
+    if (motion) {
+      const none = Object.fromEntries(sides.map((side) => [side, '0px']));
+      const shrink = timing('--expand-time');
+      await Promise.allSettled(
+        going.map((node, index) => {
+          node.style.display = '';
+          return node.animate(
+            [
+              { ...full[index], opacity: 0, overflow: 'hidden' },
+              { ...none, opacity: 0, overflow: 'hidden' },
+            ],
+            shrink,
+          ).finished;
+        }),
+      );
+    }
+    for (const node of going) node.remove();
+    selectionChanged(selectedCount());
+    // If the window changed size meanwhile, the open month was measured with them: once more.
+    if (open !== null) place();
+    await settled(room);
   }
 
   // Puts every month back to closed at once (when the goal card closes).
@@ -397,5 +543,5 @@ export function createMonths({
   // they rise into view when the goal card opens).
   const follow = () => window.requestAnimationFrame(followFades);
 
-  return { render, forget, reset, follow, unselectAll };
+  return { render, forget, reset, follow, unselectAll, selectedRows, removeSelected };
 }

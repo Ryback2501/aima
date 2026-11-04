@@ -9,6 +9,7 @@ import {
   createAmountFormatter,
   createMonthNamer,
   createDayNamer,
+  createDeleteQuestion,
   STRINGS,
 } from '../../src/i18n.js';
 
@@ -116,4 +117,25 @@ test('dates show the day of the week, the day and the month, starting with a cap
   assert.equal(createDayNamer('en')(2026, 10, 20), 'Tuesday, October 20');
   assert.equal(createDayNamer('es')(2026, 10, 20), 'Martes, 20 de octubre');
   assert.equal(createDayNamer('ru')(2026, 10, 3), 'Суббота, 3 октября');
+});
+
+test('the delete question says "this movement" for one, and the number with the right words for more', () => {
+  const english = createDeleteQuestion('en');
+  assert.equal(english(1), 'Delete this movement?');
+  assert.equal(english(2), 'Delete 2 movements?');
+  assert.equal(english(21), 'Delete 21 movements?');
+
+  const spanish = createDeleteQuestion('es');
+  assert.equal(spanish(1), '¿Eliminar este movimiento?');
+  assert.equal(spanish(2), '¿Eliminar 2 movimientos?');
+  assert.equal(spanish(21), '¿Eliminar 21 movimientos?');
+
+  // Russian has three forms, by the last numbers: 21 like 1, 2 to 4 alike, and 5 to 20.
+  const russian = createDeleteQuestion('ru');
+  assert.equal(russian(1), 'Удалить эту операцию?');
+  assert.equal(russian(2), 'Удалить 2 операции?');
+  assert.equal(russian(5), 'Удалить 5 операций?');
+  assert.equal(russian(11), 'Удалить 11 операций?');
+  assert.equal(russian(21), 'Удалить 21 операцию?');
+  assert.equal(russian(22), 'Удалить 22 операции?');
 });

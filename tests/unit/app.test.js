@@ -72,6 +72,8 @@ function setup({
   // What the form showed: the missing fields of each Save, the saving state, the failures and
   // the closings after a save.
   const formLog = { missing: [], saving: [], failed: 0, closed: 0 };
+  // What the delete panel showed: the deleting state, and each result in order.
+  const deleteLog = { deleting: [], events: [] };
   const languages = [];
   const handlers = {};
   const view = {
@@ -88,6 +90,14 @@ function setup({
     setSaving: (saving) => formLog.saving.push(saving),
     saveFailed: () => (formLog.failed += 1),
     closeForm: () => (formLog.closed += 1),
+    onDelete: (handler) => (handlers.delete = handler),
+    setDeleting: (deleting) => deleteLog.deleting.push(deleting),
+    deleteChanged: () => deleteLog.events.push('changed'),
+    deleteFailed: () => deleteLog.events.push('failed'),
+    deleted: async () => {
+      deleteLog.events.push('deleted');
+      deleteLog.screensBefore = screens.length;
+    },
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -160,7 +170,7 @@ function setup({
     }),
   });
   const last = () => screens.at(-1);
-  return { app, session, screens, languages, handlers, log, last, forms, formLog };
+  return { app, session, screens, languages, handlers, log, last, forms, formLog, deleteLog };
 }
 
 test('the app starts on the login page when nobody is signed in', async () => {
@@ -224,7 +234,9 @@ test('a person with access sees the total after sign-in', async () => {
           days: [
             {
               day: 5,
-              movements: [{ category: 'Food', description: 'Shop', amount: 12.5, source: 'cash' }],
+              movements: [
+                { category: 'Food', description: 'Shop', amount: 12.5, source: 'cash', row: 0 },
+              ],
             },
           ],
         },
@@ -824,4 +836,166 @@ test('a concept typed with "=" at the start is saved as text, never as a formula
   await handlers.save({ ...filled, concept: '= dinner' });
 
   assert.deepEqual(log.writes[0].rows, [['Cash', OCTOBER_5, 'Food', { text: '= dinner' }, -12.5]]);
+});
+
+// The movements sheet for the delete tests, as the goal reads it (the headers first) and as the
+// delete reads it again with its formulas (from the first movement row).
+const HEADERS = ['Source', 'Date', 'Category', 'Concept', 'Amount'];
+const mv = (concept, amount, day = OCTOBER_5) => ['Cash', day, 'Food', concept, amount];
+const sheetRows = [mv('A', -1), mv('B', -2), mv('C', -3), mv('D', -4)];
+const deleteSheet = (rows = sheetRows) => ({
+  movements: async () => [HEADERS, ...rows],
+  formulas: async () => rows,
+});
+// The goal's movements on the main screen, by concept, as the last screen shows them.
+const shown = (screen) =>
+  screen.goal.months.flatMap(({ days }) =>
+    days.flatMap(({ movements }) => movements.map(({ description }) => description)),
+  );
+
+test('Yes reads the rows again and moves the movements below the deleted ones up, in one write', async () => {
+  const { handlers, log } = await signedInEditor(deleteSheet());
+
+  // B and D: rows 2 and 4 of the rows the goal read (the headers are row 0).
+  await handlers.delete([2, 4]);
+
+  // The movements are read again just before writing, with their formulas.
+  assert.ok(log.values.some(({ range, options }) => range === 'Sheet2!A2:E' && options.formulas));
+  assert.deepEqual(log.writes, [
+    {
+      sheetId: 7,
+      rowCount: 100,
+      // From B, the 3rd row of the sheet (counted from 0: row 2).
+      startRow: 2,
+      rows: [mv('C', -3), ['', '', '', '', ''], ['', '', '', '', '']],
+    },
+  ]);
+});
+
+test('after deleting, the goal is read again and shown after the deleted rows went away', async () => {
+  let rows = sheetRows;
+  const { handlers, deleteLog, screens, last } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+    write: async () => (rows = [mv('A', -1), mv('C', -3), mv('D', -4)]),
+  });
+
+  await handlers.delete([2]);
+
+  assert.deepEqual(deleteLog.events, ['deleted']);
+  assert.deepEqual(deleteLog.deleting, [true, false]);
+  // The new goal shows only after the view has taken the deleted rows away.
+  assert.equal(screens.length, deleteLog.screensBefore + 1);
+  assert.deepEqual(shown(last()), ['A', 'C', 'D']);
+  assert.equal(last().goal.amount, 8);
+});
+
+test('when the sheet cannot be read after deleting, the goal still shows without them', async () => {
+  let deleted = false;
+  const { handlers, deleteLog, last } = await signedInEditor({
+    ...deleteSheet(),
+    cells: async () => {
+      if (deleted) throw new SheetsError('Could not reach Google.');
+      return [1000, -200.5, 300, 50];
+    },
+    write: async () => (deleted = true),
+  });
+
+  await handlers.delete([1, 3]);
+
+  assert.deepEqual(deleteLog.events, ['deleted']);
+  assert.deepEqual(shown(last()), ['B', 'D']);
+  assert.equal(last().goal.amount, 6);
+});
+
+test('when a selected row holds another movement now, nothing is deleted and the sheet is read again', async () => {
+  let rows = sheetRows;
+  const { handlers, log, deleteLog, last } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+  });
+  // Somebody changes the sheet by hand: a new movement where C was.
+  rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
+  const reads = log.cells.length;
+
+  await handlers.delete([2, 3]);
+
+  assert.deepEqual(log.writes, []);
+  assert.deepEqual(deleteLog.events, ['changed']);
+  assert.equal(log.cells.length, reads + 1);
+  assert.deepEqual(shown(last()), ['A', 'B', 'New', 'D']);
+});
+
+test('when the delete fails, the panel says so, and the next Yes deletes once', async () => {
+  let online = false;
+  const { handlers, log, deleteLog } = await signedInEditor({
+    ...deleteSheet(),
+    write: async () => {
+      if (!online) throw new SheetsError('Could not reach Google.');
+    },
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(deleteLog.events, ['failed']);
+
+  online = true;
+  await handlers.delete([1]);
+
+  assert.equal(log.writes.length, 2);
+  assert.deepEqual(deleteLog.events, ['failed', 'deleted']);
+});
+
+test('when the rows cannot be read again before deleting, nothing is deleted', async () => {
+  let online = true;
+  const { handlers, log, deleteLog } = await signedInEditor({
+    ...deleteSheet(),
+    formulas: async () => {
+      if (!online) throw new SheetsError('Could not reach Google.');
+      return sheetRows;
+    },
+  });
+  online = false;
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(log.writes, []);
+  assert.deepEqual(deleteLog.events, ['failed']);
+});
+
+test('while deleting, a second Yes deletes nothing more', async () => {
+  let finish;
+  const { handlers, log, deleteLog } = await signedInEditor({
+    ...deleteSheet(),
+    write: () => new Promise((done) => (finish = done)),
+  });
+
+  const first = handlers.delete([1]);
+  await settle();
+  await handlers.delete([1]);
+  finish();
+  await first;
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(deleteLog.deleting, [true, false]);
+  assert.deepEqual(deleteLog.events, ['deleted']);
+});
+
+test('a moved text that starts with "=" stays text, and a moved formula stays a formula', async () => {
+  // The formula read gives the text "=Gift" and the formula "=2*3" the same way. The plain read
+  // tells them apart: the text is the same there, the formula gives its result.
+  const plain = [mv('A', -1), mv('=Gift', -2), ['Cash', OCTOBER_5, 'Food', 'C', 6]];
+  const formulas = [mv('A', -1), mv('=Gift', -2), ['Cash', OCTOBER_5, 'Food', 'C', '=2*3']];
+  const { handlers, log } = await signedInEditor({
+    movements: async () => [HEADERS, ...plain],
+    formulas: async () => formulas,
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', { text: '=Gift' }, -2],
+    ['Cash', OCTOBER_5, 'Food', 'C', '=2*3'],
+    ['', '', '', '', ''],
+  ]);
 });

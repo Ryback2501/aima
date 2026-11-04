@@ -197,6 +197,21 @@
                 </button>
               </div>
             </form>
+            <!-- The question before deleting the selected movements. A tap on Delete shows it
+                 here, in place of the months, like the form. -->
+            <div class="delete-panel" tabindex="-1" role="dialog" aria-labelledby="delete-question">
+              <p id="delete-question" class="delete-question"></p>
+              <p class="delete-message" role="status" hidden></p>
+              <div class="form-buttons">
+                <!-- Cards. Their look (sizes, colors) is set in components.js. -->
+                <button class="label card-button" data-card="no" type="button">
+                  <span class="no-text" data-i18n="no">No</span>
+                </button>
+                <button class="label card-button" data-card="yes" type="button">
+                  <span data-i18n="yes">Yes</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <!-- Covers everything behind an open card in white. -->
@@ -225,6 +240,19 @@
           hidden
         >
           <span data-icon="plus" data-icon-size="24"></span>
+        </button>
+        <!-- Deletes the selected movements, in the open goal card: it shows next to "+" while
+             movements are selected. A card without a corner icon: its content is the delete icon. -->
+        <button
+          id="delete"
+          class="label card-button"
+          data-card="delete"
+          data-i18n-label="delete"
+          aria-label="Delete"
+          type="button"
+          hidden
+        >
+          <span data-icon="trash" data-icon-size="24"></span>
         </button>
         <!-- While the language selector is open, covers the rest of the screen (see styles.css). -->
         <div id="picker-shield" hidden></div>

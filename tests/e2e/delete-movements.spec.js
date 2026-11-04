@@ -229,8 +229,11 @@ test.describe('the Delete button', () => {
     // On every frame while Delete shows: where "+" and Delete are, side to side.
     const startButtonFrames = (page) =>
       page.evaluate(() => {
+        // A new sampler stops the one before.
+        const run = (window.__buttonRun = (window.__buttonRun ?? 0) + 1);
         window.__buttonFrames = [];
         const sample = () => {
+          if (window.__buttonRun !== run) return;
           const bin = document.querySelector('#delete');
           if (bin.getClientRects().length) {
             const plus = document.querySelector('#add').getBoundingClientRect();
@@ -266,9 +269,11 @@ test.describe('the Delete button', () => {
       // From the first frame Delete is 14 pixels to the right of "+", and it stays there while
       // they move: "+" starts in the middle and ends on the left.
       let frames = await buttonFrames(page);
+      expect(frames.length).toBeGreaterThan(2);
       for (const { gap } of frames) near(gap, 14);
       const width = (await add(page).boundingBox()).width;
-      expect(frames[0].plus).toBeGreaterThan(middle - width / 2 - 8);
+      // The first frame may come a moment after the start, so it may have moved a little.
+      expect(Math.abs(frames[0].plus - (middle - width / 2))).toBeLessThan(3);
       expect(
         frames.some(({ plus }) => plus < frames[0].plus - 1 && plus > frames.at(-1).plus + 1),
       ).toBe(true);

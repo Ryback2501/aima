@@ -430,3 +430,13 @@ test('a Provisioned movement is placed in the usual order when its Cash gets ano
     m('Provisioned', -10, 'p'),
   ]);
 });
+
+test('a Provisioned movement right below its Cash keeps its place when only its amount changes', () => {
+  const rows = [m('Cash', -10, 'c'), m('Provisioned', -10, 'p'), m('Polina', -1, 'y')];
+
+  assert.deepEqual(planEdit(rows, 1, m('Provisioned', -12, 'p'), settings).rows, [
+    m('Cash', -10, 'c'),
+    m('Provisioned', -12, 'p'),
+    m('Polina', -1, 'y'),
+  ]);
+});

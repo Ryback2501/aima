@@ -1154,3 +1154,32 @@ test('after Edit, a tap on "+" opens the form for a new movement again', async (
   // A new movement: one row more than the movements of its day and after.
   assert.equal(log.writes[0].rows.length, editRows.length + 1);
 });
+
+test('a tap on "+" and then on Edit while the lists load opens only the Edit form, and Save changes it', async () => {
+  let calls = 0;
+  let release;
+  const waiting = new Promise((done) => (release = done));
+  const { handlers, log, forms } = await signedInEditor({
+    ...editSheet(),
+    dropdown: async (cell) => {
+      calls += 1;
+      // At sign-in the lists cannot be read, so the form reads them again, and slowly.
+      if (calls <= 2) throw new SheetsError('Could not reach Google.');
+      await waiting;
+      return cell === 'Sheet2!A2' ? ['Bank', 'Cash'] : ['Car', 'House'];
+    },
+  });
+
+  const plus = handlers.add();
+  const pen = handlers.edit(1);
+  release();
+  await Promise.all([plus, pen]);
+
+  assert.deepEqual(
+    forms.map((form) => Boolean(form.edit)),
+    [true],
+  );
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
+  // A change: as many rows as before, not one more.
+  assert.equal(log.writes[0].rows.length, editRows.length);
+});

@@ -272,3 +272,25 @@ test('an unknown, empty or missing source gives no source, and the movement stil
     [null, null, null, null],
   );
 });
+
+test('each movement knows its place in the rows read, also after skipped rows', () => {
+  const rows = [
+    ['Source', 'Date', 'Category', 'Concept', 'Amount'],
+    row('2026-10-05', -1, 'Food', 'First'),
+    row('2026-09-30', -2, 'Food', 'Before the goal'),
+    row('2026-10-06', -999, 'Pay', 'Salary'),
+    row('2026-10-07', -3, 'Food', 'Last'),
+  ];
+
+  const [october] = goalMonths(rows, goal);
+
+  assert.deepEqual(
+    october.days.flatMap(({ movements }) =>
+      movements.map(({ description, row: at }) => [description, at]),
+    ),
+    [
+      ['Last', 4],
+      ['First', 1],
+    ],
+  );
+});

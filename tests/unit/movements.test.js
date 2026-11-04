@@ -2,9 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  firstRowOf,
   missingFields,
   movementRow,
+  planDelete,
   planSave,
+  sameMovements,
   sheetDay,
   sortMovements,
 } from '../../src/movements.js';
@@ -211,4 +214,79 @@ test('source, date, category and amount are required; the concept may be empty',
     'category',
     'amount',
   ]);
+});
+
+// An empty row of the five movement columns.
+const EMPTY = ['', '', '', '', ''];
+
+test('deleting movements moves every movement below them up, and empties the last rows', () => {
+  const rows = [
+    m('Cash', -1, 'a'),
+    m('Cash', -2, 'b'),
+    m('Cash', -3, 'c'),
+    m('Cash', -4, 'd'),
+    m('Cash', -5, 'e'),
+  ];
+
+  const plan = planDelete(rows, [1, 3]);
+
+  // From the first deleted row down to the last movement: the others keep their order.
+  assert.equal(plan.start, 1);
+  assert.deepEqual(plan.rows, [m('Cash', -3, 'c'), m('Cash', -5, 'e'), EMPTY, EMPTY]);
+});
+
+test('the order of the deleted rows given does not matter', () => {
+  const rows = [m('Cash', -1, 'a'), m('Cash', -2, 'b'), m('Cash', -3, 'c')];
+
+  assert.deepEqual(planDelete(rows, [2, 0]), {
+    start: 0,
+    rows: [m('Cash', -2, 'b'), EMPTY, EMPTY],
+  });
+});
+
+test('a Provisioned movement below a deleted Cash movement stays, and moves up', () => {
+  const rows = [m('Cash', -10), m('Provisioned', -10), m('Polina', -1)];
+
+  const plan = planDelete(rows, [0]);
+
+  assert.deepEqual(sources(plan.rows), ['Provisioned', 'Polina', '']);
+});
+
+test('rows below the last movement, with no date, are not moved', () => {
+  const rows = [m('Cash', -1, 'a'), m('Cash', -2, 'b'), EMPTY, ['', '', '', 'note']];
+
+  assert.deepEqual(planDelete(rows, [0]), { start: 0, rows: [m('Cash', -2, 'b'), EMPTY] });
+});
+
+test('a movement row with formulas is moved as it is, with its formulas', () => {
+  const rows = [m('Cash', -1, 'a'), ['Cash', DAY, 'General', 'b', '=2*3']];
+
+  assert.deepEqual(planDelete(rows, [0]).rows, [['Cash', DAY, 'General', 'b', '=2*3'], EMPTY]);
+});
+
+test('the selected rows are the same when each one still holds the movement that was seen', () => {
+  const seen = [['Source', 'Date'], m('Cash', -1, 'a'), m('Cash', -2, 'b'), m('Cash', -3, 'c')];
+  const now = [['Source', 'Date'], m('Cash', -1, 'a'), m('Cash', -2, 'b'), m('AMEX', -7, 'new')];
+
+  assert.equal(sameMovements(seen, now, [1, 2]), true);
+  assert.equal(sameMovements(seen, now, [1, 3]), false);
+  // A row that is not there any more.
+  assert.equal(sameMovements(seen, now.slice(0, 2), [2]), false);
+});
+
+test('an empty cell at the end of a row, sent or not sent by Google, is the same movement', () => {
+  const seen = [['Cash', DAY, 'General', '', -1]];
+
+  assert.equal(sameMovements(seen, [['Cash', DAY, 'General', '', -1]], [0]), true);
+  assert.equal(
+    sameMovements([['Cash', DAY, 'General']], [['Cash', DAY, 'General', '']], [0]),
+    true,
+  );
+  assert.equal(sameMovements(seen, [['Cash', DAY, 'General', '', -1.5]], [0]), false);
+});
+
+test('the first row of a range: row 1 when the range gives no row', () => {
+  assert.equal(firstRowOf('Movements!A:E'), 1);
+  assert.equal(firstRowOf('Movements!A2:E'), 2);
+  assert.equal(firstRowOf('A15:E40'), 15);
 });

@@ -162,14 +162,15 @@ const playing = (page) =>
   );
 
 test.describe('the Delete button', () => {
-  test('selecting the first movement puts "+" on the left and Delete on its right, in the middle', async ({
+  // With one movement selected, Edit shows too (#102): two selected show "+" and Delete alone.
+  test('selecting two movements puts "+" on the left and Delete on its right, in the middle', async ({
     page,
   }) => {
     await openGoal(page);
     await tapMonth(page, 0);
     await onlyPlusInTheMiddle(page);
 
-    await hold(page, movement(page, 0, 0));
+    await select(page, 0, [0, 1]);
 
     await expect(remove(page)).toBeVisible();
     const plus = await add(page).boundingBox();
@@ -191,7 +192,8 @@ test.describe('the Delete button', () => {
     await expect(icon).toHaveAttribute('width', '24');
     await expect(remove(page)).toHaveAttribute('aria-label', STRINGS.en.delete);
 
-    // Unselecting the last one: Delete goes, and "+" is in the middle again.
+    // Unselecting both: Delete goes, and "+" is in the middle again.
+    await tapAndWait(page, movement(page, 0, 1));
     await tapAndWait(page, movement(page, 0, 0));
     await onlyPlusInTheMiddle(page);
   });
@@ -226,75 +228,8 @@ test.describe('the Delete button', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    // On every frame while Delete shows: where "+" and Delete are, side to side.
-    const startButtonFrames = (page) =>
-      page.evaluate(() => {
-        // A new sampler stops the one before.
-        const run = (window.__buttonRun = (window.__buttonRun ?? 0) + 1);
-        window.__buttonFrames = [];
-        const sample = () => {
-          if (window.__buttonRun !== run) return;
-          const bin = document.querySelector('#delete');
-          if (bin.getClientRects().length) {
-            const plus = document.querySelector('#add').getBoundingClientRect();
-            window.__buttonFrames.push({
-              plus: plus.left,
-              gap: bin.getBoundingClientRect().left - plus.right,
-            });
-          }
-          if (window.__buttonFrames.length < 600) window.requestAnimationFrame(sample);
-        };
-        window.requestAnimationFrame(sample);
-      });
-    const buttonFrames = (page) => page.evaluate(() => window.__buttonFrames);
-
-    test('Delete rises in right next to "+" while both slide left together; at the end it sinks while both slide back', async ({
-      page,
-    }) => {
-      await openGoal(page);
-      await tapMonth(page, 0);
-      const middle = page.viewportSize().width / 2;
-      await startAnimationLog(page);
-      await startButtonFrames(page);
-
-      await hold(page, movement(page, 0, 0));
-      await expect(remove(page)).toBeVisible();
-      await expect.poll(() => locked(page)).toBe(false);
-
-      // The rise of Delete and the slide of "+" start together.
-      let log = await animationLog(page);
-      const rise = momentOf(log, 'delete', 'start', 'card-rise');
-      expect(rise).toBeDefined();
-      expect(Math.abs(momentOf(log, 'add', 'start', 'move translate') - rise)).toBeLessThan(50);
-      // From the first frame Delete is 14 pixels to the right of "+", and it stays there while
-      // they move: "+" starts in the middle and ends on the left.
-      let frames = await buttonFrames(page);
-      expect(frames.length).toBeGreaterThan(2);
-      for (const { gap } of frames) near(gap, 14);
-      const width = (await add(page).boundingBox()).width;
-      // The first frame may come a moment after the start, so it may have moved a little.
-      expect(Math.abs(frames[0].plus - (middle - width / 2))).toBeLessThan(3);
-      expect(
-        frames.some(({ plus }) => plus < frames[0].plus - 1 && plus > frames.at(-1).plus + 1),
-      ).toBe(true);
-      near(frames.at(-1).plus, middle - width - 7);
-
-      await startAnimationLog(page);
-      await startButtonFrames(page);
-      await tapAndWait(page, movement(page, 0, 0));
-      await expect(remove(page)).toBeHidden();
-
-      // The sink of Delete and the slide back of "+" start together, side by side all the way.
-      log = await animationLog(page);
-      const sink = momentOf(log, 'delete', 'start', 'card-sink');
-      expect(sink).toBeDefined();
-      expect(Math.abs(momentOf(log, 'add', 'start', 'move translate') - sink)).toBeLessThan(50);
-      frames = await buttonFrames(page);
-      expect(frames.length).toBeGreaterThan(2);
-      for (const { gap } of frames) near(gap, 14);
-      expect(frames.at(-1).plus).toBeGreaterThan(frames[0].plus + 1);
-      await onlyPlusInTheMiddle(page);
-    });
+    // How Delete comes and goes with one or more movements selected is in
+    // edit-movement.spec.js: since #102, Edit comes and goes with it.
 
     test('with movements selected, a tap on "+" sinks Delete with the other buttons', async ({
       page,

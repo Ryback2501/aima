@@ -258,7 +258,19 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         rows,
         indexes.map((index) => index + offset),
       );
-      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: plan.rows });
+      // The rows come with their formulas, so a text that starts with "=" looks like a formula.
+      // In the plain read a formula gives its result, and a text stays the same: then it is
+      // written as text again.
+      const placeOf = new Map(rows.map((row, index) => [row, index]));
+      const written = plan.rows.map((row) => {
+        const plain = fresh[placeOf.get(row) - offset] ?? [];
+        return row.map((cell, column) =>
+          typeof cell === 'string' && cell.startsWith('=') && plain[column] === cell
+            ? { text: cell }
+            : cell,
+        );
+      });
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
       return fresh;
     } catch {
       return 'failed';

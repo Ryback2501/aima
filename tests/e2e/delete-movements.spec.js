@@ -907,3 +907,22 @@ test.describe('the list after a delete, with motion, when the sheet answers slow
     for (const { month } of frames.slice(gone)) near(month, endMonth);
   });
 });
+
+test.describe('the list after a delete, more cases', () => {
+  test('a movement changed in the sheet meanwhile shows its new amount after the delete', async ({
+    page,
+  }) => {
+    const { movements } = await openGoal(page);
+    await tapMonth(page, 0);
+    await select(page, 0, [1]);
+    // Somebody changes the amount of Petrol in the sheet; Cinema is still in its row.
+    movements[4] = ['Cash', sheetDay('2026-10-20'), 'Car', 'Petrol', -45];
+    await openPanel(page);
+
+    await tapAndWait(page, yes(page));
+
+    await expect.poll(() => descriptions(page, 0)).toEqual(['Petrol', 'Market', 'Market']);
+    await expect(movement(page, 0, 0).locator('.movement-amount')).toHaveText('€45.00');
+    await expect(monthAmount(page, 0)).toHaveText('€245.00');
+  });
+});

@@ -226,30 +226,68 @@ test.describe('the Delete button', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('"+" slides left before Delete rises in; at the end Delete sinks before "+" slides back', async ({
+    // On every frame while Delete shows: where "+" and Delete are, side to side.
+    const startButtonFrames = (page) =>
+      page.evaluate(() => {
+        window.__buttonFrames = [];
+        const sample = () => {
+          const bin = document.querySelector('#delete');
+          if (bin.getClientRects().length) {
+            const plus = document.querySelector('#add').getBoundingClientRect();
+            window.__buttonFrames.push({
+              plus: plus.left,
+              gap: bin.getBoundingClientRect().left - plus.right,
+            });
+          }
+          if (window.__buttonFrames.length < 600) window.requestAnimationFrame(sample);
+        };
+        window.requestAnimationFrame(sample);
+      });
+    const buttonFrames = (page) => page.evaluate(() => window.__buttonFrames);
+
+    test('Delete rises in right next to "+" while both slide left together; at the end it sinks while both slide back', async ({
       page,
     }) => {
       await openGoal(page);
       await tapMonth(page, 0);
+      const middle = page.viewportSize().width / 2;
       await startAnimationLog(page);
+      await startButtonFrames(page);
 
       await hold(page, movement(page, 0, 0));
       await expect(remove(page)).toBeVisible();
       await expect.poll(() => locked(page)).toBe(false);
 
+      // The rise of Delete and the slide of "+" start together.
       let log = await animationLog(page);
-      const slid = momentOf(log, 'add', 'end');
-      expect(slid).toBeDefined();
-      expect(momentOf(log, 'delete', 'start', 'card-rise')).toBeGreaterThanOrEqual(slid);
+      const rise = momentOf(log, 'delete', 'start', 'card-rise');
+      expect(rise).toBeDefined();
+      expect(Math.abs(momentOf(log, 'add', 'start', 'move translate') - rise)).toBeLessThan(50);
+      // From the first frame Delete is 14 pixels to the right of "+", and it stays there while
+      // they move: "+" starts in the middle and ends on the left.
+      let frames = await buttonFrames(page);
+      for (const { gap } of frames) near(gap, 14);
+      const width = (await add(page).boundingBox()).width;
+      expect(frames[0].plus).toBeGreaterThan(middle - width / 2 - 8);
+      expect(
+        frames.some(({ plus }) => plus < frames[0].plus - 1 && plus > frames.at(-1).plus + 1),
+      ).toBe(true);
+      near(frames.at(-1).plus, middle - width - 7);
 
       await startAnimationLog(page);
+      await startButtonFrames(page);
       await tapAndWait(page, movement(page, 0, 0));
       await expect(remove(page)).toBeHidden();
 
+      // The sink of Delete and the slide back of "+" start together, side by side all the way.
       log = await animationLog(page);
-      const sunk = momentOf(log, 'delete', 'end', 'card-sink');
-      expect(sunk).toBeDefined();
-      expect(momentOf(log, 'add', 'start')).toBeGreaterThanOrEqual(sunk);
+      const sink = momentOf(log, 'delete', 'start', 'card-sink');
+      expect(sink).toBeDefined();
+      expect(Math.abs(momentOf(log, 'add', 'start', 'move translate') - sink)).toBeLessThan(50);
+      frames = await buttonFrames(page);
+      expect(frames.length).toBeGreaterThan(2);
+      for (const { gap } of frames) near(gap, 14);
+      expect(frames.at(-1).plus).toBeGreaterThan(frames[0].plus + 1);
       await onlyPlusInTheMiddle(page);
     });
 

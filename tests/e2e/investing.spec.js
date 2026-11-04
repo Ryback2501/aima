@@ -69,7 +69,7 @@ test('a month with only Investing movements shows "--" and cannot be opened', as
 test('a new Investing movement from the "+" form is saved, and the goal card does not show it', async ({
   page,
 }) => {
-  const { movements } = await openGoal(page, {
+  const { requests, movements } = await openGoal(page, {
     // The sheet's Category list has Investing.
     dropdowns: {
       'Sheet2!A2': {
@@ -96,6 +96,10 @@ test('a new Investing movement from the "+" form is saved, and the goal card doe
   await expect(form(page)).toBeHidden();
   await expect.poll(() => locked(page)).toBe(false);
 
+  // The sheet was read again after the save, so the goal card shows the sheet with the new row.
+  const saved = requests.methods.lastIndexOf('POST');
+  expect(saved).toBeGreaterThan(-1);
+  expect(requests.methods.slice(saved + 1)).toContain('GET');
   expect(movements).toContainEqual([
     'BBVA David',
     sheetDay('2026-10-15'),

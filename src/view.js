@@ -429,6 +429,7 @@ export function createView(document, language) {
   const form = createForm(formPanel, {
     // Always in the language of the moment, also after it changes.
     formatAmount: (cents) => formatAmount(cents),
+    t: (key) => t(key),
   });
   let formOpen = false;
   // True after a tap on "+", until the form opens or the goal card closes.
@@ -490,8 +491,23 @@ export function createView(document, language) {
     addButton.focus();
   }
   document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());
+
   // Save is handled by the app (see onSave).
   const saveButton = document.querySelector('[data-card="save"]');
+
+  // The sheet was changed by hand, so nothing was saved: the form says so, Save sinks away, and
+  // Cancel becomes Close.
+  function saveChanged() {
+    form.saveChanged();
+    lockWhile(
+      (async () => {
+        saveButton.classList.add('sinking');
+        await still(saveButton);
+        saveButton.hidden = true;
+        saveButton.classList.remove('sinking');
+      })(),
+    );
+  }
 
   // The delete question takes the place of the months in the open goal card ("asking"), with
   // the same movements as the form. No closes it and keeps the selection. Yes is handled by the
@@ -798,7 +814,15 @@ export function createView(document, language) {
     showMissing: (names) => form.showMissing(names),
     setSaving: (saving) => form.setSaving(saving),
     saveFailed: () => form.saveFailed(),
+    saveChanged,
     closeForm,
+    // A tap on Edit opens the form for the selected movement (its place in the rows read from
+    // the sheet), filled in by the app (see openForm).
+    onEdit: (handler) =>
+      editButton.addEventListener('click', () => {
+        formAsked = true;
+        handler(months.selectedRows()[0]);
+      }),
     onDelete: (handler) =>
       yesButton.addEventListener('click', () => handler(months.selectedRows())),
     setDeleting,

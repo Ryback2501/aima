@@ -9,16 +9,38 @@
 
 import { isConfigured } from './config.js';
 import { NoAccessError, SignInExpiredError } from './sheets.js';
-import { goalStatus, goalMonths } from './goal.js';
+import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
   firstRowOf,
+  formValues,
   missingFields,
   movementRow,
   planDelete,
+  planEdit,
   planSave,
+  sameMovement,
   sameMovements,
 } from './movements.js';
+
+// What was typed is always text: a concept that starts with "=" must not become a formula.
+const typed = (cell) => (typeof cell === 'string' && cell.startsWith('=') ? { text: cell } : cell);
+
+// The rows to write, from the rows read with their formulas. There a text that starts with "="
+// looks like a formula. In the plain read (fresh) a formula gives its result, and a text stays
+// the same: then it is written as text again. offset: the place of a row in the rows read with
+// formulas → its place in fresh.
+function keepTexts(planned, rows, fresh, offset) {
+  const placeOf = new Map(rows.map((row, index) => [row, index]));
+  return planned.map((row) => {
+    const plain = fresh[placeOf.get(row) - offset] ?? [];
+    return row.map((cell, column) =>
+      typeof cell === 'string' && cell.startsWith('=') && plain[column] === cell
+        ? { text: cell }
+        : cell,
+    );
+  });
+}
 
 export function createApp({ config, view, session, loadAuth, loadPicker, createSheets }) {
   let auth = null;
@@ -34,6 +56,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   let canAdd = false;
   // The Source and Category lists of the new movement form, once they are loading or loaded.
   let lists = null;
+  // The movement the form is changing ({ index, row }: its place in movementRows, and the row
+  // as it was read), or null when the form adds a new movement.
+  let editing = null;
 
   const sheets = createSheets({
     spreadsheetId: config.spreadsheetId,
@@ -121,11 +146,35 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // A tap on "+" opens the new movement form with the lists, or with a message when they
   // cannot be read.
   async function openForm() {
+    await showForm(null);
+  }
+
+  // A tap on Edit opens the same form, filled in with the movement at index (its place in
+  // movementRows), as it was read from the sheet.
+  async function openEdit(index) {
+    const row = movementRows[index];
+    await showForm({ index, row });
+  }
+
+  // Opens the form for a new movement (change: null) or to change one, with the lists, or with
+  // a message when they cannot be read. While the lists load, a newer tap on "+" or Edit takes
+  // over: only the last one opens its form, so Save always does what the open form shows.
+  let asked = 0;
+  async function showForm(change) {
+    const tap = (asked += 1);
+    const edit = change && {
+      values: formValues(change.row),
+      extraDecimals: hasExtraDecimals(change.row[4]),
+    };
+    let form;
     try {
-      view.openForm(await getLists());
+      form = await getLists();
     } catch {
-      view.openForm({ failed: true });
+      form = { failed: true };
     }
+    if (tap !== asked) return;
+    editing = change;
+    view.openForm(edit ? { ...form, edit } : form);
   }
 
   // Reads the parts of the Total and the movements, both at the same time, and works out what
@@ -166,9 +215,6 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       ]);
       const row = movementRow(values);
       const plan = planSave(rows, row, config.goal);
-      // What was typed is always text: a concept that starts with "=" must not become a formula.
-      const typed = (cell) =>
-        typeof cell === 'string' && cell.startsWith('=') ? { text: cell } : cell;
       const written = plan.rows.map((each) => (each === row ? each.map(typed) : each));
       await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
       return true;
@@ -177,23 +223,46 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
-  // A tap on Save. Empty required fields are marked, and nothing is saved. While a movement
-  // is being saved, Save and Cancel wait, and another tap does nothing. After the save, the
-  // main screen is read again and the form closes. If the sheet cannot be read again, the form
-  // closes anyway: the movement is saved, and saying otherwise would make the person save it
-  // twice.
+  // Writes the change of the movement at index (its place in movementRows): it moves to its new
+  // place (see movements.js). Returns "saved", or "changed" or "failed" (see changeRows).
+  async function rewrite(index, values) {
+    const row = movementRow(values);
+    const result = await changeRows([index], (rows, [place]) => ({
+      ...planEdit(rows, place, row, config.goal),
+      typedRow: row,
+    }));
+    return typeof result === 'string' ? result : 'saved';
+  }
+
+  // A tap on Save. Empty required fields are marked, and nothing is saved. A changed movement
+  // with nothing changed closes the form and writes nothing. While a movement is being saved,
+  // Save and Cancel wait, and another tap does nothing. After the save, the main screen is read
+  // again and the form closes. If the sheet cannot be read again, the form closes anyway: the
+  // movement is saved, and saying otherwise would make the person save it twice. When the sheet
+  // was changed by hand, the form says so, and the main screen shows the sheet as it is now.
   let saving = false;
   async function saveMovement(values) {
     if (saving) return;
     const missing = missingFields(values);
     view.showMissing(missing);
     if (missing.length > 0) return;
+    if (editing && sameMovement(editing.row, values)) {
+      view.closeForm();
+      return;
+    }
     saving = true;
     view.setSaving(true);
     try {
-      if (await write(values)) {
+      let result;
+      if (editing) result = await rewrite(editing.index, values);
+      else result = (await write(values)) ? 'saved' : 'failed';
+      if (result === 'saved') {
+        editing = null;
         await load().then(showMain, () => {});
         view.closeForm();
+      } else if (result === 'changed') {
+        view.saveChanged();
+        await load().then(showMain, () => {});
       } else {
         view.saveFailed();
       }
@@ -214,7 +283,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     deleting = true;
     view.setDeleting(true);
     try {
-      const fresh = await removeRows(indexes);
+      const fresh = await changeRows(indexes, planDelete);
       if (fresh === 'failed') {
         view.deleteFailed();
       } else if (fresh === 'changed') {
@@ -240,10 +309,14 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
-  // Reads the rows again, checks the movements are still where they were, and deletes them.
-  // Returns the movement rows read just before the delete, or "changed" when one of them holds
-  // another movement now, or "failed" when Google could not be reached or refused the change.
-  async function removeRows(indexes) {
+  // Changes rows of the sheet: reads them again, checks that the movements at indexes (their
+  // places in movementRows) are still where they were, and writes the rows that plan gives, in
+  // one write. plan gets the rows read with their formulas and the places of the movements in
+  // them, and returns { start, rows } (see movements.js), with typedRow: the row typed in the
+  // form, if there is one. Returns the movement rows read just before, "changed" when one of
+  // the movements is no longer in its row (the sheet was changed by hand), or "failed" when
+  // Google could not be reached or refused the change.
+  async function changeRows(indexes, plan) {
     const { sheet, firstRow } = config.form;
     try {
       const [fresh, rows, place] = await Promise.all([
@@ -254,23 +327,18 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (!sameMovements(movementRows, fresh, indexes)) return 'changed';
       // A place in the goal's rows → its row in the sheet → its place in the rows read here.
       const offset = firstRowOf(config.goal.movements) - firstRow;
-      const plan = planDelete(
+      const {
+        start,
+        rows: planned,
+        typedRow,
+      } = plan(
         rows,
         indexes.map((index) => index + offset),
       );
-      // The rows come with their formulas, so a text that starts with "=" looks like a formula.
-      // In the plain read a formula gives its result, and a text stays the same: then it is
-      // written as text again.
-      const placeOf = new Map(rows.map((row, index) => [row, index]));
-      const written = plan.rows.map((row) => {
-        const plain = fresh[placeOf.get(row) - offset] ?? [];
-        return row.map((cell, column) =>
-          typeof cell === 'string' && cell.startsWith('=') && plain[column] === cell
-            ? { text: cell }
-            : cell,
-        );
-      });
-      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
+      const written = keepTexts(planned, rows, fresh, offset).map((each, at) =>
+        planned[at] === typedRow ? typedRow.map(typed) : each,
+      );
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + start, rows: written });
       return fresh;
     } catch {
       return 'failed';
@@ -389,6 +457,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.onAdd(openForm);
     view.onSave(saveMovement);
     view.onDelete(deleteMovements);
+    view.onEdit(openEdit);
 
     const token = session.getToken();
     if (token) {

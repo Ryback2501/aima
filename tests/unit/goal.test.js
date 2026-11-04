@@ -294,3 +294,20 @@ test('each movement knows its place in the rows read, also after skipped rows', 
     ],
   );
 });
+
+test('a movement whose amount has more than two decimals is marked, and the others are not', () => {
+  const rows = [
+    row('2026-10-05', -12.345, 'Food', 'Odd'),
+    row('2026-10-06', -12.34, 'Food', 'Fine'),
+  ];
+
+  const movements = goalMonths(rows, goal)[0].days.flatMap((d) => d.movements);
+
+  assert.deepEqual(
+    movements.map(({ description, extraDecimals }) => [description, extraDecimals]),
+    [
+      ['Fine', undefined],
+      ['Odd', true],
+    ],
+  );
+});

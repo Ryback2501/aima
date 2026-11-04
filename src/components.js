@@ -80,6 +80,16 @@ export const CARDS = {
     colors: ['#b91c1c', '#fca5a5'],
     padding: { x: 0, y: 0 },
   },
+  // The Edit button of the open goal card, on the left of "+" while one movement is selected:
+  // it looks like the back button, in green like the goal card. Its content is the pen icon.
+  edit: {
+    width: 56,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#15803d', '#86efac'],
+    padding: { x: 0, y: 0 },
+  },
   // The Cancel button of the new movement form: it looks like the other buttons, in red, and
   // fills the width of the form. Its content is the word.
   cancel: {

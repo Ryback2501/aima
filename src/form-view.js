@@ -1,6 +1,7 @@
-// The new movement form in the open goal card (see index.html). It fills the Source and
-// Category lists, starts the date at today, keeps the concept on one line, and switches the
-// sign of the amount. view.js shows and hides it.
+// The movement form in the open goal card (see index.html), for a new movement or to change
+// one. It fills the Source and Category lists, starts the date at today (or fills in the
+// movement to change), keeps the concept on one line, and switches the sign of the amount.
+// view.js shows and hides it.
 
 // A concept has at most this many characters.
 export const CONCEPT_LIMIT = 50;
@@ -34,8 +35,9 @@ function today() {
   return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
 }
 
-// formatAmount writes an amount in cents in the app's language (see createAmountFormatter).
-export function createForm(form, { formatAmount }) {
+// formatAmount writes an amount in cents in the app's language (see createAmountFormatter), and
+// t gives the words of the app's language (see createTranslator).
+export function createForm(form, { formatAmount, t }) {
   const document = form.ownerDocument;
   const field = (name) => form.elements.namedItem(name);
   const source = field('source');
@@ -46,6 +48,9 @@ export function createForm(form, { formatAmount }) {
   const sign = form.querySelector('.sign-switch');
   const message = form.querySelector('.form-message');
   const saveMessage = form.querySelector('.save-message');
+  const title = form.querySelector('.movement-form-title');
+  const note = form.querySelector('.amount-note');
+  const cancelText = form.querySelector('[data-card="cancel"] span');
   const buttons = [...form.querySelectorAll('.form-buttons button')];
   // The required fields. An empty one is marked when Save is tapped (see showMissing).
   const required = { source, date, category, amount };
@@ -157,21 +162,38 @@ export function createForm(form, { formatAmount }) {
     amount.addEventListener(type, keepCursor);
   }
 
-  // Starts the form again, empty: the lists from the sheet (or a message when they could not
-  // be read), the date at today, and the amount below 0.
-  function reset({ sources, categories, failed = false }) {
+  // Starts the form again: the lists from the sheet (or a message when they could not be read).
+  // For a new movement it is empty, with the date at today and the amount below 0. With edit
+  // ({ values, extraDecimals }), it is filled in with the movement to change. A source or a
+  // category that is not in its list stays empty, and is marked Required at once. extraDecimals
+  // shows the note under Amount: the amount had more than two decimals.
+  function reset({ sources, categories, failed = false, edit = null }) {
     fillList(source, sources);
     fillList(category, categories);
     message.hidden = !failed;
-    showMissing([]);
     saveMessage.hidden = true;
+    title.textContent = t(edit ? 'editMovement' : 'newMovement');
+    cancelText.textContent = t('cancel');
+    for (const button of buttons) button.hidden = false;
     setSaving(false);
-    date.value = today();
-    concept.value = '';
-    digits = '';
-    amount.value = '';
     amount.placeholder = formatAmount(0);
-    setSign('minus');
+    const values = edit?.values ?? {
+      source: '',
+      date: today(),
+      category: '',
+      concept: '',
+      digits: '',
+      sign: 'minus',
+    };
+    source.value = values.source;
+    category.value = values.category;
+    date.value = values.date;
+    concept.value = values.concept;
+    digits = values.digits;
+    amount.value = digits ? formatAmount(Number(digits)) : '';
+    setSign(values.sign);
+    note.hidden = !edit?.extraDecimals;
+    showMissing(edit ? ['source', 'category'].filter((name) => !required[name].value) : []);
   }
 
   // What was typed, for Save: the amount as its typed numbers, and the sign.
@@ -200,7 +222,18 @@ export function createForm(form, { formatAmount }) {
   }
 
   // The movement was not saved: the form stays as it is, and says so.
-  const saveFailed = () => (saveMessage.hidden = false);
+  function saveFailed() {
+    saveMessage.textContent = t('notSaved');
+    saveMessage.hidden = false;
+  }
 
-  return { reset, fitConcept, values, showMissing, setSaving, saveFailed };
+  // The sheet was changed by hand, so nothing was saved: the form says so, and Cancel becomes
+  // Close (view.js takes Save away).
+  function saveChanged() {
+    saveMessage.textContent = t('sheetChangedNotSaved');
+    saveMessage.hidden = false;
+    cancelText.textContent = t('close');
+  }
+
+  return { reset, fitConcept, values, showMissing, setSaving, saveFailed, saveChanged };
 }

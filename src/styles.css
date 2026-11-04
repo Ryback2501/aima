@@ -751,6 +751,11 @@ html:not(.loading) .label {
   text-align: center;
 }
 
+/* When the sheet was changed by hand, Yes sinks away like a card. */
+.delete-panel [data-card='yes'].sinking {
+  animation: card-sink var(--rise-time) ease-in both;
+}
+
 /* Said when nothing was deleted. It rises in like a card. */
 .delete-message {
   margin: 0;
@@ -761,7 +766,8 @@ html:not(.loading) .label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .delete-message {
+  .delete-message,
+  .delete-panel [data-card='yes'].sinking {
     animation: none;
   }
 }

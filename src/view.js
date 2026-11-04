@@ -566,19 +566,27 @@ export function createView(document, language) {
     deleteMessage.hidden = false;
   }
 
+  // The sheet was changed by hand: the message rises in, Yes sinks away, and No becomes Close.
   function deleteChanged() {
     sheetChanged = true;
     deleteMessage.textContent = t('sheetChanged');
     deleteMessage.hidden = false;
-    yesButton.hidden = true;
     noText.textContent = t('close');
+    lockWhile(
+      (async () => {
+        yesButton.classList.add('sinking');
+        await still(yesButton);
+        yesButton.hidden = true;
+        yesButton.classList.remove('sinking');
+      })(),
+    );
   }
 
-  // While the movements are being deleted, No and Yes cannot be tapped.
+  // While the movements are being deleted, No and Yes cannot be tapped. A message from the try
+  // before stays until there is a new answer, so it does not blink.
   function setDeleting(deleting) {
     noButton.disabled = deleting;
     yesButton.disabled = deleting;
-    if (deleting) deleteMessage.hidden = true;
   }
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows

@@ -5,6 +5,7 @@ import { FLAGS } from './flags.js';
 import {
   createDayNamer,
   createAmountFormatter,
+  createDeleteQuestion,
   createMoneyFormatter,
   createMonthNamer,
   createTranslator,
@@ -29,7 +30,7 @@ export function createView(document, language) {
 
   // The words, the amounts, the month names and the dates, in the app's language. useLanguage
   // changes them.
-  let appLanguage, t, formatMoney, formatAmount, monthName, dayName;
+  let appLanguage, t, formatMoney, formatAmount, monthName, dayName, deleteQuestion;
   function useLanguage(language) {
     appLanguage = language;
     document.documentElement.lang = language;
@@ -38,6 +39,7 @@ export function createView(document, language) {
     formatAmount = createAmountFormatter(language);
     monthName = createMonthNamer(language);
     dayName = createDayNamer(language);
+    deleteQuestion = createDeleteQuestion(language);
     // Put the fixed words (button texts and so on) in the language.
     for (const node of document.querySelectorAll('[data-i18n]')) {
       node.textContent = t(node.dataset.i18n);
@@ -171,7 +173,10 @@ export function createView(document, language) {
   const backButton = element('back');
   // The "+" button shows in the open goal card, only for people who can edit the sheet.
   const addButton = element('add');
+  // The Delete button shows next to "+" while movements are selected ("paired").
+  const deleteButton = element('delete');
   let canAdd = false;
+  let paired = false;
   let openCard = null;
   let placeholder = null;
   let moving = false;
@@ -218,22 +223,67 @@ export function createView(document, language) {
       part.style.setProperty('--rise-order', String(index));
       part.style.setProperty('--sink-order', String(parts.length - index));
     });
-    // The "+" button rises in and sinks away together with the back button.
-    for (const button of [backButton, addButton]) {
+    // The "+" and Delete buttons rise in and sink away together with the back button.
+    for (const button of [backButton, addButton, deleteButton]) {
       button.style.setProperty('--card-order', String(parts.length));
       button.style.setProperty('--sink-order', '0');
     }
   }
 
-  // The buttons at the bottom of an open card: the back button, and "+" in the goal card.
-  const bottomButtons = () =>
-    canAdd && openCard?.dataset.card === 'goal' ? [backButton, addButton] : [backButton];
+  // The buttons at the bottom of an open card: the back button, and "+" in the goal card, with
+  // Delete while movements are selected.
+  function bottomButtons() {
+    if (!canAdd || openCard?.dataset.card !== 'goal') return [backButton];
+    return paired ? [backButton, addButton, deleteButton] : [backButton, addButton];
+  }
 
   // While a card is open, only the card (with the buttons inside it) and its buttons react.
+  const allButtons = [backButton, addButton, deleteButton];
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
-      node.inert = covered && !openCard.contains(node) && !bottomButtons().includes(node);
+      node.inert = covered && !openCard.contains(node) && !allButtons.includes(node);
     }
+  }
+
+  // The first movement selected: "+" slides to the left, then Delete rises in on its right.
+  // The last one unselected: the same in reverse. While the buttons are hidden (the form or the
+  // delete question is open), they change at once. A change while the buttons move waits for it.
+  let pairing = false;
+  let selectedCount = 0;
+  async function selectionChanged(count) {
+    selectedCount = count;
+    if (pairing) return;
+    pairing = true;
+    try {
+      while (paired !== selectedCount > 0) {
+        paired = !paired;
+        if (addButton.hidden) {
+          addButton.classList.toggle('paired', paired);
+          continue;
+        }
+        await lockWhile(paired ? showDelete() : hideDelete());
+      }
+    } finally {
+      pairing = false;
+    }
+  }
+
+  async function showDelete() {
+    addButton.classList.add('paired');
+    await still(addButton);
+    deleteButton.style.setProperty('--card-order', '0');
+    deleteButton.hidden = false;
+    await still(deleteButton);
+  }
+
+  async function hideDelete() {
+    deleteButton.style.setProperty('--sink-order', '0');
+    deleteButton.classList.add('sinking');
+    await still(deleteButton);
+    deleteButton.hidden = true;
+    deleteButton.classList.remove('sinking');
+    addButton.classList.remove('paired');
+    await still(addButton);
   }
 
   async function open(card) {
@@ -277,18 +327,21 @@ export function createView(document, language) {
   // Puts the open card back at once, without animation (used when the screen changes, and at
   // the end of closing).
   function putBack() {
-    months.reset();
-    formOpen = false;
-    formAsked = false;
-    openCard.classList.remove('open', 'settled', 'closing', 'adding', 'hiding-months');
-    formPanel.classList.remove('sinking');
-    openCard.setAttribute('aria-expanded', 'false');
-    placeholder.remove();
-    backdrop.hidden = true;
-    for (const button of [backButton, addButton]) {
+    for (const button of allButtons) {
       button.hidden = true;
       button.classList.remove('sinking');
     }
+    // The buttons are hidden now, so the selection goes at once.
+    months.reset();
+    formOpen = false;
+    formAsked = false;
+    panelOpen = false;
+    openCard.classList.remove('open', 'settled', 'closing', 'adding', 'asking', 'hiding-months');
+    formPanel.classList.remove('sinking');
+    deletePanel.classList.remove('sinking');
+    openCard.setAttribute('aria-expanded', 'false');
+    placeholder.remove();
+    backdrop.hidden = true;
     coverTheRest(false);
     const card = openCard;
     openCard = null;
@@ -336,6 +389,7 @@ export function createView(document, language) {
     reduceMotion,
     // Only people who can edit the sheet can select movements, like the "+" button.
     canSelect: () => canAdd,
+    selectionChanged,
   });
 
   for (const card of document.querySelectorAll('[data-expandable]')) {
@@ -418,6 +472,114 @@ export function createView(document, language) {
   document.querySelector('[data-card="cancel"]').addEventListener('click', () => closeForm());
   // Save is handled by the app (see onSave).
   const saveButton = document.querySelector('[data-card="save"]');
+
+  // The delete question takes the place of the months in the open goal card ("asking"), with
+  // the same movements as the form. No closes it and keeps the selection. Yes is handled by the
+  // app (see onDelete).
+  const deletePanel = document.querySelector('.delete-panel');
+  const deleteQuestionText = deletePanel.querySelector('.delete-question');
+  const deleteMessage = deletePanel.querySelector('.delete-message');
+  const noButton = deletePanel.querySelector('[data-card="no"]');
+  const noText = noButton.querySelector('.no-text');
+  const yesButton = deletePanel.querySelector('[data-card="yes"]');
+  let panelOpen = false;
+  // True when the sheet was changed by hand: only Close is left, and it shows the sheet as it
+  // is now, with nothing selected.
+  let sheetChanged = false;
+
+  async function openPanel() {
+    if (panelOpen || moving || !paired || openCard?.dataset.card !== 'goal') return;
+    panelOpen = true;
+    moving = true;
+    const card = openCard;
+    await lockWhile(
+      (async () => {
+        const buttons = bottomButtons();
+        for (const button of buttons) button.classList.add('sinking');
+        card.classList.add('hiding-months');
+        await still(card, ...buttons);
+        for (const button of buttons) {
+          button.hidden = true;
+          button.classList.remove('sinking');
+        }
+        sheetChanged = false;
+        deleteQuestionText.textContent = deleteQuestion(selectedCount);
+        deleteMessage.hidden = true;
+        yesButton.hidden = false;
+        noText.textContent = t('no');
+        card.classList.add('asking');
+        card.classList.remove('hiding-months');
+        await still(deletePanel);
+      })(),
+    );
+    moving = false;
+    deletePanel.focus();
+  }
+
+  // The question sinks away, then the months rise in from the top, and the buttons last. After
+  // a delete ("done"), the selected movements are still there: they go once the months are
+  // back. Then only "+" comes back, in the middle.
+  async function closePanel({ done = false } = {}) {
+    const card = openCard;
+    deletePanel.classList.add('sinking');
+    await still(deletePanel);
+    deletePanel.classList.remove('sinking');
+    panelOpen = false;
+    card.classList.remove('asking');
+    if (sheetChanged) months.unselectAll();
+    if (done) {
+      paired = false;
+      addButton.classList.remove('paired');
+    }
+    lineUp(card);
+    const buttons = bottomButtons();
+    for (const button of buttons) button.hidden = false;
+    months.follow();
+    await still(card, ...buttons);
+    if (done) await months.removeSelected();
+  }
+
+  noButton.addEventListener('click', async () => {
+    if (!panelOpen || moving) return;
+    moving = true;
+    await lockWhile(closePanel());
+    moving = false;
+    addButton.focus();
+  });
+  deleteButton.addEventListener('click', () => openPanel());
+
+  // After a delete the months stay as they are (the open month too) until the app shows them
+  // without the deleted movements. Taps wait until then.
+  let keepMonths = false;
+  let monthsShown = null;
+  async function deleted() {
+    moving = true;
+    await lockWhile(closePanel({ done: true }));
+    moving = false;
+    keepMonths = true;
+    lockWhile(new Promise((done) => (monthsShown = done)));
+  }
+
+  // Nothing was deleted: the question stays, and says why.
+  function deleteFailed() {
+    deleteMessage.textContent = t('notDeleted');
+    deleteMessage.hidden = false;
+  }
+
+  function deleteChanged() {
+    sheetChanged = true;
+    deleteMessage.textContent = t('sheetChanged');
+    deleteMessage.hidden = false;
+    yesButton.hidden = true;
+    noText.textContent = t('close');
+  }
+
+  // While the movements are being deleted, No and Yes cannot be tapped.
+  function setDeleting(deleting) {
+    noButton.disabled = deleting;
+    yesButton.disabled = deleting;
+    if (deleting) deleteMessage.hidden = true;
+  }
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows
   // the flag of the app's language. A tap opens it upward to show every flag. A tap on a flag
@@ -574,7 +736,10 @@ export function createView(document, language) {
       goalValue.dataset.level = state.goal.level;
       // "Goal 4K": the word in the app's language and the limit in thousands.
       goalTitle.textContent = `${t('goal')} ${state.goal.limit / 1000}K`;
-      months.render(state.goal.months);
+      months.render(state.goal.months, { keepOpen: keepMonths });
+      keepMonths = false;
+      monthsShown?.();
+      monthsShown = null;
       // Months built again while a card is open (after a save) need their place in the order.
       if (openCard) lineUp(openCard);
     }
@@ -606,6 +771,12 @@ export function createView(document, language) {
     setSaving: (saving) => form.setSaving(saving),
     saveFailed: () => form.saveFailed(),
     closeForm,
+    onDelete: (handler) =>
+      yesButton.addEventListener('click', () => handler(months.selectedRows())),
+    setDeleting,
+    deleteFailed,
+    deleteChanged,
+    deleted,
     onAdd: (handler) =>
       addButton.addEventListener('click', () => {
         formAsked = true;

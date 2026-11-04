@@ -154,11 +154,14 @@ test('every spending category has an icon that exists in icons.js', () => {
   }
 });
 
-// Movements of a left-out category are never shown, so they need no icon.
-test('the categories that the goal leaves out have no icon', () => {
+// Movements of a left-out category are never shown, so they need no icon. Investing keeps its
+// own: showing the left-out movements is planned for later (#113).
+test('the categories that the goal leaves out have no icon, apart from Investing', () => {
   for (const category of config.goal.skip.categories) {
+    if (category === 'Investing') continue;
     assert.equal(Object.hasOwn(CATEGORY_ICONS, category), false, category);
   }
+  assert.equal(categoryIcon('Investing'), 'investing');
 });
 
 test('a category without its own icon gets the money bag with a euro sign', () => {

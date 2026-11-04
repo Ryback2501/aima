@@ -15,6 +15,7 @@ const CALENDAR_SIZE = 28;
 const ARROW_SIZE = 24;
 const MOVEMENT_ICON_SIZE = 20;
 const SOURCE_ICON_SIZE = 18;
+const WARNING_SIZE = 14;
 
 // How fast a description that does not fit on one line moves to the left, in pixels per second.
 export const DESCRIPTION_SPEED = 30;
@@ -39,6 +40,7 @@ export function createMonths({
   reduceMotion,
   canSelect,
   selectionChanged,
+  warningLabel,
 }) {
   const window = document.defaultView;
   const column = room.querySelector('.month-column');
@@ -101,7 +103,20 @@ export function createMonths({
         const track = make('span', 'description-track');
         track.append(make('span', 'description-text', movement.description));
         description.append(track);
-        text.append(make('span', 'movement-amount', formatMoney(movement.amount)), description);
+        const total = make('span', 'movement-amount', formatMoney(movement.amount));
+        // An amount with more than two decimals gets a small warning right after it, on the
+        // same line. Screen readers read it as the note of the edit form.
+        if (movement.extraDecimals) {
+          const warning = make('span', 'amount-warning');
+          warning.setAttribute('role', 'img');
+          warning.setAttribute('aria-label', warningLabel());
+          warning.append(createIcon('warning', WARNING_SIZE));
+          const line = make('span', 'amount-line');
+          line.append(total, warning);
+          text.append(line, description);
+        } else {
+          text.append(total, description);
+        }
         const icon = createIcon(
           categoryIcon(movement.category, movement.description),
           MOVEMENT_ICON_SIZE,

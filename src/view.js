@@ -410,6 +410,7 @@ export function createView(document, language) {
     // Only people who can edit the sheet can select movements, like the "+" button.
     canSelect: () => canAdd,
     selectionChanged,
+    warningLabel: () => t('amountCut'),
   });
 
   for (const card of document.querySelectorAll('[data-expandable]')) {

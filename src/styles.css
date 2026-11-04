@@ -1145,7 +1145,13 @@ html:not(.loading) .label {
   fill: var(--movement-color, currentColor);
 }
 
-/* A small red warning right after an amount with more than two decimals (months-view.js). */
+/* A small red warning right after an amount with more than two decimals (months-view.js), on
+   the same line. */
+.amount-line {
+  display: flex;
+  align-items: center;
+}
+
 .amount-warning {
   display: inline-flex;
   flex: none;

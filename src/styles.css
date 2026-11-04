@@ -1024,6 +1024,11 @@ html:not(.loading) .label {
   gap: 12px;
   margin: 6px 0;
   padding: 10px 12px;
+  /* Keeping a finger on a movement selects it (months-view.js), so its text is never selected
+     and the phone's own menu never opens. iPhones only know the -webkit- names. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .movement::before {
@@ -1042,13 +1047,7 @@ html:not(.loading) .label {
 
 /* A selected movement gets the same blue-to-purple border as a form field in use. The border is
    a layer over the movement (the mask keeps only its edge). It fades in and out as fast as the
-   pills of the Total. The movement's text can never be selected, and a long press on it never
-   opens the phone's own menu. */
-.movement {
-  -webkit-touch-callout: none;
-  user-select: none;
-}
-
+   pills of the Total. */
 .movement::after {
   content: '';
   position: absolute;

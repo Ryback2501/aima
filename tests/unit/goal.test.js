@@ -311,3 +311,23 @@ test('a movement whose amount has more than two decimals is marked, and the othe
     ],
   );
 });
+
+test('with the real settings, Investing movements do not count, below or above 0', () => {
+  assert.ok(config.goal.skip.categories.includes('Investing'));
+  const rows = [
+    row('2026-10-05', -100, 'Investing', 'Fund'),
+    row('2026-10-06', 50, 'Investing', 'Sale'),
+    row('2026-10-07', -10, 'General', 'Bread'),
+    row('2026-11-03', -20, 'Investing', 'Fund'),
+  ];
+
+  assert.equal(goalStatus(rows, config.goal).amount, 10);
+  const [october, november] = goalMonths(rows, config.goal);
+  assert.deepEqual(
+    october.days.flatMap((d) => d.movements.map(({ description }) => description)),
+    ['Bread'],
+  );
+  assert.equal(october.amount, 10);
+  // A month with only Investing movements has no amount, like a month with none.
+  assert.equal(november.amount, null);
+});

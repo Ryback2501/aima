@@ -223,31 +223,15 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
-  // Writes the change of the movement at index (its place in movementRows): the rows are read
-  // again first, and the movement moves to its new place (see movements.js), in one write.
-  // Returns "saved", "changed" when its row holds another movement now (the sheet was changed by
-  // hand), or "failed" when Google could not be reached or refused the change.
+  // Writes the change of the movement at index (its place in movementRows): it moves to its new
+  // place (see movements.js). Returns "saved", or "changed" or "failed" (see changeRows).
   async function rewrite(index, values) {
-    const { sheet, firstRow } = config.form;
-    try {
-      const [fresh, rows, place] = await Promise.all([
-        sheets.getValues(config.goal.movements, { raw: true }),
-        sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
-        sheets.getSheet(sheet),
-      ]);
-      if (!sameMovements(movementRows, fresh, [index])) return 'changed';
-      // A place in the goal's rows → its row in the sheet → its place in the rows read here.
-      const offset = firstRowOf(config.goal.movements) - firstRow;
-      const row = movementRow(values);
-      const plan = planEdit(rows, index + offset, row, config.goal);
-      const written = keepTexts(plan.rows, rows, fresh, offset).map((each, at) =>
-        plan.rows[at] === row ? row.map(typed) : each,
-      );
-      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
-      return 'saved';
-    } catch {
-      return 'failed';
-    }
+    const row = movementRow(values);
+    const result = await changeRows([index], (rows, [place]) => ({
+      ...planEdit(rows, place, row, config.goal),
+      typedRow: row,
+    }));
+    return typeof result === 'string' ? result : 'saved';
   }
 
   // A tap on Save. Empty required fields are marked, and nothing is saved. A changed movement
@@ -299,7 +283,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     deleting = true;
     view.setDeleting(true);
     try {
-      const fresh = await removeRows(indexes);
+      const fresh = await changeRows(indexes, planDelete);
       if (fresh === 'failed') {
         view.deleteFailed();
       } else if (fresh === 'changed') {
@@ -325,10 +309,14 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
   }
 
-  // Reads the rows again, checks the movements are still where they were, and deletes them.
-  // Returns the movement rows read just before the delete, or "changed" when one of them holds
-  // another movement now, or "failed" when Google could not be reached or refused the change.
-  async function removeRows(indexes) {
+  // Changes rows of the sheet: reads them again, checks that the movements at indexes (their
+  // places in movementRows) are still where they were, and writes the rows that plan gives, in
+  // one write. plan gets the rows read with their formulas and the places of the movements in
+  // them, and returns { start, rows } (see movements.js), with typedRow: the row typed in the
+  // form, if there is one. Returns the movement rows read just before, "changed" when one of
+  // the movements is no longer in its row (the sheet was changed by hand), or "failed" when
+  // Google could not be reached or refused the change.
+  async function changeRows(indexes, plan) {
     const { sheet, firstRow } = config.form;
     try {
       const [fresh, rows, place] = await Promise.all([
@@ -339,12 +327,18 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (!sameMovements(movementRows, fresh, indexes)) return 'changed';
       // A place in the goal's rows → its row in the sheet → its place in the rows read here.
       const offset = firstRowOf(config.goal.movements) - firstRow;
-      const plan = planDelete(
+      const {
+        start,
+        rows: planned,
+        typedRow,
+      } = plan(
         rows,
         indexes.map((index) => index + offset),
       );
-      const written = keepTexts(plan.rows, rows, fresh, offset);
-      await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
+      const written = keepTexts(planned, rows, fresh, offset).map((each, at) =>
+        planned[at] === typedRow ? typedRow.map(typed) : each,
+      );
+      await sheets.writeRows({ ...place, startRow: firstRow - 1 + start, rows: written });
       return fresh;
     } catch {
       return 'failed';

@@ -173,10 +173,13 @@ export function createView(document, language) {
   const backButton = element('back');
   // The "+" button shows in the open goal card, only for people who can edit the sheet.
   const addButton = element('add');
-  // The Delete button shows next to "+" while movements are selected ("paired").
+  // While movements are selected, buttons for them show next to "+": Edit on its left (one
+  // movement only) and Delete on its right.
+  const editButton = element('edit');
   const deleteButton = element('delete');
   let canAdd = false;
-  let paired = false;
+  // How many movements are selected: "none", "one" or "many" (see selectionChanged).
+  let selection = 'none';
   let openCard = null;
   let placeholder = null;
   let moving = false;
@@ -223,74 +226,84 @@ export function createView(document, language) {
       part.style.setProperty('--rise-order', String(index));
       part.style.setProperty('--sink-order', String(parts.length - index));
     });
-    // The "+" and Delete buttons rise in and sink away together with the back button.
-    for (const button of [backButton, addButton, deleteButton]) {
+    // The "+", Edit and Delete buttons rise in and sink away together with the back button.
+    for (const button of [backButton, addButton, editButton, deleteButton]) {
       button.style.setProperty('--card-order', String(parts.length));
       button.style.setProperty('--sink-order', '0');
     }
   }
 
+  // The buttons next to "+" for each number of selected movements.
+  const besidePlus = { none: [], one: [editButton, deleteButton], many: [deleteButton] };
+
   // The buttons at the bottom of an open card: the back button, and "+" in the goal card, with
-  // Delete while movements are selected.
+  // the buttons for the selected movements.
   function bottomButtons() {
     if (!canAdd || openCard?.dataset.card !== 'goal') return [backButton];
-    return paired ? [backButton, addButton, deleteButton] : [backButton, addButton];
+    return [backButton, addButton, ...besidePlus[selection]];
   }
 
   // While a card is open, only the card (with the buttons inside it) and its buttons react.
-  const allButtons = [backButton, addButton, deleteButton];
+  const allButtons = [backButton, addButton, editButton, deleteButton];
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
       node.inert = covered && !openCard.contains(node) && !allButtons.includes(node);
     }
   }
 
-  // The first movement selected: Delete rises in right next to "+", on its right, while both
-  // slide to the left together. The last one unselected: the same in reverse. While the
-  // buttons are hidden (the form or the delete question is open), they change at once. A change
-  // while the buttons move waits for it.
+  // The first movement selected: Edit rises in on the left of "+" and Delete on its right, and
+  // "+" stays in the middle. A second one: Edit sinks away while the three slide to the left,
+  // so "+" and Delete sit in the middle; back to one, the same in reverse. Edit and Delete always
+  // sit right next to "+" and slide with it (styles.css). While the buttons are hidden (the form
+  // or the delete question is open), they change at once. A change while the buttons move waits
+  // for it.
   let pairing = false;
   let selectedCount = 0;
+  const stateOf = (count) => (count === 0 ? 'none' : count === 1 ? 'one' : 'many');
   async function selectionChanged(count) {
     selectedCount = count;
     if (pairing) return;
     pairing = true;
     try {
-      while (paired !== selectedCount > 0) {
-        paired = !paired;
+      while (selection !== stateOf(selectedCount)) {
+        const from = selection;
+        selection = stateOf(selectedCount);
         if (addButton.hidden) {
-          setPaired(paired);
+          placeButtons();
           continue;
         }
-        await lockWhile(paired ? showDelete() : hideDelete());
+        await lockWhile(changeButtons(from, selection));
       }
     } finally {
       pairing = false;
     }
   }
 
-  // Puts "+" and Delete side by side in the middle (on), or "+" alone in the middle (off). With
-  // the buttons on the screen, they slide there (styles.css).
-  function setPaired(on) {
-    for (const button of [addButton, deleteButton]) button.classList.toggle('paired', on);
-  }
+  // Puts "+" and the buttons next to it where they sit for the selection (styles.css).
+  const placeButtons = () => (mainScreen.dataset.selection = selection);
+  placeButtons();
 
-  async function showDelete() {
-    deleteButton.style.setProperty('--card-order', '0');
-    deleteButton.hidden = false;
-    // Delete must be in its place next to "+" (styles.css) before the two start to slide.
-    window.getComputedStyle(deleteButton).translate;
-    setPaired(true);
-    await still(addButton, deleteButton);
-  }
-
-  async function hideDelete() {
-    deleteButton.style.setProperty('--sink-order', '0');
-    deleteButton.classList.add('sinking');
-    setPaired(false);
-    await still(addButton, deleteButton);
-    deleteButton.hidden = true;
-    deleteButton.classList.remove('sinking');
+  // The buttons that go away sink, and the ones that come rise in, while all of them slide to
+  // their new places.
+  async function changeButtons(from, to) {
+    const going = besidePlus[from].filter((button) => !besidePlus[to].includes(button));
+    const coming = besidePlus[to].filter((button) => !besidePlus[from].includes(button));
+    for (const button of going) {
+      button.style.setProperty('--sink-order', '0');
+      button.classList.add('sinking');
+    }
+    for (const button of coming) {
+      button.style.setProperty('--card-order', '0');
+      button.hidden = false;
+      // It must be in its place next to "+" before they all slide.
+      window.getComputedStyle(button).translate;
+    }
+    placeButtons();
+    await still(addButton, editButton, deleteButton);
+    for (const button of going) {
+      button.hidden = true;
+      button.classList.remove('sinking');
+    }
   }
 
   async function open(card) {
@@ -495,7 +508,7 @@ export function createView(document, language) {
   let sheetChanged = false;
 
   async function openPanel() {
-    if (panelOpen || moving || !paired || openCard?.dataset.card !== 'goal') return;
+    if (panelOpen || moving || selection === 'none' || openCard?.dataset.card !== 'goal') return;
     panelOpen = true;
     moving = true;
     const card = openCard;
@@ -535,8 +548,8 @@ export function createView(document, language) {
     card.classList.remove('asking');
     if (sheetChanged) months.unselectAll();
     if (done) {
-      paired = false;
-      setPaired(false);
+      selection = 'none';
+      placeButtons();
     }
     lineUp(card);
     const buttons = bottomButtons();

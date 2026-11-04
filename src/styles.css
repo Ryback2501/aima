@@ -482,33 +482,34 @@ html:not(.loading) .label {
 }
 
 /* The "+" button of the open goal card: in the middle, at the same height as the back button.
-   While movements are selected, the Delete button rises in on its right, 14px away, while both
-   slide to the left together ("paired"), so the two end in the middle. "translate" moves them,
-   so the rise and sink movements (which use "transform") still play while they slide. */
-#add {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
-  left: calc(50% - var(--width) / 2);
-  z-index: 30;
-  transition: translate var(--rise-time) ease-in-out;
-}
-
-#add.paired {
-  translate: calc(-1 * (var(--width) / 2 + 7px)) 0;
-}
-
+   While movements are selected, buttons for them sit right next to it, 14px away: Edit on its
+   left (one movement only) and Delete on its right. With one movement, "+" stays in the middle;
+   with more (data-selection, set by view.js), "+" and Delete slide to the left together, so the
+   two sit in the middle. Edit and Delete always slide with "+". "translate" moves them, so the
+   rise and sink movements (which use "transform") still play while they slide. */
+#add,
+#edit,
 #delete {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
-  left: calc(50% + 7px);
   z-index: 30;
-  /* Before it slides: next to "+" in the middle. */
-  translate: calc(var(--width) / 2 + 7px) 0;
   transition: translate var(--rise-time) ease-in-out;
 }
 
-#delete.paired {
-  translate: 0 0;
+#add {
+  left: calc(50% - var(--width) / 2);
+}
+
+#edit {
+  left: calc(50% - var(--width) * 1.5 - 14px);
+}
+
+#delete {
+  left: calc(50% + var(--width) / 2 + 14px);
+}
+
+#main[data-selection='many'] :is(#add, #edit, #delete) {
+  translate: calc(-1 * (var(--width) / 2 + 7px)) 0;
 }
 
 /* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
@@ -542,6 +543,7 @@ html:not(.loading) .label {
 .label.open.settled.asking .delete-panel.sinking,
 #back.sinking,
 #add.sinking,
+#edit.sinking,
 #delete.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
@@ -556,11 +558,13 @@ html:not(.loading) .label {
   .label.open.settled.asking .delete-panel.sinking,
   #back.sinking,
   #add.sinking,
+  #edit.sinking,
   #delete.sinking {
     animation: none;
   }
 
   #add,
+  #edit,
   #delete {
     transition: none;
   }

@@ -980,3 +980,22 @@ test('while deleting, a second Yes deletes nothing more', async () => {
   assert.deepEqual(deleteLog.deleting, [true, false]);
   assert.deepEqual(deleteLog.events, ['deleted']);
 });
+
+test('a moved text that starts with "=" stays text, and a moved formula stays a formula', async () => {
+  // The formula read gives the text "=Gift" and the formula "=2*3" the same way. The plain read
+  // tells them apart: the text is the same there, the formula gives its result.
+  const plain = [mv('A', -1), mv('=Gift', -2), ['Cash', OCTOBER_5, 'Food', 'C', 6]];
+  const formulas = [mv('A', -1), mv('=Gift', -2), ['Cash', OCTOBER_5, 'Food', 'C', '=2*3']];
+  const { handlers, log } = await signedInEditor({
+    movements: async () => [HEADERS, ...plain],
+    formulas: async () => formulas,
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', { text: '=Gift' }, -2],
+    ['Cash', OCTOBER_5, 'Food', 'C', '=2*3'],
+    ['', '', '', '', ''],
+  ]);
+});

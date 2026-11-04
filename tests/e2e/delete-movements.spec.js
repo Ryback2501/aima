@@ -738,3 +738,54 @@ test.describe('in other languages', () => {
     await expect(no(page)).toHaveText(STRINGS.es.close);
   });
 });
+
+test.describe('the messages of the delete panel, with motion', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  // Writes down every animation that starts in the delete panel: on which button or part.
+  const startPanelLog = (page) =>
+    page.evaluate(() => {
+      window.__panelLog = [];
+      document.addEventListener(
+        'animationstart',
+        ({ target, animationName }) => {
+          if (!target.closest?.('.delete-panel')) return;
+          const who = target.dataset.card ?? target.classList[0];
+          window.__panelLog.push(`${who} ${animationName}`);
+        },
+        true,
+      );
+    });
+  const panelLog = (page) => page.evaluate(() => window.__panelLog);
+
+  test('when the sheet was changed, Yes sinks away and the message rises in', async ({ page }) => {
+    const { movements } = await openGoal(page);
+    await tapMonth(page, 0);
+    await select(page, 0, [1]);
+    movements[2] = ['Cash', sheetDay('2026-10-12'), 'Leisure', 'Theatre', -30];
+    await openPanel(page);
+    await startPanelLog(page);
+
+    await tapAndWait(page, yes(page));
+
+    await expect(yes(page)).toBeHidden();
+    expect(await panelLog(page)).toEqual(
+      expect.arrayContaining(['yes card-sink', 'delete-message card-rise']),
+    );
+  });
+
+  test('when Yes fails again, the message stays and does not blink', async ({ page }) => {
+    await openGoal(page, { saves: ['offline'] });
+    await tapMonth(page, 0);
+    await select(page, 0, [1]);
+    await openPanel(page);
+    await tapAndWait(page, yes(page));
+    await expect(message(page)).toBeVisible();
+    await startPanelLog(page);
+
+    await tapAndWait(page, yes(page));
+
+    await expect(message(page)).toBeVisible();
+    expect(await panelLog(page)).toEqual([]);
+  });
+});

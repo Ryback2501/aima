@@ -290,3 +290,10 @@ test('the first row of a range: row 1 when the range gives no row', () => {
   assert.equal(firstRowOf('Movements!A2:E'), 2);
   assert.equal(firstRowOf('A15:E40'), 15);
 });
+
+test('a last movement whose date is a formula is a movement too, and moves up', () => {
+  const last = ['Cash', '=DATE(2026,10,9)', 'General', 'c', -3];
+  const rows = [m('Cash', -1, 'a'), m('Cash', -2, 'b'), last, EMPTY];
+
+  assert.deepEqual(planDelete(rows, [0]), { start: 0, rows: [m('Cash', -2, 'b'), last, EMPTY] });
+});

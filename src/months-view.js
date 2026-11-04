@@ -46,6 +46,9 @@ export function createMonths({
   const fadeBottom = room.parentElement.querySelector('.month-fade-bottom');
   let items = [];
   let shown = '';
+  // The months shown, and the places in the rows of the movements deleted since (see update).
+  let shownMonths = [];
+  let removed = new Set();
   let open = null;
 
   const make = (tag, className, text) => {
@@ -128,7 +131,10 @@ export function createMonths({
     const key = JSON.stringify(months);
     if (key === shown) return;
     shown = key;
-    if (keepOpen && update(months)) return;
+    const kept = keepOpen && update(months);
+    shownMonths = months;
+    removed = new Set();
+    if (kept) return;
     reset();
     items = months.map(buildMonth);
     column.replaceChildren(...items);
@@ -137,22 +143,29 @@ export function createMonths({
   // After a delete, the months on the screen already show the movements that are left, in the
   // same places: only the amounts, and the places of the movements in the rows read from the
   // sheet, change. So the months are not built again, and nothing moves or rises in again.
-  // Returns false when the screen does not show the same movements (the sheet was changed in
-  // other ways too): then the months are built again.
+  // Returns false when the new months are not the ones shown without the deleted movements (the
+  // sheet was changed in other ways too): then the months are built again.
   function update(months) {
-    const same =
-      months.length === items.length &&
-      months.every(({ days }, index) => {
-        const list = items[index].querySelector('.month-list');
-        const shownTexts = [...list.querySelectorAll('.movement .description-text:first-child')];
-        const texts = days.flatMap(({ movements }) => movements.map((m) => m.description));
-        return (
-          list.querySelectorAll('.movement-date').length === days.length &&
-          shownTexts.length === texts.length &&
-          shownTexts.every((node, at) => node.textContent === texts[at])
-        );
-      });
-    if (!same) return false;
+    const left = shownMonths.map((month) => ({
+      ...month,
+      days: month.days
+        .map((day) => ({ ...day, movements: day.movements.filter((m) => !removed.has(m.row)) }))
+        .filter((day) => day.movements.length > 0),
+    }));
+    // Everything but the amounts of the months and the places in the rows.
+    const looks = (list) =>
+      JSON.stringify(
+        list.map(({ year, month, days }) => ({
+          year,
+          month,
+          days: days.map(({ day, movements }) => ({
+            day,
+            // JSON leaves out a field that is undefined.
+            movements: movements.map((movement) => ({ ...movement, row: undefined })),
+          })),
+        })),
+      );
+    if (looks(left) !== looks(months)) return false;
     months.forEach(({ year, month, amount, days }, index) => {
       showAmount(items[index].querySelector('.month-head'), monthName(year, month), amount);
       const rows = items[index].querySelectorAll('.movement');
@@ -441,6 +454,7 @@ export function createMonths({
   // left). With "reduce motion" on the phone, all of it happens at once.
   async function removeSelected() {
     const rows = [...column.querySelectorAll('.movement.selected')];
+    for (const row of rows) removed.add(Number(row.dataset.row));
     const dates = [...column.querySelectorAll('.movement-date')].filter((date) => {
       for (let next = date.nextElementSibling; next?.classList.contains('movement');) {
         if (!next.classList.contains('selected')) return false;

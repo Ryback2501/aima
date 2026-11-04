@@ -224,7 +224,9 @@ test('a person with access sees the total after sign-in', async () => {
           days: [
             {
               day: 5,
-              movements: [{ category: 'Food', description: 'Shop', amount: 12.5, source: 'cash' }],
+              movements: [
+                { category: 'Food', description: 'Shop', amount: 12.5, source: 'cash', row: 0 },
+              ],
             },
           ],
         },

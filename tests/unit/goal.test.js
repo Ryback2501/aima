@@ -208,15 +208,15 @@ test('a month lists its movements as spending, grouped by day, newest day first'
   assert.deepEqual(goalMonths(rows, goal)[0].days, [
     {
       day: 20,
-      movements: [{ category: 'Car', description: 'Petrol', amount: 45.2, source: null }],
+      movements: [{ category: 'Car', description: 'Petrol', amount: 45.2, source: null, row: 1 }],
     },
     {
       day: 12,
-      movements: [{ category: 'Food', description: 'Refund', amount: -10, source: null }],
+      movements: [{ category: 'Food', description: 'Refund', amount: -10, source: null, row: 2 }],
     },
     {
       day: 5,
-      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null }],
+      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null, row: 0 }],
     },
   ]);
 });

@@ -71,7 +71,7 @@ function setup({
   const forms = [];
   // What the form showed: the missing fields of each Save, the saving state, the failures and
   // the closings after a save.
-  const formLog = { missing: [], saving: [], failed: 0, closed: 0 };
+  const formLog = { missing: [], saving: [], failed: 0, closed: 0, changed: 0 };
   // What the delete panel showed: the deleting state, and each result in order.
   const deleteLog = { deleting: [], events: [] };
   const languages = [];
@@ -90,6 +90,8 @@ function setup({
     setSaving: (saving) => formLog.saving.push(saving),
     saveFailed: () => (formLog.failed += 1),
     closeForm: () => (formLog.closed += 1),
+    onEdit: (handler) => (handlers.edit = handler),
+    saveChanged: () => (formLog.changed += 1),
     onDelete: (handler) => (handlers.delete = handler),
     setDeleting: (deleting) => deleteLog.deleting.push(deleting),
     deleteChanged: () => deleteLog.events.push('changed'),
@@ -998,4 +1000,157 @@ test('a moved text that starts with "=" stays text, and a moved formula stays a 
     ['Cash', OCTOBER_5, 'Food', 'C', '=2*3'],
     ['', '', '', '', ''],
   ]);
+});
+
+// The movements sheet for the edit tests, as the goal reads it (the headers first) and as the
+// save reads it again with its formulas (from the first movement row).
+const editRows = [mv('A', -1), mv('B', -2), mv('C', -3, OCTOBER_5 + 1)];
+const editSheet = (rows = editRows) => ({
+  movements: async () => [HEADERS, ...rows],
+  formulas: async () => rows,
+});
+// What the form shows for a movement row: the values to fill it in with.
+const valuesOf = ([source, date, category, concept, amount]) => ({
+  source,
+  date: date === OCTOBER_5 ? '2026-10-05' : '2026-10-06',
+  category,
+  concept,
+  digits: String(Math.abs(Math.round(amount * 100))),
+  sign: amount < 0 ? 'minus' : 'plus',
+});
+
+test('Edit opens the form filled in with the movement, as the sheet has it', async () => {
+  const { handlers, forms } = await signedInEditor(editSheet());
+
+  // B: row 2 of the rows the goal read (the headers are row 0).
+  await handlers.edit(2);
+
+  assert.deepEqual(forms.at(-1), {
+    sources: ['Bank', 'Cash'],
+    categories: ['Car', 'House'],
+    edit: { values: valuesOf(mv('B', -2)), extraDecimals: false },
+  });
+});
+
+test('Edit says when the amount has more than two decimals', async () => {
+  const { handlers, forms } = await signedInEditor(editSheet([mv('A', -12.345)]));
+
+  await handlers.edit(1);
+
+  assert.deepEqual(forms.at(-1).edit, {
+    values: { ...valuesOf(mv('A', -12.34)) },
+    extraDecimals: true,
+  });
+});
+
+test('Save after Edit reads the rows again and writes the change in its place, in one write', async () => {
+  const { handlers, log, formLog } = await signedInEditor(editSheet());
+  await handlers.edit(2);
+
+  await handlers.save({ ...valuesOf(mv('B', -2)), concept: 'Bee', digits: '250' });
+
+  assert.ok(log.values.some(({ range, options }) => range === 'Sheet2!A2:E' && options.formulas));
+  assert.deepEqual(log.writes, [
+    {
+      sheetId: 7,
+      rowCount: 100,
+      // From A, the first movement of the day of B (the 2nd row of the sheet, 1 counted from 0).
+      startRow: 1,
+      rows: [mv('A', -1), mv('Bee', -2.5), mv('C', -3, OCTOBER_5 + 1)],
+    },
+  ]);
+  assert.equal(formLog.closed, 1);
+});
+
+test('Save after Edit with nothing changed closes the form and writes nothing', async () => {
+  const { handlers, log, formLog } = await signedInEditor(editSheet());
+  await handlers.edit(1);
+  const reads = log.values.length;
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: ' A ' });
+
+  assert.deepEqual(log.writes, []);
+  assert.equal(log.values.length, reads);
+  assert.equal(formLog.closed, 1);
+});
+
+test('when the edited row holds another movement now, nothing is saved and the sheet is read again', async () => {
+  let rows = editRows;
+  const { handlers, log, formLog, last } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+  });
+  await handlers.edit(2);
+  // Somebody changes the sheet by hand: a new movement where B was.
+  rows = [mv('A', -1), mv('New', -9), mv('C', -3, OCTOBER_5 + 1)];
+  const reads = log.cells.length;
+
+  await handlers.save({ ...valuesOf(mv('B', -2)), concept: 'Bee' });
+
+  assert.deepEqual(log.writes, []);
+  assert.equal(formLog.changed, 1);
+  assert.equal(formLog.closed, 0);
+  assert.equal(log.cells.length, reads + 1);
+  assert.deepEqual(shown(last()), ['C', 'A', 'New']);
+});
+
+test('when the change cannot be written, the form says so, and the next Save writes once', async () => {
+  let online = false;
+  const { handlers, log, formLog } = await signedInEditor({
+    ...editSheet(),
+    write: async () => {
+      if (!online) throw new SheetsError('Could not reach Google.');
+    },
+  });
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
+
+  assert.equal(formLog.failed, 1);
+  assert.equal(formLog.closed, 0);
+
+  online = true;
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
+
+  assert.equal(log.writes.length, 2);
+  assert.equal(formLog.closed, 1);
+});
+
+test('while a change is being saved, a second Save writes nothing more', async () => {
+  let finish;
+  const { handlers, log, formLog } = await signedInEditor({
+    ...editSheet(),
+    write: () => new Promise((done) => (finish = done)),
+  });
+  await handlers.edit(1);
+
+  const first = handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
+  await settle();
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
+  finish();
+  await first;
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(formLog.saving, [true, false]);
+});
+
+test('a changed concept typed with "=" at the start is written as text', async () => {
+  const { handlers, log } = await signedInEditor(editSheet());
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: '=A' });
+
+  assert.deepEqual(log.writes[0].rows[0], ['Cash', OCTOBER_5, 'Food', { text: '=A' }, -1]);
+});
+
+test('after Edit, a tap on "+" opens the form for a new movement again', async () => {
+  const { handlers, log, forms } = await signedInEditor(editSheet());
+  await handlers.edit(1);
+
+  await handlers.add();
+  await handlers.save({ ...filled, source: 'Bank' });
+
+  assert.deepEqual(forms.at(-1), { sources: ['Bank', 'Cash'], categories: ['Car', 'House'] });
+  // A new movement: one row more than the movements of its day and after.
+  assert.equal(log.writes[0].rows.length, editRows.length + 1);
 });

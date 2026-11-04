@@ -2,11 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  cutToCents,
   firstRowOf,
+  formValues,
   missingFields,
   movementRow,
   planDelete,
+  planEdit,
   planSave,
+  sameMovement,
   sameMovements,
   sheetDay,
   sortMovements,
@@ -296,4 +300,133 @@ test('a last movement whose date is a formula is a movement too, and moves up', 
   const rows = [m('Cash', -1, 'a'), m('Cash', -2, 'b'), last, EMPTY];
 
   assert.deepEqual(planDelete(rows, [0]), { start: 0, rows: [m('Cash', -2, 'b'), last, EMPTY] });
+});
+
+test('an amount is cut to its cents, toward 0, without rounding', () => {
+  assert.equal(cutToCents(12.345), 1234);
+  assert.equal(cutToCents(-12.345), -1234);
+  assert.equal(cutToCents(12.34), 1234);
+  assert.equal(cutToCents(0.1 + 0.2), 30);
+  assert.equal(cutToCents(0), 0);
+});
+
+test('a movement row gives the values of the form: the day, the amount numbers and its sign', () => {
+  assert.deepEqual(formValues([' Cash ', DAY, 'General', ' Bakery ', -12.5]), {
+    source: 'Cash',
+    date: '2026-10-05',
+    category: 'General',
+    concept: 'Bakery',
+    digits: '1250',
+    sign: 'minus',
+  });
+  assert.deepEqual(formValues(['Cash', DAY, 'General', '', 125]), {
+    source: 'Cash',
+    date: '2026-10-05',
+    category: 'General',
+    concept: '',
+    digits: '12500',
+    sign: 'plus',
+  });
+});
+
+test('in the form, 0 shows as 0.00 with "−", more decimals are cut, and a time of day is left out', () => {
+  assert.deepEqual(
+    [formValues(m('Cash', 0)), formValues(m('Cash', 12.345)), formValues(m('Cash', -12.345))].map(
+      ({ digits, sign }) => [digits, sign],
+    ),
+    [
+      ['0', 'minus'],
+      ['1234', 'plus'],
+      ['1234', 'minus'],
+    ],
+  );
+  assert.equal(formValues(m('Cash', -1, '', DAY + 0.75)).date, '2026-10-05');
+});
+
+test('the form shows the same movement when only spaces or the time of day are different', () => {
+  const row = ['Cash', DAY + 0.75, 'General', 'Bakery', -12.5];
+
+  assert.equal(sameMovement(row, formValues(row)), true);
+  assert.equal(sameMovement(row, { ...formValues(row), concept: '  Bakery ' }), true);
+  assert.equal(sameMovement(row, { ...formValues(row), category: 'House' }), false);
+  assert.equal(sameMovement(row, { ...formValues(row), date: '2026-10-06' }), false);
+  assert.equal(sameMovement(row, { ...formValues(row), sign: 'plus' }), false);
+  // An amount with more decimals is cut in the form: saving it is a change.
+  const odd = m('Cash', -12.345);
+  assert.equal(sameMovement(odd, formValues(odd)), false);
+});
+
+test('a changed movement with the same day and source keeps its place among them', () => {
+  const rows = [m('Edenred', -1, 'first'), m('Edenred', -2, 'second')];
+
+  assert.deepEqual(planEdit(rows, 0, m('Edenred', -1, 'changed'), settings), {
+    start: 0,
+    rows: [m('Edenred', -1, 'changed'), m('Edenred', -2, 'second')],
+  });
+});
+
+test('a movement moved to a later day goes after its source there; the rows between move up', () => {
+  const rows = [m('Cash', -1, 'a', DAY), m('AMEX', -2, 'b', DAY + 1), m('Cash', -3, 'c', DAY + 2)];
+
+  assert.deepEqual(planEdit(rows, 0, m('Cash', -1, 'a', DAY + 2), settings), {
+    start: 0,
+    rows: [m('AMEX', -2, 'b', DAY + 1), m('Cash', -3, 'c', DAY + 2), m('Cash', -1, 'a', DAY + 2)],
+  });
+});
+
+test('a movement moved to an earlier day is written from that day, and the days before stay', () => {
+  const rows = [m('Cash', -9, 'x', DAY - 1), m('Cash', -1, 'a', DAY), m('Cash', -2, 'b', DAY + 2)];
+
+  assert.deepEqual(planEdit(rows, 2, m('Cash', -2, 'b', DAY), settings), {
+    start: 1,
+    rows: [m('Cash', -1, 'a', DAY), m('Cash', -2, 'b', DAY)],
+  });
+});
+
+test('a change also puts a later day in order, and the sheet keeps its number of rows', () => {
+  // The later day has Cash above AMEX, out of order. Below the movements, an empty row.
+  const rows = [m('Cash', -1, 'a', DAY), m('Cash', -2, 'b', DAY + 1), m('AMEX', -3, 'c', DAY + 1)];
+
+  assert.deepEqual(planEdit([...rows, EMPTY], 0, m('Cash', -1, 'changed', DAY), settings), {
+    start: 0,
+    rows: [m('Cash', -1, 'changed', DAY), m('AMEX', -3, 'c', DAY + 1), m('Cash', -2, 'b', DAY + 1)],
+  });
+});
+
+test('a Provisioned movement stays right below its Cash movement when only the Cash amount changes', () => {
+  const rows = [m('Cash', -10, 'c'), m('Provisioned', -10, 'p'), m('Cash', -5, 'd')];
+
+  assert.deepEqual(planEdit(rows, 0, m('Cash', -20, 'c'), settings).rows, [
+    m('Cash', -20, 'c'),
+    m('Provisioned', -10, 'p'),
+    m('Cash', -5, 'd'),
+  ]);
+});
+
+test('a Provisioned movement stays in its day, in the usual order, when its Cash goes to another day', () => {
+  const rows = [
+    m('AMEX', -1, 'x', DAY),
+    m('Cash', -10, 'c', DAY),
+    m('Provisioned', -10, 'p', DAY),
+    m('Polina', -2, 'y', DAY),
+    m('Cash', -3, 'z', DAY + 1),
+  ];
+
+  assert.deepEqual(planEdit(rows, 1, m('Cash', -10, 'c', DAY + 1), settings).rows, [
+    m('AMEX', -1, 'x', DAY),
+    m('Polina', -2, 'y', DAY),
+    m('Provisioned', -10, 'p', DAY),
+    m('Cash', -3, 'z', DAY + 1),
+    m('Cash', -10, 'c', DAY + 1),
+  ]);
+});
+
+test('a Provisioned movement is placed in the usual order when its Cash gets another source', () => {
+  const rows = [m('Cash', -10, 'c'), m('Provisioned', -10, 'p'), m('Polina', -1, 'y')];
+
+  assert.deepEqual(planEdit(rows, 0, m('BBVA David', -10, 'c'), settings).rows, [
+    m('BBVA David', -10, 'c'),
+    m('Polina', -1, 'y'),
+    m('Provisioned', -10, 'p'),
+  ]);
 });

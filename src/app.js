@@ -146,25 +146,35 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // A tap on "+" opens the new movement form with the lists, or with a message when they
   // cannot be read.
   async function openForm() {
-    editing = null;
-    try {
-      view.openForm(await getLists());
-    } catch {
-      view.openForm({ failed: true });
-    }
+    await showForm(null);
   }
 
   // A tap on Edit opens the same form, filled in with the movement at index (its place in
   // movementRows), as it was read from the sheet.
   async function openEdit(index) {
     const row = movementRows[index];
-    editing = { index, row };
-    const edit = { values: formValues(row), extraDecimals: hasExtraDecimals(row[4]) };
+    await showForm({ index, row });
+  }
+
+  // Opens the form for a new movement (change: null) or to change one, with the lists, or with
+  // a message when they cannot be read. While the lists load, a newer tap on "+" or Edit takes
+  // over: only the last one opens its form, so Save always does what the open form shows.
+  let asked = 0;
+  async function showForm(change) {
+    const tap = (asked += 1);
+    const edit = change && {
+      values: formValues(change.row),
+      extraDecimals: hasExtraDecimals(change.row[4]),
+    };
+    let form;
     try {
-      view.openForm({ ...(await getLists()), edit });
+      form = await getLists();
     } catch {
-      view.openForm({ failed: true, edit });
+      form = { failed: true };
     }
+    if (tap !== asked) return;
+    editing = change;
+    view.openForm(edit ? { ...form, edit } : form);
   }
 
   // Reads the parts of the Total and the movements, both at the same time, and works out what

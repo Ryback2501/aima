@@ -1,6 +1,6 @@
-// What happens to the movements of the sheet when a new one is saved: the rules that sort
-// them, the rows that change, and the checks of the form. It only works with values. It does
-// not read the sheet or touch the page.
+// What happens to the movements of the sheet when a new one is saved or some are deleted: the
+// rules that sort them, the rows that change, and the checks of the form. It only works with
+// values. It does not read the sheet or touch the page.
 //
 // A movement row is: source, date (the sheet's day number), category, concept, amount.
 
@@ -82,4 +82,40 @@ export function missingFields({ source, date, category, digits }) {
   return Object.entries({ source, date, category, amount: digits })
     .filter(([, value]) => !text(value))
     .map(([name]) => name);
+}
+
+// An empty row of the five movement columns.
+const EMPTY = ['', '', '', '', ''];
+
+// The rows that change when the movements at indexes are deleted. rows are the rows of the
+// sheet from the first movement row down, and indexes count from there, from 0. Every
+// movement below a deleted one moves up, in the same order, and the last rows become empty, so
+// the sheet keeps its number of rows. Rows below the last movement do not change.
+// Returns { start, rows }: the first deleted row, and the rows to write from there.
+export function planDelete(rows, indexes) {
+  const movements = rows.slice(0, rows.findLastIndex((row) => dayOf(row) !== null) + 1);
+  const deleted = new Set(indexes);
+  const start = Math.min(...indexes);
+  const kept = movements.slice(start).filter((row, index) => !deleted.has(start + index));
+  return { start, rows: [...kept, ...indexes.map(() => EMPTY)] };
+}
+
+// The five cells of a movement row as text, with a missing cell the same as an empty one:
+// Google leaves out the empty cells at the end of a row.
+const cellsOf = (row = []) => EMPTY.map((empty, index) => String(row[index] ?? empty));
+
+// True when every row at indexes in now still holds the movement that was in seen.
+export function sameMovements(seen, now, indexes) {
+  return indexes.every(
+    (index) =>
+      index < now.length &&
+      cellsOf(seen[index]).join('\u0000') === cellsOf(now[index]).join('\u0000'),
+  );
+}
+
+// The first row of a range such as "Movements!A2:E" (2). A range of whole columns, such as
+// "Movements!A:E", starts at row 1.
+export function firstRowOf(range) {
+  const match = /^(?:.*!)?[A-Z]+(\d+)?/.exec(range);
+  return Number(match?.[1] ?? 1);
 }

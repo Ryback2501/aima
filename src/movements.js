@@ -78,8 +78,8 @@ export function planSave(rows, newRow, settings) {
 
 // The rows that change when the movement at index is changed into newRow. rows are the rows of
 // the sheet from the first movement row down, and index counts from there, from 0.
-// - With the same day and source, the movement keeps its place among the movements of its day.
-//   A Provisioned movement right below a changed Cash movement then stays right below it.
+// - With the same day and source, the movement keeps its place among the movements of its day,
+//   and a Cash movement and the Provisioned movement right below it stay together.
 // - Otherwise it goes after the movements of its source on its new day.
 // The old and the new day, and every day after the earlier of them, are sorted again. The sheet
 // keeps its number of rows. Returns { start, rows }: the first row that changes, and the rows to
@@ -88,12 +88,18 @@ export function planEdit(rows, index, newRow, settings) {
   const movements = rows.slice(0, rows.findLastIndex((row) => text(row[1]) !== '') + 1);
   const old = movements[index];
   const inPlace = dayOf(old) === dayOf(newRow) && text(old[0]) === text(newRow[0]);
+  // A changed movement that stays in its place keeps its pair: a Cash movement the Provisioned
+  // movement right below it, and a Provisioned movement the Cash movement right above it.
   const kept = new Map();
+  const pairs = (cash, partner) =>
+    cash &&
+    partner &&
+    settings.sourcePairs[text(cash[0])] === text(partner[0]) &&
+    dayOf(cash) === dayOf(partner);
+  const above = movements[index - 1];
   const below = movements[index + 1];
-  const partner = settings.sourcePairs[text(old[0])];
-  if (inPlace && partner && below && text(below[0]) === partner && dayOf(below) === dayOf(old)) {
-    kept.set(newRow, below);
-  }
+  if (inPlace && pairs(old, below)) kept.set(newRow, below);
+  if (inPlace && pairs(above, old)) kept.set(above, newRow);
   const list = inPlace
     ? movements.map((row, at) => (at === index ? newRow : row))
     : [...movements.filter((row, at) => at !== index), newRow];

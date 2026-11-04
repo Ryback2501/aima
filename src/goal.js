@@ -10,6 +10,10 @@ export function dayNumber(date) {
   return (Date.parse(`${date}T00:00:00Z`) - SHEET_START) / DAY;
 }
 
+// The sheet's day number → the date as a date field writes it ("2026-10-01"), without the time.
+export const dateOf = (day) =>
+  new Date(SHEET_START + Math.floor(day) * DAY).toISOString().slice(0, 10);
+
 // The sheet's day number → a month count (year × 12 + month), to compare months easily.
 function monthCount(day) {
   const date = new Date(SHEET_START + Math.floor(day) * DAY);

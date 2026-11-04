@@ -4,7 +4,7 @@
 //
 // A movement row is: source, date (the sheet's day number), category, concept, amount.
 
-import { dayNumber, hasExtraDecimals } from './goal.js';
+import { dateOf, dayNumber, hasExtraDecimals } from './goal.js';
 
 // "2026-10-05" (a date of the form) → the sheet's day number for that date, the same way the
 // goal counts days.
@@ -112,20 +112,13 @@ export function planEdit(rows, index, newRow, settings) {
 // rounding first keeps 12.34 at 1234, although the computer keeps it as 12.33999…
 export const cutToCents = (amount) => Math.trunc(Math.round(amount * 1e6) / 1e4);
 
-// The sheet's day number → the date as the form writes it ("2026-10-05"), without the time.
-const SHEET_START = Date.UTC(1899, 11, 30);
-const dateOf = (day) =>
-  typeof day === 'number'
-    ? new Date(SHEET_START + Math.floor(day) * 86_400_000).toISOString().slice(0, 10)
-    : '';
-
 // What the form shows for a movement row: the same values the form gives (see movementRow). The
 // amount is cut to two decimals; 0 shows with "−", like a new movement.
 export function formValues([source, date, category, concept, amount]) {
   const cents = typeof amount === 'number' ? cutToCents(amount) : 0;
   return {
     source: text(source),
-    date: dateOf(date),
+    date: typeof date === 'number' ? dateOf(date) : '',
     category: text(category),
     concept: text(concept),
     digits: String(Math.abs(cents)),
@@ -145,7 +138,7 @@ export function sameMovement(row, values) {
     concept === text(row[3]) &&
     typeof row[4] === 'number' &&
     !hasExtraDecimals(row[4]) &&
-    Math.round(amount * 100) === Math.round(row[4] * 100)
+    centsOf(amount) === centsOf(row[4])
   );
 }
 

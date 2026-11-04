@@ -237,7 +237,9 @@ export function createMonths({
   // so it cannot tell that the list needs less room (after a delete): the end of its last row
   // on the screen can.
   function contentHeight(list) {
-    const last = [...list.children].filter((node) => node.getClientRects().length).at(-1);
+    let last = list.lastElementChild;
+    // Only while a delete measures, the last rows may be hidden.
+    while (last && !last.getClientRects().length) last = last.previousElementSibling;
     if (!last || !list.getClientRects().length) return list.scrollHeight;
     const start = list.getBoundingClientRect().top + list.clientTop - list.scrollTop;
     const end =
@@ -478,10 +480,12 @@ export function createMonths({
     }
     // Their sizes now, to shrink from.
     const sides = ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom'];
-    const full = going.map((node) => {
-      const box = window.getComputedStyle(node);
-      return Object.fromEntries(sides.map((side) => [side, box[side]]));
-    });
+    const full = motion
+      ? going.map((node) => {
+          const box = window.getComputedStyle(node);
+          return Object.fromEntries(sides.map((side) => [side, box[side]]));
+        })
+      : [];
     // The open month gets its new height, measured without them: the browser moves it there
     // with the same time as the months (styles.css), while they shrink below.
     for (const node of going) node.style.display = 'none';
@@ -511,6 +515,8 @@ export function createMonths({
     }
     for (const node of going) node.remove();
     selectionChanged(selectedCount());
+    // If the window changed size meanwhile, the open month was measured with them: once more.
+    if (open !== null) place();
     await settled(room);
   }
 

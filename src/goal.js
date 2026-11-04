@@ -107,7 +107,8 @@ function byDay(movements) {
 // { year, month (1-12), amount, days }. amount is the month's spending, or null when the
 // month has no counted movements. days: the days with movements, newest first, each one
 // { day (1-31), movements }. movements: { category, description, amount, source, row } with the
-// amount as spending, newest first, and row the place of the movement in rows. The same rules as goalStatus decide what counts.
+// amount as spending, newest first, and row the place of the movement in rows. The same rules
+// as goalStatus decide what counts.
 export function goalMonths(rows, goal) {
   const counted = countedMovements(rows, goal);
   const first = monthCount(dayNumber(goal.from));

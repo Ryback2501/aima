@@ -832,3 +832,78 @@ test.describe('the messages of the delete panel, with motion', () => {
     expect(await panelLog(page)).toEqual([]);
   });
 });
+
+test.describe('the list after a delete, with motion, when the sheet answers slowly', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  // Opens October, selects Cinema and asks to delete it. From then on Google answers every read
+  // after a while, like a slow network.
+  async function askToDeleteCinema(page) {
+    await openGoal(page);
+    await tapMonth(page, 0);
+    await select(page, 0, [1]);
+    await openPanel(page);
+    await page.route('**/values/**', async (route) => {
+      await new Promise((done) => setTimeout(done, 800));
+      await route.fallback();
+    });
+  }
+
+  test('the months rise in only once: they are not shown again after the sheet is read', async ({
+    page,
+  }) => {
+    await askToDeleteCinema(page);
+    await startAnimationLog(page);
+
+    await tapAndWait(page, yes(page));
+    await expect.poll(() => descriptions(page, 0)).toEqual(['Petrol', 'Market', 'Market']);
+    await expect(monthAmount(page, 0)).toHaveText('€240.00');
+    await page.waitForTimeout(500);
+
+    const rises = (await animationLog(page)).filter(
+      ({ who, step, name }) => who === 'month0' && step === 'start' && name === 'card-rise',
+    );
+    expect(rises).toHaveLength(1);
+  });
+
+  test('the rows below move up while the month gets shorter, at the same time', async ({
+    page,
+  }) => {
+    await askToDeleteCinema(page);
+    await page.evaluate(() => {
+      window.__listFrames = [];
+      const sample = () => {
+        const [row] = document.querySelectorAll('.movement.selected');
+        const month = document.querySelector('.month');
+        window.__listFrames.push({
+          row: row?.getClientRects().length ? row.getBoundingClientRect().height : null,
+          month: month.getBoundingClientRect().height,
+        });
+        if (window.__listFrames.length < 600) window.requestAnimationFrame(sample);
+      };
+      window.requestAnimationFrame(sample);
+    });
+
+    await tapAndWait(page, yes(page));
+    await expect(monthAmount(page, 0)).toHaveText('€240.00');
+    await page.waitForTimeout(500);
+
+    const frames = await page.evaluate(() => window.__listFrames);
+    const shown = frames.filter(({ row }) => row !== null);
+    const fullRow = Math.max(...shown.map(({ row }) => row));
+    const startMonth = shown[0].month;
+    const endMonth = frames.at(-1).month;
+    // The month is shorter at the end.
+    expect(endMonth).toBeLessThan(startMonth - 10);
+    // While the row gets shorter, the month gets shorter too.
+    const closing = shown.filter(({ row }) => row > 1 && row < fullRow - 1);
+    expect(closing.length).toBeGreaterThan(2);
+    expect(closing.some(({ month }) => month < startMonth - 1 && month > endMonth + 1)).toBe(true);
+    // Once the row is gone, the month does not change any more.
+    const gone = frames.findIndex(
+      (frame, index) => index > 0 && frames[index - 1].row !== null && frame.row === null,
+    );
+    expect(gone).toBeGreaterThan(-1);
+    for (const { month } of frames.slice(gone)) near(month, endMonth);
+  });
+});

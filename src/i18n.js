@@ -31,6 +31,12 @@ export const STRINGS = {
     save: 'Save',
     required: 'Required',
     notSaved: 'The movement was not saved. Please try again.',
+    delete: 'Delete',
+    no: 'No',
+    yes: 'Yes',
+    close: 'Close',
+    sheetChanged: 'The sheet was changed, so nothing was deleted.',
+    notDeleted: 'Nothing was deleted. Please try again.',
     aboutPage: 'About',
     terms: 'Terms',
     privacy: 'Privacy',
@@ -71,6 +77,12 @@ export const STRINGS = {
     save: 'Guardar',
     required: 'Obligatorio',
     notSaved: 'No se guardó el movimiento. Inténtalo de nuevo.',
+    delete: 'Eliminar',
+    no: 'No',
+    yes: 'Sí',
+    close: 'Cerrar',
+    sheetChanged: 'La hoja ha cambiado, así que no se ha eliminado nada.',
+    notDeleted: 'No se ha eliminado nada. Inténtalo de nuevo.',
     aboutPage: 'Acerca de',
     terms: 'Términos',
     privacy: 'Privacidad',
@@ -111,6 +123,12 @@ export const STRINGS = {
     save: 'Сохранить',
     required: 'Обязательно',
     notSaved: 'Операция не сохранена. Попробуйте ещё раз.',
+    delete: 'Удалить',
+    no: 'Нет',
+    yes: 'Да',
+    close: 'Закрыть',
+    sheetChanged: 'Таблица изменилась, поэтому ничего не удалено.',
+    notDeleted: 'Ничего не удалено. Попробуйте ещё раз.',
     aboutPage: 'О приложении',
     terms: 'Условия',
     privacy: 'Конфиденциальность',
@@ -149,6 +167,34 @@ export function browserLanguages(navigator) {
 export function createTranslator(language) {
   const strings = STRINGS[language] ?? STRINGS[FALLBACK];
   return (key) => strings[key] ?? STRINGS[FALLBACK][key] ?? key;
+}
+
+// The question before deleting movements, for one or more of them, in each language. Russian
+// has three forms of the word, chosen by Intl.PluralRules ("one", "few" and "many").
+const DELETE_QUESTIONS = {
+  en: { one: 'Delete this movement?', other: (count) => `Delete ${count} movements?` },
+  es: { one: '¿Eliminar este movimiento?', other: (count) => `¿Eliminar ${count} movimientos?` },
+  ru: {
+    one: 'Удалить эту операцию?',
+    oneOfMany: (count) => `Удалить ${count} операцию?`,
+    few: (count) => `Удалить ${count} операции?`,
+    many: (count) => `Удалить ${count} операций?`,
+  },
+};
+
+// Returns a function that asks if count movements should be deleted, for example
+// 1 → "Delete this movement?" and 3 → "Delete 3 movements?".
+export function createDeleteQuestion(language) {
+  const known = Object.hasOwn(DELETE_QUESTIONS, language) ? language : FALLBACK;
+  const questions = DELETE_QUESTIONS[known];
+  const rules = new Intl.PluralRules(known);
+  return (count) => {
+    if (count === 1) return questions.one;
+    const form = rules.select(count);
+    // 21, 31, ... use the "one" form of the word in Russian, but with the number.
+    const write = (form === 'one' ? questions.oneOfMany : questions[form]) ?? questions.other;
+    return write(count);
+  };
 }
 
 // Returns a function that writes an amount of euros the way the language does, for example

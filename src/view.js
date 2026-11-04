@@ -500,14 +500,15 @@ export function createView(document, language) {
   // Cancel becomes Close.
   function saveChanged() {
     form.saveChanged();
-    lockWhile(
-      (async () => {
-        saveButton.classList.add('sinking');
-        await still(saveButton);
-        saveButton.hidden = true;
-        saveButton.classList.remove('sinking');
-      })(),
-    );
+    lockWhile(sinkAway(saveButton));
+  }
+
+  // A button sinks away like a card (styles.css), and is hidden once it has gone.
+  async function sinkAway(button) {
+    button.classList.add('sinking');
+    await still(button);
+    button.hidden = true;
+    button.classList.remove('sinking');
   }
 
   // The delete question takes the place of the months in the open goal card ("asking"), with
@@ -609,14 +610,7 @@ export function createView(document, language) {
     deleteMessage.textContent = t('sheetChanged');
     deleteMessage.hidden = false;
     noText.textContent = t('close');
-    lockWhile(
-      (async () => {
-        yesButton.classList.add('sinking');
-        await still(yesButton);
-        yesButton.hidden = true;
-        yesButton.classList.remove('sinking');
-      })(),
-    );
+    lockWhile(sinkAway(yesButton));
   }
 
   // While the movements are being deleted, No and Yes cannot be tapped. A message from the try

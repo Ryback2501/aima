@@ -932,7 +932,6 @@ html:not(.loading) .label {
   color: var(--text);
 }
 
-/* Said when the lists cannot be read, or when the movement was not saved. */
 /* Said when a changed movement had more than two decimals: small, in orange, under Amount. */
 .amount-note {
   margin: 0;
@@ -940,6 +939,7 @@ html:not(.loading) .label {
   font-size: 0.8125rem;
 }
 
+/* Said when the lists cannot be read, or when the movement was not saved. */
 .form-message,
 .save-message {
   margin: 0;

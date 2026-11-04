@@ -245,8 +245,8 @@ export function createView(document, language) {
     }
   }
 
-  // The first movement selected: "+" slides to the left, then Delete rises in on its right.
-  // The last one unselected: the same in reverse. While the buttons are hidden (the form or the
+  // The first movement selected: Delete rises in right next to "+", on its right, while both
+  // slide to the left together. The last one unselected: the same in reverse. While the buttons are hidden (the form or the
   // delete question is open), they change at once. A change while the buttons move waits for it.
   let pairing = false;
   let selectedCount = 0;
@@ -258,7 +258,7 @@ export function createView(document, language) {
       while (paired !== selectedCount > 0) {
         paired = !paired;
         if (addButton.hidden) {
-          addButton.classList.toggle('paired', paired);
+          for (const button of [addButton, deleteButton]) button.classList.toggle('paired', paired);
           continue;
         }
         await lockWhile(paired ? showDelete() : hideDelete());
@@ -269,21 +269,21 @@ export function createView(document, language) {
   }
 
   async function showDelete() {
-    addButton.classList.add('paired');
-    await still(addButton);
     deleteButton.style.setProperty('--card-order', '0');
     deleteButton.hidden = false;
-    await still(deleteButton);
+    // Delete must be in its place next to "+" (styles.css) before the two start to slide.
+    void deleteButton.offsetWidth;
+    for (const button of [addButton, deleteButton]) button.classList.add('paired');
+    await still(addButton, deleteButton);
   }
 
   async function hideDelete() {
     deleteButton.style.setProperty('--sink-order', '0');
     deleteButton.classList.add('sinking');
-    await still(deleteButton);
+    for (const button of [addButton, deleteButton]) button.classList.remove('paired');
+    await still(addButton, deleteButton);
     deleteButton.hidden = true;
     deleteButton.classList.remove('sinking');
-    addButton.classList.remove('paired');
-    await still(addButton);
   }
 
   async function open(card) {
@@ -529,7 +529,7 @@ export function createView(document, language) {
     if (sheetChanged) months.unselectAll();
     if (done) {
       paired = false;
-      addButton.classList.remove('paired');
+      for (const button of [addButton, deleteButton]) button.classList.remove('paired');
     }
     lineUp(card);
     const buttons = bottomButtons();

@@ -482,9 +482,9 @@ html:not(.loading) .label {
 }
 
 /* The "+" button of the open goal card: in the middle, at the same height as the back button.
-   While movements are selected it slides to the left ("paired"), and the Delete button shows on
-   its right, 14px away, so the two are in the middle together. "translate" moves it, so the
-   rise and sink movements (which use "transform") still work while it is on the left. */
+   While movements are selected, the Delete button rises in on its right, 14px away, while both
+   slide to the left together ("paired"), so the two end in the middle. "translate" moves them,
+   so the rise and sink movements (which use "transform") still play while they slide. */
 #add {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
@@ -502,6 +502,13 @@ html:not(.loading) .label {
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
   left: calc(50% + 7px);
   z-index: 30;
+  /* Before it slides: next to "+" in the middle. */
+  translate: calc(var(--width) / 2 + 7px) 0;
+  transition: translate var(--rise-time) ease-in-out;
+}
+
+#delete.paired {
+  translate: 0 0;
 }
 
 /* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
@@ -553,7 +560,8 @@ html:not(.loading) .label {
     animation: none;
   }
 
-  #add {
+  #add,
+  #delete {
     transition: none;
   }
 }

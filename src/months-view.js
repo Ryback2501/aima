@@ -55,6 +55,17 @@ export function createMonths({
     return node;
   };
 
+  // Shows the amount of a month in its header, or "--" when it has no movements: then it cannot
+  // be opened.
+  function showAmount(head, name, amount) {
+    const empty = amount === null;
+    const total = head.querySelector('.month-amount');
+    total.textContent = empty ? '--' : formatMoney(amount);
+    total.toggleAttribute('data-empty', empty);
+    head.setAttribute('aria-label', `${name}: ${total.textContent}`);
+    head.disabled = empty;
+  }
+
   // Builds one month item: the header row (calendar, amount, arrow) and its list of movements.
   function buildMonth({ year, month, amount, days }, index) {
     const item = make('div', 'month rise-in');
@@ -63,15 +74,11 @@ export function createMonths({
     const name = monthName(year, month);
     const calendar = make('span', 'month-calendar');
     calendar.append(createIcon('calendar', CALENDAR_SIZE), make('span', 'month-letter', name[0]));
-    const empty = amount === null;
-    const total = make('span', 'month-amount', empty ? '--' : formatMoney(amount));
-    total.toggleAttribute('data-empty', empty);
     const arrow = createIcon('chevron', ARROW_SIZE);
     arrow.classList.add('month-arrow');
-    head.append(calendar, total, arrow);
-    head.setAttribute('aria-label', `${name}: ${total.textContent}`);
+    head.append(calendar, make('span', 'month-amount'), arrow);
+    showAmount(head, name, amount);
     head.setAttribute('aria-expanded', 'false');
-    head.disabled = empty;
     head.addEventListener('click', () => toggle(index));
 
     // Each day: its date, then its movements. The dates stay at the top while the list
@@ -116,38 +123,44 @@ export function createMonths({
   }
 
   // Shows the months. Nothing changes when the months are the same as before. keepOpen (after a
-  // delete): the open month stays open, at the same place, unless it has no movements now.
+  // delete): the months on the screen stay, and only their amounts change (see update).
   function render(months, { keepOpen = false } = {}) {
     const key = JSON.stringify(months);
     if (key === shown) return;
     shown = key;
-    const kept =
-      keepOpen && open !== null
-        ? { index: open, shift, scroll: items[open].querySelector('.month-list').scrollTop }
-        : null;
+    if (keepOpen && update(months)) return;
     reset();
     items = months.map(buildMonth);
     column.replaceChildren(...items);
-    if (kept && months[kept.index].amount !== null) reopen(kept);
   }
 
-  // Opens a month of months just built, at once, as it was before: the same shift of the
-  // column and the same scrolled place in its list. The months are already on the screen, so
-  // they do not rise in again.
-  function reopen({ index, shift: kept, scroll }) {
-    for (const animation of column.getAnimations({ subtree: true })) {
-      if (!endless(animation)) animation.finish();
-    }
-    instantly(() => {
-      for (const item of items) item.classList.add('sized');
-      room.classList.add('placed');
-      open = index;
-      shift = kept;
-      place();
-      items[open].querySelector('.month-list').scrollTop = scroll;
+  // After a delete, the months on the screen already show the movements that are left, in the
+  // same places: only the amounts, and the places of the movements in the rows read from the
+  // sheet, change. So the months are not built again, and nothing moves or rises in again.
+  // Returns false when the screen does not show the same movements (the sheet was changed in
+  // other ways too): then the months are built again.
+  function update(months) {
+    const same =
+      months.length === items.length &&
+      months.every(({ days }, index) => {
+        const list = items[index].querySelector('.month-list');
+        const shownTexts = [...list.querySelectorAll('.movement .description-text:first-child')];
+        const texts = days.flatMap(({ movements }) => movements.map((m) => m.description));
+        return (
+          list.querySelectorAll('.movement-date').length === days.length &&
+          shownTexts.length === texts.length &&
+          shownTexts.every((node, at) => node.textContent === texts[at])
+        );
+      });
+    if (!same) return false;
+    months.forEach(({ year, month, amount, days }, index) => {
+      showAmount(items[index].querySelector('.month-head'), monthName(year, month), amount);
+      const rows = items[index].querySelectorAll('.movement');
+      days
+        .flatMap(({ movements }) => movements)
+        .forEach((movement, at) => (rows[at].dataset.row = String(movement.row)));
     });
-    fitDescriptions(items[open]);
-    updateFades();
+    return true;
   }
 
   // Forgets which months are shown, so the next render builds them again, for example after
@@ -204,7 +217,19 @@ export function createMonths({
     const head = item.querySelector('.month-head').offsetHeight;
     const list = item.querySelector('.month-list');
     const listGap = parseFloat(window.getComputedStyle(list).marginTop);
-    return { closed: frame + head, full: frame + head + listGap + list.scrollHeight };
+    return { closed: frame + head, full: frame + head + listGap + contentHeight(list) };
+  }
+
+  // How tall the movements of a list are. scrollHeight is never less than the list's own height,
+  // so it cannot tell that the list needs less room (after a delete): the end of its last row
+  // on the screen can.
+  function contentHeight(list) {
+    const last = [...list.children].filter((node) => node.getClientRects().length).at(-1);
+    if (!last || !list.getClientRects().length) return list.scrollHeight;
+    const start = list.getBoundingClientRect().top + list.clientTop - list.scrollTop;
+    const end =
+      last.getBoundingClientRect().bottom + parseFloat(window.getComputedStyle(last).marginBottom);
+    return end - start;
   }
 
   // How far the column is moved up by the layout (while a month is open, or moving).
@@ -410,10 +435,10 @@ export function createMonths({
   const selectedRows = () =>
     [...column.querySelectorAll('.movement.selected')].map((row) => Number(row.dataset.row));
 
-  // After a delete: the selected movements fade out, then get shorter until they are gone, so
-  // the movements below move up. A date with no movement left goes the same way. Then the open
-  // month gets shorter, or closes when it has no movement left. With "reduce motion" on the
-  // phone, all of it happens at once. The next render shows the months without them.
+  // After a delete: the selected movements fade out, all at once. A date with no movement left
+  // fades with them. Then, all at the same time, they get shorter until they are gone, the
+  // movements below move up, and the open month gets shorter (or closes when it has no movement
+  // left). With "reduce motion" on the phone, all of it happens at once.
   async function removeSelected() {
     const rows = [...column.querySelectorAll('.movement.selected')];
     const dates = [...column.querySelectorAll('.movement-date')].filter((date) => {
@@ -424,40 +449,54 @@ export function createMonths({
       return true;
     });
     const going = [...rows, ...dates];
-    if (!reduceMotion()) {
-      const css = window.getComputedStyle(room);
-      const timing = (name) => ({
-        duration: parseFloat(css.getPropertyValue(name)) || 0,
-        easing: 'ease-in-out',
-        fill: 'forwards',
-      });
-      const play = (frames, name) =>
-        Promise.allSettled(going.map((node) => node.animate(frames(node), timing(name)).finished));
-      await play(() => [{ opacity: 1 }, { opacity: 0 }], '--pill-fade');
-      await play((node) => {
-        const box = window.getComputedStyle(node);
-        const full = {};
-        for (const side of ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom']) {
-          full[side] = box[side];
-        }
-        const none = Object.fromEntries(Object.keys(full).map((side) => [side, '0px']));
-        return [
-          { ...full, opacity: 0, overflow: 'hidden' },
-          { ...none, opacity: 0, overflow: 'hidden' },
-        ];
-      }, '--rise-time');
+    const motion = !reduceMotion();
+    const css = window.getComputedStyle(room);
+    const timing = (name) => ({
+      duration: parseFloat(css.getPropertyValue(name)) || 0,
+      easing: 'ease-in-out',
+      fill: 'forwards',
+    });
+    if (motion) {
+      const fade = timing('--pill-fade');
+      await Promise.allSettled(
+        going.map((node) => node.animate([{ opacity: 1 }, { opacity: 0 }], fade).finished),
+      );
     }
-    for (const node of going) {
-      node.style.display = 'none';
-      for (const animation of node.getAnimations()) animation.cancel();
+    // Their sizes now, to shrink from.
+    const sides = ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom'];
+    const full = going.map((node) => {
+      const box = window.getComputedStyle(node);
+      return Object.fromEntries(sides.map((side) => [side, box[side]]));
+    });
+    // The open month gets its new height, measured without them: the browser moves it there
+    // with the same time as the months (styles.css), while they shrink below.
+    for (const node of going) node.style.display = 'none';
+    if (open !== null) {
+      if (items[open].querySelector('.movement:not(.selected)')) {
+        place();
+        window.requestAnimationFrame(followFades);
+      } else {
+        toggle(open);
+      }
     }
-    if (open === null) return;
-    if (items[open].querySelector('.movement:not(.selected)')) {
-      place();
-      window.requestAnimationFrame(followFades);
-    } else {
-      toggle(open);
+    if (motion) {
+      const none = Object.fromEntries(sides.map((side) => [side, '0px']));
+      const shrink = timing('--expand-time');
+      await Promise.allSettled(
+        going.map((node, index) => {
+          node.style.display = '';
+          return node.animate(
+            [
+              { ...full[index], opacity: 0, overflow: 'hidden' },
+              { ...none, opacity: 0, overflow: 'hidden' },
+            ],
+            shrink,
+          ).finished;
+        }),
+      );
     }
+    for (const node of going) node.remove();
+    selectionChanged(selectedCount());
     await settled(room);
   }
 

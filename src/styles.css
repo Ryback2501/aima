@@ -1047,9 +1047,11 @@ html:not(.loading) .label {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 12px;
+  /* Tight enough that a month's amount and its second amount fit on one line, also on a phone
+     360px wide. */
+  gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px;
   border: 0;
   border-radius: 16px;
   background: #ffffff;
@@ -1100,12 +1102,12 @@ html:not(.loading) .label {
    shows while the eye button shows the movements the goal leaves out ("all", set by
    months-view.js), and never for a month with "--". It fades in and out as fast as the pills of
    the Total. It always stays on one line: when it does not fit, it is cut with "…", so the
-   amount and the arrow keep their places. It sits closer to the amount (6px) than the other
-   parts of the row (12px), because it belongs to it. */
+   amount and the arrow keep their places. It sits closer to the amount (4px) than the other
+   parts of the row (8px), because it belongs to it. */
 .month-all {
   flex: 1;
   min-width: 0;
-  margin-left: -6px;
+  margin-left: -4px;
   overflow: hidden;
   color: #6b7280;
   font-size: 0.875rem;

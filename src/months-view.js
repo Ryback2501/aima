@@ -258,8 +258,13 @@ export function createMonths({
   // With "reduce motion" on the phone, it stays still and ends with "…" (styles.css).
   function fitDescriptions(item) {
     stopDescriptions(item);
+    slide(item.querySelectorAll('.movement-description'));
+  }
+
+  // Makes these descriptions move when they do not fit (see fitDescriptions).
+  function slide(descriptions) {
     if (reduceMotion()) return;
-    for (const description of item.querySelectorAll('.movement-description')) {
+    for (const description of descriptions) {
       if (description.scrollWidth <= description.clientWidth) continue;
       const track = description.firstElementChild;
       const text = track.firstElementChild;
@@ -573,6 +578,35 @@ export function createMonths({
     stopAnimations(nodes);
   }
 
+  // Nodes come into the open month: the open month gets its new height, while they grow from no
+  // size, still invisible, and the nodes below move down to make room. Then they fade in. With
+  // "reduce motion" on the phone, all of it happens at once.
+  async function comeIn(nodes) {
+    for (const node of nodes) putOn(node);
+    place();
+    window.requestAnimationFrame(followFades);
+    slide(nodes.flatMap((node) => [...node.querySelectorAll('.movement-description')]));
+    if (reduceMotion()) return;
+    const full = nodes.map(sizeOf);
+    const grow = timing('--expand-time');
+    const growing = nodes.map((node, index) =>
+      node.animate(
+        [
+          { ...NO_SIZE, opacity: 0, overflow: 'hidden' },
+          { ...full[index], opacity: 0, overflow: 'hidden' },
+        ],
+        grow,
+      ),
+    );
+    await Promise.allSettled(growing.map((animation) => animation.finished));
+    // The fade starts invisible, so nothing blinks when the growing ends.
+    const fade = timing('--pill-fade');
+    const fading = nodes.map((node) => node.animate([{ opacity: 0 }, { opacity: 1 }], fade));
+    for (const animation of growing) animation.cancel();
+    await Promise.allSettled(fading.map((animation) => animation.finished));
+    stopAnimations(nodes);
+  }
+
   // After a delete: the selected movements go away (see goAway). A date with no movement left on
   // the screen goes with them. The open month closes when it has no movement left.
   async function removeSelected() {
@@ -615,7 +649,8 @@ export function createMonths({
   }
 
   // The eye button: shows the movements the goal leaves out, with the spending of all movements
-  // next to each month's amount (on), or hides them again. A hidden movement is no longer
+  // next to each month's amount (on), or hides them again. In the open month they come in or go
+  // away with an animation; the other months change at once. A hidden movement is no longer
   // selected.
   async function showLeftOut(on) {
     if (on === showAll) return;
@@ -631,11 +666,21 @@ export function createMonths({
       if (unselected.length) selectionChanged(selectedCount());
     }
     for (const item of items) {
+      if (item === opened) continue;
       for (const node of leftOutNodes(item)) (on ? putOn : takeOff)(node);
     }
     if (opened) {
-      place();
-      if (on) fitDescriptions(opened);
+      const nodes = leftOutNodes(opened);
+      if (on) {
+        await comeIn(nodes);
+      } else {
+        await goAway(nodes, () => {
+          place();
+          window.requestAnimationFrame(followFades);
+        });
+        for (const node of nodes) takeOff(node);
+        place();
+      }
     }
     await settled(room);
   }

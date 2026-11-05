@@ -51,7 +51,8 @@ function sourceOf(source, sources = {}) {
 // Returns { day, category, description, amount, source, row } for each one, amount as in the
 // sheet. row is the place of the movement in rows (from 0), so it can be changed or deleted
 // later. extraDecimals is there, and true, only when the amount has more than two decimals.
-// With leftOut, the skipped movements of the period are there too, with leftOut: true.
+// With leftOut, the skipped movements of the period are there too, marked leftOut: true. Then
+// not every movement counts: a sum for the goal must leave out the ones marked leftOut.
 function countedMovements(rows, { from, to, skip, sources }, { leftOut = false } = {}) {
   const first = dayNumber(from);
   const last = dayNumber(to);

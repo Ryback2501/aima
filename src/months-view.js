@@ -668,13 +668,7 @@ export function createMonths({
     room.classList.toggle('all', on);
     showAmounts();
     const opened = open === null ? null : items[open];
-    if (!on) {
-      const unselected = items
-        .flatMap(rowsOf)
-        .filter((row) => leftOutRows.has(row) && row.classList.contains('selected'));
-      for (const row of unselected) row.classList.remove('selected');
-      if (unselected.length) selectionChanged(selectedCount());
-    }
+    if (!on && unselectLeftOut() > 0) selectionChanged(selectedCount());
     for (const item of items) {
       if (item === opened) continue;
       for (const node of leftOutNodes(item)) (on ? putOn : takeOff)(node);
@@ -701,13 +695,18 @@ export function createMonths({
     if (!showAll) return;
     showAll = false;
     instantly(() => room.classList.remove('all'));
-    for (const item of items) {
-      for (const node of leftOutNodes(item)) {
-        node.classList.remove('selected');
-        takeOff(node);
-      }
-    }
+    unselectLeftOut();
+    for (const item of items) for (const node of leftOutNodes(item)) takeOff(node);
     showAmounts();
+  }
+
+  // Unselects the left-out movements, when they hide. Returns how many were selected.
+  function unselectLeftOut() {
+    const selected = items
+      .flatMap(rowsOf)
+      .filter((row) => leftOutRows.has(row) && row.classList.contains('selected'));
+    for (const row of selected) row.classList.remove('selected');
+    return selected.length;
   }
 
   // Puts every month back to closed at once (when the goal card closes).

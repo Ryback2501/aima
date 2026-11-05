@@ -465,10 +465,61 @@ export function createMonths({
   const selectedRows = () =>
     [...column.querySelectorAll('.movement.selected')].map((row) => Number(row.dataset.row));
 
-  // After a delete: the selected movements fade out, all at once. A date with no movement left
-  // fades with them. Then, all at the same time, they get shorter until they are gone, the
-  // movements below move up, and the open month gets shorter (or closes when it has no movement
-  // left). With "reduce motion" on the phone, all of it happens at once.
+  // How long an animation set in styles.css takes, for animations made here.
+  function timing(name) {
+    const duration = parseFloat(window.getComputedStyle(room).getPropertyValue(name)) || 0;
+    return { duration, easing: 'ease-in-out', fill: 'forwards' };
+  }
+
+  // The size of a node on the screen, and no size: what a node grows from or shrinks to.
+  const SIDES = ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom'];
+  const NO_SIZE = Object.fromEntries(SIDES.map((side) => [side, '0px']));
+  function sizeOf(node) {
+    const box = window.getComputedStyle(node);
+    return Object.fromEntries(SIDES.map((side) => [side, box[side]]));
+  }
+  // Takes back the animations of these nodes, so they look as styles.css says again.
+  const stopAnimations = (nodes) => {
+    for (const node of nodes) for (const animation of node.getAnimations()) animation.cancel();
+  };
+
+  // Nodes of the open month go away: they fade out, all at once. Then, all at the same time,
+  // they get shorter until they are gone, the nodes below move up, and the open month gets its
+  // new height (relayout, measured without them). The browser moves the month with the same time
+  // (styles.css). With "reduce motion" on the phone, all of it happens at once. The caller then
+  // removes them, or takes them off the page.
+  async function goAway(nodes, relayout) {
+    const motion = !reduceMotion();
+    if (motion) {
+      const fade = timing('--pill-fade');
+      await Promise.allSettled(
+        nodes.map((node) => node.animate([{ opacity: 1 }, { opacity: 0 }], fade).finished),
+      );
+    }
+    const full = motion ? nodes.map(sizeOf) : [];
+    for (const node of nodes) node.style.display = 'none';
+    relayout();
+    if (motion) {
+      const shrink = timing('--expand-time');
+      await Promise.allSettled(
+        nodes.map((node, index) => {
+          node.style.display = '';
+          return node.animate(
+            [
+              { ...full[index], opacity: 0, overflow: 'hidden' },
+              { ...NO_SIZE, opacity: 0, overflow: 'hidden' },
+            ],
+            shrink,
+          ).finished;
+        }),
+      );
+    }
+    for (const node of nodes) node.style.display = '';
+    stopAnimations(nodes);
+  }
+
+  // After a delete: the selected movements go away (see goAway). A date with no movement left
+  // goes with them. The open month closes when it has no movement left.
   async function removeSelected() {
     const rows = [...column.querySelectorAll('.movement.selected')];
     for (const row of rows) removed.add(Number(row.dataset.row));
@@ -480,54 +531,15 @@ export function createMonths({
       return true;
     });
     const going = [...rows, ...dates];
-    const motion = !reduceMotion();
-    const css = window.getComputedStyle(room);
-    const timing = (name) => ({
-      duration: parseFloat(css.getPropertyValue(name)) || 0,
-      easing: 'ease-in-out',
-      fill: 'forwards',
-    });
-    if (motion) {
-      const fade = timing('--pill-fade');
-      await Promise.allSettled(
-        going.map((node) => node.animate([{ opacity: 1 }, { opacity: 0 }], fade).finished),
-      );
-    }
-    // Their sizes now, to shrink from.
-    const sides = ['height', 'paddingTop', 'paddingBottom', 'marginTop', 'marginBottom'];
-    const full = motion
-      ? going.map((node) => {
-          const box = window.getComputedStyle(node);
-          return Object.fromEntries(sides.map((side) => [side, box[side]]));
-        })
-      : [];
-    // The open month gets its new height, measured without them: the browser moves it there
-    // with the same time as the months (styles.css), while they shrink below.
-    for (const node of going) node.style.display = 'none';
-    if (open !== null) {
+    await goAway(going, () => {
+      if (open === null) return;
       if (items[open].querySelector('.movement:not(.selected)')) {
         place();
         window.requestAnimationFrame(followFades);
       } else {
         toggle(open);
       }
-    }
-    if (motion) {
-      const none = Object.fromEntries(sides.map((side) => [side, '0px']));
-      const shrink = timing('--expand-time');
-      await Promise.allSettled(
-        going.map((node, index) => {
-          node.style.display = '';
-          return node.animate(
-            [
-              { ...full[index], opacity: 0, overflow: 'hidden' },
-              { ...none, opacity: 0, overflow: 'hidden' },
-            ],
-            shrink,
-          ).finished;
-        }),
-      );
-    }
+    });
     for (const node of going) node.remove();
     selectionChanged(selectedCount());
     // If the window changed size meanwhile, the open month was measured with them: once more.

@@ -673,6 +673,34 @@ test.describe('deleting the last counted movement of a month that has left-out o
     expect((await monthRises(page)).sort()).toEqual([0, 1, 2]);
   });
 
+  test('with the eye on, the second amount of the month fades out', async ({ page }) => {
+    await openGoal(page, withNovemberPay());
+    await tapEye(page);
+    await tapMonth(page, 1);
+    await expect(monthAll(page, 1)).toHaveText('(-€2,460.00)');
+    // On every frame: the text of November's second amount, and how visible it is.
+    await page.evaluate(() => {
+      window.__allFrames = [];
+      const sample = () => {
+        const all = document.querySelectorAll('.month-all')[1];
+        window.__allFrames.push({
+          text: all.textContent,
+          opacity: Number(getComputedStyle(all).opacity),
+        });
+        if (window.__allFrames.length < 600) window.requestAnimationFrame(sample);
+      };
+      window.requestAnimationFrame(sample);
+    });
+
+    await deletePetrol(page);
+
+    const frames = await page.evaluate(() => window.__allFrames);
+    expect(
+      frames.some(({ text, opacity }) => text === '(-€2,460.00)' && opacity > 0 && opacity < 1),
+    ).toBe(true);
+    expect(frames.at(-1).opacity).toBe(0);
+  });
+
   test('with the eye on, the month closes and shows "--", and the months rise in only once', async ({
     page,
   }) => {

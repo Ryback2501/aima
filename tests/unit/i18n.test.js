@@ -145,3 +145,27 @@ test('the eye button of the goal card has its name for screen readers in every l
   assert.equal(STRINGS.es.showLeftOut, 'Mostrar los movimientos que el objetivo deja fuera');
   assert.equal(STRINGS.ru.showLeftOut, 'Показать операции, которые цель не учитывает');
 });
+
+// What a screen reader reads for the spinner, the thumbs-up and the warning (issue #108).
+test('the spinner, the thumbs-up and the warning have their texts in every language', () => {
+  const expected = {
+    en: ['Saving…', 'Deleting…', 'Saved', 'Deleted', 'Not saved', 'Not deleted'],
+    es: ['Guardando…', 'Eliminando…', 'Guardado', 'Eliminado', 'No guardado', 'No eliminado'],
+    ru: ['Сохранение…', 'Удаление…', 'Сохранено', 'Удалено', 'Не сохранено', 'Не удалено'],
+  };
+  const keys = [
+    'busySaving',
+    'busyDeleting',
+    'busySaved',
+    'busyDeleted',
+    'busyNotSaved',
+    'busyNotDeleted',
+  ];
+  for (const [language, texts] of Object.entries(expected)) {
+    assert.deepEqual(
+      keys.map((key) => STRINGS[language][key]),
+      texts,
+      language,
+    );
+  }
+});

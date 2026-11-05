@@ -34,3 +34,8 @@ test('the icons of the movements the goal leaves out have their drawing areas (i
   assert.equal(ICONS.billTransfer.viewBox, '0 0 640 512');
   assert.equal(ICONS.pumpSoap.viewBox, '0 0 448 512');
 });
+
+test('the thumbs-up of a finished save or delete is there (issue #108)', () => {
+  assert.equal(ICONS.thumbsUp.viewBox, '0 0 512 512');
+  assert.ok(ICONS.warning);
+});

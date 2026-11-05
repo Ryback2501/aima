@@ -703,9 +703,9 @@ export function createMonths({
 
   // Unselects the left-out movements, when they hide. Returns how many were selected.
   function unselectLeftOut() {
-    const selected = items
-      .flatMap(rowsOf)
-      .filter((row) => leftOutRows.has(row) && row.classList.contains('selected'));
+    const selected = [...column.querySelectorAll('.movement.selected')].filter((row) =>
+      leftOutRows.has(row),
+    );
     for (const row of selected) row.classList.remove('selected');
     return selected.length;
   }

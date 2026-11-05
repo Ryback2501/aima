@@ -237,10 +237,12 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
 
   // A tap on Save. Empty required fields are marked, and nothing is saved. A changed movement
   // with nothing changed closes the form and writes nothing. While a movement is being saved,
-  // Save and Cancel wait, and another tap does nothing. After the save, the main screen is read
-  // again and the form closes. If the sheet cannot be read again, the form closes anyway: the
-  // movement is saved, and saying otherwise would make the person save it twice. When the sheet
-  // was changed by hand, the form says so, and the main screen shows the sheet as it is now.
+  // the spinner shows, Save and Cancel wait, and another tap does nothing. After the save, the
+  // main screen is read again, the thumbs-up shows and the form closes. If the sheet cannot be
+  // read again, the same happens: the movement is saved, and saying otherwise would make the
+  // person save it twice. When it is not saved, or the sheet was changed by hand (then the main
+  // screen shows the sheet as it is now), the form gets its message, and the warning shows
+  // before the form comes back with it.
   let saving = false;
   async function saveMovement(values) {
     if (saving) return;
@@ -260,12 +262,15 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (result === 'saved') {
         editing = null;
         await load().then(showMain, () => {});
+        await view.workDone(true);
         view.closeForm();
       } else if (result === 'changed') {
         view.saveChanged();
         await load().then(showMain, () => {});
+        await view.workDone(false);
       } else {
         view.saveFailed();
+        await view.workDone(false);
       }
     } finally {
       saving = false;
@@ -277,7 +282,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // The rows are read again first. If one of them holds another movement now, the sheet was
   // changed by hand: nothing is deleted, and the screen shows the sheet as it is now.
   // Otherwise every movement below moves up (see movements.js), in one write. While it runs,
-  // another Yes does nothing.
+  // the spinner shows and another Yes does nothing. Then the thumbs-up shows before the
+  // movements go, or the warning before the question comes back with its message.
   let deleting = false;
   async function deleteMovements(indexes) {
     if (deleting) return;
@@ -287,9 +293,11 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       const fresh = await changeRows(indexes, planDelete);
       if (fresh === 'failed') {
         view.deleteFailed();
+        await view.workDone(false);
       } else if (fresh === 'changed') {
         view.deleteChanged();
         await load().then(showMain, () => {});
+        await view.workDone(false);
       } else {
         // The sheet is read again while the view takes the deleted rows away. If it cannot be
         // read, the goal is worked out from the rows read just before, without the deleted ones.
@@ -297,6 +305,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
           () => true,
           () => false,
         );
+        await view.workDone(true);
         await view.deleted();
         if (!(await reloaded)) {
           const gone = new Set(indexes);

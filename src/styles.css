@@ -770,6 +770,72 @@ html:not(.loading) .label {
   outline: none;
 }
 
+/* While a movement is saved or deleted, the content of the form or of the delete question
+   fades out, and its card stays (busy-view.js). The fades also play with "reduce motion": they
+   do not move anything. */
+.movement-form,
+.delete-panel {
+  position: relative;
+}
+
+.movement-form > :not(.busy),
+.delete-panel > :not(.busy) {
+  transition: opacity var(--rise-time) ease-in-out;
+}
+
+.movement-form.working > :not(.busy),
+.delete-panel.working > :not(.busy) {
+  opacity: 0;
+}
+
+/* The busy layer covers the card. The spinner, the thumbs-up and the warning lie on top of each
+   other in its middle, and only the one in data-show is seen. The spinner waits until the
+   content has faded out. */
+.busy {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.busy > svg {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--rise-time) ease-in-out;
+}
+
+.busy[data-show='spinner'] .busy-spinner {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: var(--rise-time);
+}
+
+.busy[data-show='done'] .busy-done,
+.busy[data-show='failed'] .busy-failed {
+  opacity: 1;
+  visibility: visible;
+}
+
+.busy-done {
+  fill: #2b8a3e;
+}
+
+.busy-failed {
+  fill: var(--red);
+}
+
+/* Only for screen readers: the words of the spinner, the thumbs-up and the warning. */
+.busy-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* The delete question, as big as the form's title. */
 .delete-question {
   margin: 0;

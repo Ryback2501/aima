@@ -260,6 +260,82 @@ test.describe('showing the left-out movements', () => {
     for (const index of [0, 1, 2]) await expect(monthAll(page, index)).toBeHidden();
   });
 
+  test.describe('on a screen 360 pixels wide', () => {
+    test.use({ viewport: { width: 360, height: 740 } });
+
+    // October: €3,456.78 of spending and a salary, so its second amount is the given one.
+    // November and December show "--".
+    const withSalary = (salary) => ({
+      movements: [
+        ['Cash', sheetDay('2026-10-03'), 'General', 'Market', -3456.78],
+        ['BBVA David', sheetDay('2026-10-05'), 'Salary', 'October pay', salary],
+      ],
+    });
+    // Where the parts of October's header row are, and how its second amount looks.
+    const october = (page) =>
+      page.evaluate(() => {
+        const [first, , last] = document.querySelectorAll('.month');
+        const head = first.querySelector('.month-head');
+        const box = (node) => node.getBoundingClientRect().toJSON();
+        const all = head.querySelector('.month-all');
+        const css = getComputedStyle(all);
+        return {
+          month: box(first),
+          head: box(head),
+          emptyHead: box(last.querySelector('.month-head')),
+          amount: box(head.querySelector('.month-amount')),
+          amountSize: parseFloat(getComputedStyle(head.querySelector('.month-amount')).fontSize),
+          all: box(all),
+          allSize: parseFloat(css.fontSize),
+          allColor: css.color,
+          cut: all.scrollWidth > all.clientWidth,
+          ending: css.textOverflow,
+          arrow: box(head.querySelector('.month-arrow')),
+          label: head.getAttribute('aria-label'),
+        };
+      });
+    const middle = ({ top, height }) => top + height / 2;
+
+    test('a second amount that fits shows whole, smaller and grey, on one line with the amount and the arrow', async ({
+      page,
+    }) => {
+      await openGoal(page, withSalary(5056.78));
+
+      await tapEye(page);
+
+      await expect(monthAmount(page, 0)).toHaveText('€3,456.78');
+      await expect(monthAll(page, 0)).toHaveText('(-€1,600.00)');
+      const parts = await october(page);
+      expect(parts.cut).toBe(false);
+      near(middle(parts.all), middle(parts.amount));
+      near(middle(parts.arrow), middle(parts.amount));
+      expect(parts.all.left).toBeGreaterThanOrEqual(parts.amount.right);
+      expect(parts.arrow.left).toBeGreaterThanOrEqual(parts.all.right);
+      expect(parts.allSize).toBe(14);
+      expect(parts.amountSize).toBe(18);
+      expect(parts.allColor).toBe('rgb(107, 114, 128)');
+      near(parts.head.height, parts.emptyHead.height);
+    });
+
+    test('a second amount that does not fit ends with "…", and screen readers hear it whole', async ({
+      page,
+    }) => {
+      await openGoal(page, withSalary(1238024.67));
+
+      await tapEye(page);
+
+      await expect(monthAll(page, 0)).toHaveText('(-€1,234,567.89)');
+      const parts = await october(page);
+      expect(parts.cut).toBe(true);
+      expect(parts.ending).toBe('ellipsis');
+      near(middle(parts.all), middle(parts.amount));
+      expect(parts.arrow.left).toBeGreaterThanOrEqual(parts.all.right);
+      expect(parts.arrow.right).toBeLessThanOrEqual(parts.month.right);
+      near(parts.head.height, parts.emptyHead.height);
+      expect(parts.label).toContain('(-€1,234,567.89)');
+    });
+  });
+
   test('after closing and opening the goal card again, the button is off', async ({ page }) => {
     await openGoal(page);
     await tapEye(page);

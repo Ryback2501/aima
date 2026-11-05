@@ -34,7 +34,20 @@ export const config = {
     movements: 'Movements!A:E',
     // Where the money came from: the word in the first column, and its icon (the same icons as
     // the parts of the Total). A movement with another word, or none, shows no icon.
-    sources: { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' },
+    sources: {
+      'BBVA David': 'bank',
+      'BBVA Común': 'bank',
+      Polina: 'bank',
+      Provisioned: 'bank',
+      Deprovisioned: 'bank',
+      Después: 'card',
+      AMEX: 'card',
+      ECI: 'card',
+      ICON: 'card',
+      Pluxee: 'card',
+      Edenred: 'card',
+      Cash: 'cash',
+    },
     // When a new movement is saved, the movements of one day are sorted by their source, in this
     // order from top to bottom. A source that is not here goes last.
     sourceOrder: [

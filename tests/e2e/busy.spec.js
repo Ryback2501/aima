@@ -369,7 +369,8 @@ test.describe('deleting movements', () => {
     await expect(thumbsUp(panel(page))).toBeVisible();
     await expect(status(panel(page))).toHaveText('Deleted');
     await expect(panel(page)).toBeHidden({ timeout: 5000 });
-    await expect.poll(() => descriptions(page, 0), { timeout: 5000 }).toEqual(['Petrol']);
+    // October lists the newest first: Petrol and Cinema were selected, so Market stays.
+    await expect.poll(() => descriptions(page, 0), { timeout: 5000 }).toEqual(['Market']);
   });
 
   test('with no internet, the warning shows, then the question comes back with the message', async ({

@@ -66,6 +66,8 @@ function setup({
   sheet = async () => ({ sheetId: 7, rowCount: 100 }),
   // What happens when rows are written.
   write = async () => {},
+  // Parts of the view that work differently in a test, for example one that breaks.
+  viewChanges = {},
 } = {}) {
   const screens = [];
   const forms = [];
@@ -132,6 +134,7 @@ function setup({
       order.push('movements go');
       deleteLog.screensBefore = screens.length;
     },
+    ...viewChanges,
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -1381,4 +1384,50 @@ test('a delete stopped by a change by hand shows the message, then the warning a
 
   assert.deepEqual(order, ['spinner', 'changed message', 'warning']);
   assert.equal(ends.screens, before + 1);
+});
+
+// Issue #108: the spinner blocks taps until workDone. If something breaks on the way, the
+// spinner must still end, or the app could never be tapped again.
+const broken = () => {
+  throw new Error('Something broke.');
+};
+
+test('when something breaks after a save, the spinner still ends with the warning', async () => {
+  // Drawing the main screen breaks, but only after the sign-in.
+  let breaking = false;
+  const { handlers, order } = await signedInEditor({
+    viewChanges: { render: () => breaking && broken() },
+  });
+  breaking = true;
+
+  await assert.rejects(handlers.save(filled));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
+});
+
+test('when something breaks while saying the save failed, the spinner still ends', async () => {
+  const { handlers, order } = await signedInEditor({
+    write: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+    viewChanges: { saveFailed: broken },
+  });
+
+  await assert.rejects(handlers.save(filled));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
+});
+
+test('when something breaks while saying the delete stopped, the spinner still ends', async () => {
+  let rows = sheetRows;
+  const { handlers, order } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+    viewChanges: { deleteChanged: broken },
+  });
+  rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
+
+  await assert.rejects(handlers.delete([2, 3]));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
 });

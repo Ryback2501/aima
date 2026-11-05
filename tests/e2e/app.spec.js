@@ -1691,6 +1691,50 @@ test.describe('the open goal card', () => {
     .repeat(3)
     .trim();
 
+  // Every source of the sheet has an icon (issue #120).
+  test('every source of the sheet shows the bank, the card or the cash icon', async ({ page }) => {
+    const expected = [
+      ['BBVA David', 'bank'],
+      ['BBVA Común', 'bank'],
+      ['Polina', 'bank'],
+      ['Provisioned', 'bank'],
+      ['Deprovisioned', 'bank'],
+      ['Después', 'card'],
+      ['AMEX', 'card'],
+      ['ECI', 'card'],
+      ['ICON', 'card'],
+      ['Pluxee', 'card'],
+      ['Edenred', 'card'],
+      ['Cash', 'cash'],
+    ];
+    // One counted movement of each source, and one of a word the app does not know.
+    const label = (index) => `Gift ${String.fromCharCode(65 + index)}`;
+    await openGoal(page, [
+      ...expected.map(([source], index) => [
+        source,
+        sheetDay('2026-10-01'),
+        'General',
+        label(index),
+        -5,
+      ]),
+      ['Piggy', sheetDay('2026-10-01'), 'General', 'Unknown source', -5],
+    ]);
+    await tapMonth(page, 0);
+
+    const rows = month(page, 0).locator('.movement');
+    await expect(rows).toHaveCount(expected.length + 1);
+    for (const [index, [source, icon]] of expected.entries()) {
+      const row = rows.filter({ hasText: label(index) });
+      await expect(row.locator('.movement-source path'), source).toHaveAttribute(
+        'd',
+        ICONS[icon].path,
+      );
+    }
+    await expect(
+      rows.filter({ hasText: 'Unknown source' }).locator('.movement-source'),
+    ).toHaveCount(0);
+  });
+
   test('each movement shows where its money came from, with the same icon as the Total', async ({
     page,
   }) => {

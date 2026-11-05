@@ -149,11 +149,15 @@ test.describe('saving a new movement', () => {
     page,
   }) => {
     await openFilledForm(page);
-    await slowWrites(page);
+    // Slow enough for all the checks below to run while the spinner shows.
+    await slowWrites(page, 5000);
 
     await save(page).click();
 
     await expect(spinner(form(page))).toBeVisible();
+    await expect(status(form(page))).toHaveText('Saving…');
+    // Taps do nothing while it saves.
+    expect(await locked(page)).toBe(true);
     await expect.poll(() => opacityOf(spinner(form(page)))).toBe(1);
     await expect.poll(() => opacityOf(form(page).locator('.movement-form-title'))).toBe(0);
     await expect.poll(() => opacityOf(form(page).locator('.form-buttons'))).toBe(0);
@@ -177,9 +181,6 @@ test.describe('saving a new movement', () => {
     await page.waitForTimeout(250);
     const later = await dotOpacities(form(page));
     expect(later).not.toEqual(first);
-    await expect(status(form(page))).toHaveText('Saving…');
-    // Taps do nothing while it saves.
-    expect(await locked(page)).toBe(true);
   });
 
   test('when it is saved, a green thumbs-up stays for 1 second, then the form closes and the list shows it', async ({

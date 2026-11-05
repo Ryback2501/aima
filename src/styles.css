@@ -1011,7 +1011,8 @@ html:not(.loading) .label {
 /* Changes that must happen at once, without animation (see months-view.js). */
 .month-room.instant .month-column,
 .month-room.instant .month,
-.month-room.instant .month-arrow {
+.month-room.instant .month-arrow,
+.month-room.instant .month-all {
   transition: none;
 }
 
@@ -1091,8 +1092,25 @@ html:not(.loading) .label {
 }
 
 .month-amount {
+  flex: none;
+}
+
+/* The spending of all the month's movements, right of its amount: it only shows while the eye
+   button shows the movements the goal leaves out ("all", set by months-view.js), and never
+   for a month with "--". It fades in and out as fast as the pills of the Total. */
+.month-all {
   flex: 1;
   text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--pill-fade) ease-in-out,
+    visibility var(--pill-fade);
+}
+
+.month-room.all .month-all:not([data-empty]) {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* A month without movements: two lines and the arrow in grey. */
@@ -1294,6 +1312,7 @@ html:not(.loading) .label {
   .month-column,
   .month,
   .month-arrow,
+  .month-all,
   .movement::after {
     transition: none;
   }

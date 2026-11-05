@@ -356,6 +356,7 @@ export function createView(document, language) {
     }
     // The buttons are hidden now, so the selection goes at once. The eye button is off again.
     months.reset();
+    months.hideLeftOut();
     eyeButton.setAttribute('aria-pressed', 'false');
     formOpen = false;
     formAsked = false;
@@ -433,6 +434,7 @@ export function createView(document, language) {
     if (moving || openCard?.dataset.card !== 'goal') return;
     const on = eyeButton.getAttribute('aria-pressed') !== 'true';
     eyeButton.setAttribute('aria-pressed', String(on));
+    lockWhile(months.showLeftOut(on));
   });
 
   // The new movement form takes the place of the months in the open goal card ("adding", see

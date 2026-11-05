@@ -113,6 +113,20 @@ const eyeDrawing = (page) =>
 // Turns the eye button on (or off), and waits until the movements have stopped moving.
 const tapEye = (page) => tapAndWait(page, eye(page));
 
+// The animations made by the app's code or by styles.css that are still playing (not the
+// sliding descriptions).
+const playing = (page) =>
+  page.evaluate(
+    () =>
+      document
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.effect.getComputedTiming().iterations !== Infinity &&
+            animation.playState === 'running',
+        ).length,
+  );
+
 test.describe('the eye button', () => {
   test('in the bottom-right corner, at the height of the back button, with a crossed-out eye', async ({
     page,
@@ -360,4 +374,172 @@ test.describe('the left-out movements while they show', () => {
     await expect(movement(page, 0, 0)).not.toHaveClass(/\bselected\b/);
     await expect(selected(page)).toHaveCount(1);
   });
+});
+
+test('with "reduce motion", showing and hiding happen at once', async ({ page }) => {
+  await openGoal(page);
+  await tapMonth(page, 0);
+
+  await eye(page).click();
+  expect(await playing(page)).toBe(0);
+  await expect.poll(() => descriptions(page, 0)).toHaveLength(4);
+  expect(await movement(page, 0, 0).evaluate((node) => getComputedStyle(node).opacity)).toBe('1');
+  expect(await monthAll(page, 0).evaluate((node) => getComputedStyle(node).opacity)).toBe('1');
+  await expect.poll(() => locked(page)).toBe(false);
+
+  await eye(page).click();
+  expect(await playing(page)).toBe(0);
+  await expect.poll(() => descriptions(page, 0)).toHaveLength(2);
+  await expect.poll(() => locked(page)).toBe(false);
+});
+
+test.describe('with motion', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  // On every frame: the fund's row (how visible and how tall), where Cinema below it is, how
+  // tall October is, and how visible its second amount is.
+  const startFrames = (page) =>
+    page.evaluate(() => {
+      window.__frames = [];
+      const sample = () => {
+        const rows = [...document.querySelectorAll('.movement')];
+        const fund = rows.find((node) => node.textContent.includes('Fund'));
+        const cinema = rows.find((node) => node.textContent.includes('Cinema'));
+        const shown = fund?.getClientRects().length;
+        const all = document.querySelector('.month-all');
+        window.__frames.push({
+          row: Boolean(shown),
+          opacity: shown ? Number(getComputedStyle(fund).opacity) : null,
+          height: shown ? fund.getBoundingClientRect().height : null,
+          below: cinema.getBoundingClientRect().top,
+          month: document.querySelector('.month').getBoundingClientRect().height,
+          all: all.getClientRects().length ? Number(getComputedStyle(all).opacity) : 0,
+        });
+        if (window.__frames.length < 600) window.requestAnimationFrame(sample);
+      };
+      window.requestAnimationFrame(sample);
+    });
+  const framesOf = (page) => page.evaluate(() => window.__frames);
+
+  test('the eye button rises in and sinks away together with the back button', async ({ page }) => {
+    await openMain(page);
+    await page.evaluate(() => {
+      window.__rises = [];
+      document.addEventListener(
+        'animationstart',
+        ({ target, animationName }) => {
+          if (['back', 'eye'].includes(target.id)) {
+            window.__rises.push(`${target.id} ${animationName}`);
+          }
+        },
+        true,
+      );
+    });
+
+    await openGoalCard(page);
+    await tapAndWait(page, back(page));
+
+    expect(await page.evaluate(() => window.__rises)).toEqual(
+      expect.arrayContaining([
+        'back card-rise',
+        'eye card-rise',
+        'back card-sink',
+        'eye card-sink',
+      ]),
+    );
+  });
+
+  test('showing: the movements below make room, then the left-out movements and the second amounts fade in', async ({
+    page,
+  }) => {
+    await openGoal(page);
+    await tapMonth(page, 0);
+    await startFrames(page);
+
+    await tapEye(page);
+    await page.waitForTimeout(100);
+
+    const frames = await framesOf(page);
+    const firstFrame = (check, from = 0) => frames.findIndex((f, i) => i >= from && check(f));
+    const fullHeight = frames.at(-1).height;
+    const startBelow = frames[0].below;
+    const startMonth = frames[0].month;
+    // First the fund grows while still invisible, and Cinema moves down bit by bit.
+    const growing = firstFrame((f) => f.row && f.opacity === 0 && f.height > 1);
+    expect(growing).toBeGreaterThan(-1);
+    expect(
+      frames.some(
+        (f) => f.row && f.opacity === 0 && f.height < fullHeight - 1 && f.below > startBelow + 1,
+      ),
+    ).toBe(true);
+    // Then, at its full height, it fades in.
+    const fading = firstFrame((f) => f.row && f.opacity > 0 && f.opacity < 1, growing);
+    expect(fading).toBeGreaterThan(growing);
+    near(frames[fading].height, fullHeight);
+    // The second amount fades in too.
+    expect(frames.some((f) => f.all > 0 && f.all < 1)).toBe(true);
+    // At the end everything shows, and October is taller.
+    expect(frames.at(-1).opacity).toBe(1);
+    expect(frames.at(-1).all).toBe(1);
+    expect(frames.at(-1).month).toBeGreaterThan(startMonth + 10);
+  });
+
+  test('hiding: they fade out, then the movements below move up and the month gets shorter', async ({
+    page,
+  }) => {
+    await openGoal(page);
+    await tapMonth(page, 0);
+    await tapEye(page);
+    await startFrames(page);
+
+    await tapEye(page);
+    await page.waitForTimeout(100);
+
+    const frames = await framesOf(page);
+    const firstFrame = (check, from = 0) => frames.findIndex((f, i) => i >= from && check(f));
+    const fullHeight = frames[0].height;
+    const startBelow = frames[0].below;
+    const startMonth = frames[0].month;
+    // First the fund fades out, at its full height, and so does the second amount.
+    const fading = firstFrame((f) => f.row && f.opacity > 0 && f.opacity < 1);
+    expect(fading).toBeGreaterThan(-1);
+    near(frames[fading].height, fullHeight);
+    expect(frames.some((f) => f.all > 0 && f.all < 1)).toBe(true);
+    // Then, invisible, it gets shorter, while Cinema moves up and October gets shorter.
+    const shrinking = firstFrame(
+      (f) => f.row && f.opacity === 0 && f.height > 1 && f.height < fullHeight - 1,
+      fading,
+    );
+    expect(shrinking).toBeGreaterThan(fading);
+    const endBelow = frames.at(-1).below;
+    const endMonth = frames.at(-1).month;
+    expect(endBelow).toBeLessThan(startBelow - 10);
+    expect(endMonth).toBeLessThan(startMonth - 10);
+    expect(
+      frames.some(
+        (f, i) => i >= shrinking && f.row && f.month < startMonth - 1 && f.month > endMonth + 1,
+      ),
+    ).toBe(true);
+    // At the end it is gone.
+    expect(frames.at(-1).row).toBe(false);
+    expect(frames.at(-1).all).toBe(0);
+  });
+});
+
+test.describe('in other languages', () => {
+  for (const language of ['es', 'ru']) {
+    test(`after picking the "${language}" flag, the eye button's name is in that language`, async ({
+      page,
+    }) => {
+      await openMain(page);
+      const picker = page.locator('#main [data-card="language"]');
+      await picker.locator('[aria-current="true"]').click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await picker.locator(`[data-language="${language}"]`).click();
+      await expect.poll(() => locked(page)).toBe(false);
+      await openGoalCard(page);
+
+      await expect(eye(page)).toHaveAttribute('aria-label', STRINGS[language].showLeftOut);
+    });
+  }
 });

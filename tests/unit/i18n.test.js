@@ -139,3 +139,9 @@ test('the delete question says "this movement" for one, and the number with the 
   assert.equal(russian(21), 'Удалить 21 операцию?');
   assert.equal(russian(22), 'Удалить 22 операции?');
 });
+
+test('the eye button of the goal card has its name for screen readers in every language', () => {
+  assert.equal(STRINGS.en.showLeftOut, 'Show the movements the goal leaves out');
+  assert.equal(STRINGS.es.showLeftOut, 'Mostrar los movimientos que el objetivo deja fuera');
+  assert.equal(STRINGS.ru.showLeftOut, 'Показать операции, которые цель не учитывает');
+});

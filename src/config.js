@@ -32,8 +32,10 @@ export const config = {
   goal: {
     // The movements: source, date, category, description and amount, one movement per row.
     movements: 'Movements!A:E',
-    // Where the money came from: the word in the first column, and its icon (the same icons as
-    // the parts of the Total). A movement with another word, or none, shows no icon.
+    // Where the money came from: the word in the first column, and its icon: the bank, a card or
+    // cash, the same drawings as in the Total. A source can have another icon than the part of
+    // the Total with its name (Provisioned shows the bank here, and the piggy bank in the Total).
+    // A movement with another word, or none, shows no icon.
     sources: {
       'BBVA David': 'bank',
       'BBVA Común': 'bank',

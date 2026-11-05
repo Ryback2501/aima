@@ -233,6 +233,7 @@ test('a person with access sees the total after sign-in', async () => {
           year: 2026,
           month: 10,
           amount: 12.5,
+          all: 12.5,
           days: [
             {
               day: 5,
@@ -242,12 +243,47 @@ test('a person with access sees the total after sign-in', async () => {
             },
           ],
         },
-        { year: 2026, month: 11, amount: null, days: [] },
-        { year: 2026, month: 12, amount: null, days: [] },
+        { year: 2026, month: 11, amount: null, all: null, days: [] },
+        { year: 2026, month: 12, amount: null, all: null, days: [] },
       ],
     },
     canAdd: false,
   });
+});
+
+test('the goal card also gets the movements the goal leaves out, marked, with the same goal number', async () => {
+  const { app, handlers, last } = setup({
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Cash', OCTOBER_5, 'Pay', 'Salary', 2500],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  const { goal } = last();
+  assert.equal(goal.amount, 12.5);
+  const [october] = goal.months;
+  assert.equal(october.amount, 12.5);
+  // All the spending of October: 12.50 spent, and 2,500 came in.
+  assert.equal(october.all, -2487.5);
+  assert.deepEqual(october.days, [
+    {
+      day: 5,
+      movements: [
+        { category: 'Food', description: 'Shop', amount: 12.5, source: 'cash', row: 0 },
+        {
+          category: 'Pay',
+          description: 'Salary',
+          amount: -2500,
+          source: 'cash',
+          row: 1,
+          leftOut: true,
+        },
+      ],
+    },
+  ]);
 });
 
 test('switching a part of the Total off takes it out of the Total, and it is remembered', async () => {

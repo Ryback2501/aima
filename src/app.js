@@ -199,7 +199,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     goal = {
       ...goalStatus(movements, config.goal),
       limit: config.goal.limit,
-      months: goalMonths(movements, config.goal),
+      // With the movements the goal leaves out: the eye button of the goal card shows them.
+      months: goalMonths(movements, config.goal, { leftOut: true }),
     };
   }
 

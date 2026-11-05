@@ -10,3 +10,8 @@ test('every icon has a drawing area and a shape, and no size', () => {
     assert.deepEqual(Object.keys(icon).sort(), ['path', 'viewBox'], name);
   }
 });
+
+test('the eye button has an open eye and a crossed-out eye (issue #113)', () => {
+  assert.equal(ICONS.eye.viewBox, '0 0 576 512');
+  assert.equal(ICONS.eyeSlash.viewBox, '0 0 640 512');
+});

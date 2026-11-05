@@ -331,3 +331,119 @@ test('with the real settings, Investing movements do not count, below or above 0
   // A month with only Investing movements has no amount, like a month with none.
   assert.equal(november.amount, null);
 });
+
+// The movements the goal leaves out, shown with the eye button of the goal card (issue #113).
+
+test('with leftOut, the left-out movements show in their days, marked, among the others', () => {
+  const rows = [
+    row('2026-10-03', -100, 'Food', 'Market'),
+    row('2026-10-05', 2500, 'Pay', 'October pay'),
+    row('2026-10-12', -500, 'Food', 'Cinema'),
+    row('2026-10-12', -30, 'Home', 'Water'),
+  ];
+
+  const [october] = goalMonths(rows, goal, { leftOut: true });
+
+  assert.deepEqual(october.days, [
+    {
+      day: 12,
+      movements: [
+        { category: 'Food', description: 'Cinema', amount: 500, source: null, row: 2 },
+        {
+          category: 'Home',
+          description: 'Water',
+          amount: 30,
+          source: null,
+          row: 3,
+          leftOut: true,
+        },
+      ],
+    },
+    {
+      day: 5,
+      movements: [
+        {
+          category: 'Pay',
+          description: 'October pay',
+          amount: -2500,
+          source: null,
+          row: 1,
+          leftOut: true,
+        },
+      ],
+    },
+    {
+      day: 3,
+      movements: [{ category: 'Food', description: 'Market', amount: 100, source: null, row: 0 }],
+    },
+  ]);
+});
+
+test('with leftOut, the amounts of the goal and of each month do not change', () => {
+  const rows = [
+    row('2026-10-03', -100, 'Food', 'Market'),
+    row('2026-10-05', 2500, 'Pay', 'October pay'),
+    row('2026-11-12', -40, 'Food', 'Petrol'),
+  ];
+
+  const months = goalMonths(rows, goal, { leftOut: true });
+
+  assert.deepEqual(
+    months.map(({ amount }) => amount),
+    [100, 40, null],
+  );
+  assert.equal(goalStatus(rows, goal).amount, 140);
+});
+
+test('with leftOut, each month with an amount also has the spending of all its movements', () => {
+  const rows = [
+    // October: €900 of spending and a €2,500 salary.
+    row('2026-10-03', -100, 'Food', 'Market'),
+    row('2026-10-05', 2500, 'Pay', 'October pay'),
+    row('2026-10-12', -500, 'Food', 'Cinema'),
+    row('2026-10-12', -300, 'Loan', 'Mortgage'),
+    // November: nothing left out, so both amounts are the same.
+    row('2026-11-04', -40, 'Food', 'Petrol'),
+  ];
+
+  const months = goalMonths(rows, goal, { leftOut: true });
+
+  assert.deepEqual(
+    months.map(({ amount, all }) => [amount, all]),
+    [
+      [600, -1600],
+      [40, 40],
+      [null, null],
+    ],
+  );
+});
+
+test('with leftOut, a month with only left-out movements still has no amount and no movements', () => {
+  const rows = [row('2026-12-01', -700, 'Loan', 'December loan')];
+
+  assert.deepEqual(goalMonths(rows, goal, { leftOut: true })[2], {
+    year: 2026,
+    month: 12,
+    amount: null,
+    all: null,
+    days: [],
+  });
+});
+
+test("with leftOut, movements outside the goal's months are still not there", () => {
+  const rows = [
+    row('2026-09-30', 2500, 'Pay', 'September pay'),
+    row('2027-01-01', -50, 'Food', 'New year'),
+    row('2026-10-03', -100, 'Food', 'Market'),
+  ];
+
+  const months = goalMonths(rows, goal, { leftOut: true });
+
+  assert.deepEqual(
+    months.flatMap(({ days }) =>
+      days.flatMap(({ movements }) => movements.map(({ description }) => description)),
+    ),
+    ['Market'],
+  );
+  assert.equal(months[0].all, 100);
+});

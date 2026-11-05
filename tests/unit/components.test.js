@@ -93,6 +93,13 @@ test('the language selector looks like the back button: same size, border and co
   assert.equal(hasIcon(CARDS.language), false);
 });
 
+test('the eye button of the goal card looks like the back button: same size, border and colors', () => {
+  for (const setting of ['width', 'height', 'border', 'radius', 'colors', 'padding']) {
+    assert.deepEqual(CARDS.eye[setting], CARDS.back[setting], setting);
+  }
+  assert.equal(hasIcon(CARDS.eye), false);
+});
+
 test('the back button is a card without a corner icon', () => {
   assert.ok(CARDS.back);
   assert.equal(hasIcon(CARDS.back), false);

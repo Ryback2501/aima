@@ -481,6 +481,20 @@ html:not(.loading) .label {
   z-index: 30;
 }
 
+/* The eye button of the open goal card, in the bottom-right corner, at the same height as the
+   back button. It shows the open eye while it is on, and the crossed-out eye while it is off. */
+#eye {
+  position: fixed;
+  right: calc(env(safe-area-inset-right, 0px) + var(--back-gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  z-index: 30;
+}
+
+#eye[aria-pressed='true'] .eye-off,
+#eye[aria-pressed='false'] .eye-on {
+  display: none;
+}
+
 /* The "+" button of the open goal card: in the middle, at the same height as the back button.
    While movements are selected, buttons for them sit right next to it, 14px away: Edit on its
    left (one movement only) and Delete on its right. With one movement, "+" stays in the middle;
@@ -544,7 +558,8 @@ html:not(.loading) .label {
 #back.sinking,
 #add.sinking,
 #edit.sinking,
-#delete.sinking {
+#delete.sinking,
+#eye.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
 
@@ -559,7 +574,8 @@ html:not(.loading) .label {
   #back.sinking,
   #add.sinking,
   #edit.sinking,
-  #delete.sinking {
+  #delete.sinking,
+  #eye.sinking {
     animation: none;
   }
 
@@ -995,7 +1011,8 @@ html:not(.loading) .label {
 /* Changes that must happen at once, without animation (see months-view.js). */
 .month-room.instant .month-column,
 .month-room.instant .month,
-.month-room.instant .month-arrow {
+.month-room.instant .month-arrow,
+.month-room.instant .month-all {
   transition: none;
 }
 
@@ -1030,9 +1047,11 @@ html:not(.loading) .label {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 12px;
+  /* Tight enough that a month's amount and its second amount fit on one line, also on a phone
+     360px wide. */
+  gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px;
   border: 0;
   border-radius: 16px;
   background: #ffffff;
@@ -1075,8 +1094,36 @@ html:not(.loading) .label {
 }
 
 .month-amount {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The spending of all the month's movements, right of its amount, in smaller grey text: it only
+   shows while the eye button shows the movements the goal leaves out ("all", set by
+   months-view.js), and never for a month with "--". It fades in and out as fast as the pills of
+   the Total. It always stays on one line: when it does not fit, it is cut with "…", so the
+   amount and the arrow keep their places. It sits closer to the amount (4px) than the other
+   parts of the row (8px), because it belongs to it. */
+.month-all {
   flex: 1;
+  min-width: 0;
+  margin-left: -4px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.875rem;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--pill-fade) ease-in-out,
+    visibility var(--pill-fade);
+}
+
+.month-room.all .month-all:not([data-empty]) {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* A month without movements: two lines and the arrow in grey. */
@@ -1278,6 +1325,7 @@ html:not(.loading) .label {
   .month-column,
   .month,
   .month-arrow,
+  .month-all,
   .movement::after {
     transition: none;
   }

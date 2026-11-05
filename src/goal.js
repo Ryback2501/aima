@@ -51,7 +51,8 @@ function sourceOf(source, sources = {}) {
 // Returns { day, category, description, amount, source, row } for each one, amount as in the
 // sheet. row is the place of the movement in rows (from 0), so it can be changed or deleted
 // later. extraDecimals is there, and true, only when the amount has more than two decimals.
-function countedMovements(rows, { from, to, skip, sources }) {
+// With leftOut, the skipped movements of the period are there too, with leftOut: true.
+function countedMovements(rows, { from, to, skip, sources }, { leftOut = false } = {}) {
   const first = dayNumber(from);
   const last = dayNumber(to);
   const counted = [];
@@ -59,7 +60,8 @@ function countedMovements(rows, { from, to, skip, sources }) {
     if (typeof date !== 'number' || typeof amount !== 'number') continue;
     const day = Math.floor(date);
     if (day < first || day > last) continue;
-    if (skipped(text(category), text(description), skip)) continue;
+    const left = skipped(text(category), text(description), skip);
+    if (left && !leftOut) continue;
     counted.push({
       day: date,
       category: text(category),
@@ -68,6 +70,7 @@ function countedMovements(rows, { from, to, skip, sources }) {
       source: sourceOf(source, sources),
       row,
       ...(hasExtraDecimals(amount) && { extraDecimals: true }),
+      ...(left && { leftOut: true }),
     });
   }
   return counted;
@@ -119,20 +122,28 @@ function byDay(movements) {
 // { day (1-31), movements }. movements: { category, description, amount, source, row,
 // extraDecimals } (see countedMovements), newest first, with the amount as spending. The same
 // rules as goalStatus decide what counts.
-export function goalMonths(rows, goal) {
-  const counted = countedMovements(rows, goal);
+// With leftOut (for the eye button of the goal card), the days also have the movements the goal
+// leaves out, marked leftOut: true, and each month has all: the spending of all its movements.
+// The amounts do not change. A month with no counted movements still has no movements, and its
+// all is null.
+export function goalMonths(rows, goal, { leftOut = false } = {}) {
+  const found = countedMovements(rows, goal, { leftOut });
   const first = monthCount(dayNumber(goal.from));
   const last = monthCount(dayNumber(goal.to));
+  const sum = (movements) => spending(movements.reduce((total, m) => total + m.amount, 0));
   const months = [];
   for (let count = first; count <= last; count += 1) {
-    const inMonth = counted
+    const inMonth = found
       .filter(({ day }) => monthCount(day) === count)
       .sort((a, b) => b.day - a.day);
+    const counted = inMonth.filter((movement) => !movement.leftOut);
+    const empty = counted.length === 0;
     months.push({
       year: Math.floor(count / 12),
       month: (count % 12) + 1,
-      amount: inMonth.length ? spending(inMonth.reduce((sum, m) => sum + m.amount, 0)) : null,
-      days: byDay(inMonth),
+      amount: empty ? null : sum(counted),
+      ...(leftOut && { all: empty ? null : sum(inMonth) }),
+      days: byDay(empty ? [] : inMonth),
     });
   }
   return months;

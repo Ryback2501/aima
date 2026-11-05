@@ -79,7 +79,8 @@ export function createMonths({
     total.toggleAttribute('data-empty', empty);
     const second = head.querySelector('.month-all');
     const noSecond = empty || all === null;
-    second.textContent = noSecond ? '' : `(${formatMoney(all)})`;
+    // Without a second amount, the old text stays while it fades out (styles.css).
+    if (!noSecond) second.textContent = `(${formatMoney(all)})`;
     second.toggleAttribute('data-empty', noSecond);
     const said =
       showAll && !noSecond ? `${total.textContent} ${second.textContent}` : total.textContent;

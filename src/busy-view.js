@@ -100,6 +100,9 @@ export function createBusy(panel, { document, window, createIcon, t }) {
   // words: the keys of i18n.js for each moment, { working, done, failed }.
   function start(words) {
     texts = words;
+    // The layer covers the top of the panel: a form scrolled down goes back to its top, so the
+    // spinner shows in the middle of the card. The content is fading out, so nothing jumps.
+    panel.scrollTop = 0;
     panel.classList.add('working');
     started = window.performance.now() + BUSY.fade;
     layer.dataset.show = 'spinner';

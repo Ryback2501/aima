@@ -216,12 +216,14 @@ export function createMonths({
   // Returns false when the new months are not the ones shown without the deleted movements (the
   // sheet was changed in other ways too): then the months are built again.
   function update(months) {
-    const left = shownMonths.map((month) => ({
-      ...month,
-      days: month.days
+    const left = shownMonths.map((month) => {
+      const days = month.days
         .map((day) => ({ ...day, movements: day.movements.filter((m) => !removed.has(m.row)) }))
-        .filter((day) => day.movements.length > 0),
-    }));
+        .filter((day) => day.movements.length > 0);
+      // A month with only left-out movements left has no movements, like in goal.js.
+      const counted = days.some(({ movements }) => movements.some((m) => !m.leftOut));
+      return { ...month, days: counted ? days : [] };
+    });
     // Everything but the amounts of the months and the places in the rows.
     const looks = (list) =>
       JSON.stringify(
@@ -238,6 +240,12 @@ export function createMonths({
     if (looks(left) !== looks(months)) return false;
     months.forEach(({ year, month, amount, all = null, days }, index) => {
       showAmount(items[index].querySelector('.month-head'), monthName(year, month), amount, all);
+      // The left-out movements of a month that has no movements any more go too: it is closed,
+      // and cannot be opened.
+      if (days.length === 0 && groups.get(items[index]).length > 0) {
+        items[index].querySelector('.month-list').replaceChildren();
+        groups.set(items[index], []);
+      }
       const rows = rowsOf(items[index]);
       days
         .flatMap(({ movements }) => movements)
@@ -608,7 +616,7 @@ export function createMonths({
   }
 
   // After a delete: the selected movements go away (see goAway). A date with no movement left on
-  // the screen goes with them. The open month closes when it has no movement left.
+  // the screen goes with them. The open month closes when it has no counted movement left.
   async function removeSelected() {
     const rows = [...column.querySelectorAll('.movement.selected')];
     for (const row of rows) removed.add(Number(row.dataset.row));
@@ -619,7 +627,9 @@ export function createMonths({
       .map(({ date }) => date);
     await goAway([...rows, ...dates], () => {
       if (open === null) return;
-      if (items[open].querySelector('.movement:not(.selected)')) {
+      // Left-out movements alone do not keep a month open: it has no amount any more.
+      const staying = [...items[open].querySelectorAll('.movement:not(.selected)')];
+      if (staying.some((row) => !leftOutRows.has(row))) {
         place();
         window.requestAnimationFrame(followFades);
       } else {

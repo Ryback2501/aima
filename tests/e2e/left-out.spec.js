@@ -619,3 +619,74 @@ test.describe('in other languages', () => {
     });
   }
 });
+
+test.describe('deleting the last counted movement of a month that has left-out ones, with motion', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  // November has Petrol, and a salary that the goal leaves out.
+  const withNovemberPay = () => ({
+    movements: [
+      ...movementRows().slice(0, 6),
+      ['BBVA David', sheetDay('2026-11-10'), 'Salary', 'November pay', 2500],
+      movementRows()[6],
+    ],
+  });
+
+  // Writes down which months rise in from now on (0 is the top one).
+  const startRiseLog = (page) =>
+    page.evaluate(() => {
+      window.__monthRises = [];
+      document.addEventListener(
+        'animationstart',
+        ({ target, animationName }) => {
+          if (target.classList.contains('month') && animationName === 'card-rise') {
+            window.__monthRises.push([...document.querySelectorAll('.month')].indexOf(target));
+          }
+        },
+        true,
+      );
+    });
+  const monthRises = (page) => page.evaluate(() => window.__monthRises);
+
+  // Selects Petrol in the open November, and deletes it.
+  async function deletePetrol(page) {
+    await hold(page, month(page, 1).locator('.movement', { hasText: 'Petrol' }));
+    await tapAndWait(page, remove(page));
+    await expect(panel(page)).toBeVisible();
+    await startRiseLog(page);
+    await tapAndWait(page, yes(page));
+    await expect(panel(page)).toBeHidden();
+    await expect(monthAmount(page, 1)).toHaveText('--');
+    await page.waitForTimeout(500);
+  }
+
+  test('with the eye off, the month shows "--" and the months rise in only once', async ({
+    page,
+  }) => {
+    await openGoal(page, withNovemberPay());
+    await tapMonth(page, 1);
+
+    await deletePetrol(page);
+
+    await expect(monthHead(page, 1)).toBeDisabled();
+    // Each month rises in once, when the panel goes and the months come back, and not again.
+    expect((await monthRises(page)).sort()).toEqual([0, 1, 2]);
+  });
+
+  test('with the eye on, the month closes and shows "--", and the months rise in only once', async ({
+    page,
+  }) => {
+    await openGoal(page, withNovemberPay());
+    await tapEye(page);
+    await tapMonth(page, 1);
+    await expect.poll(() => descriptions(page, 1)).toEqual(['November pay', 'Petrol']);
+
+    await deletePetrol(page);
+
+    await expect(monthHead(page, 1)).toBeDisabled();
+    await expect(month(page, 1)).not.toHaveClass(/\bopen\b/);
+    await expect(month(page, 1).locator('.month-list')).toBeHidden();
+    // Each month rises in once, when the panel goes and the months come back, and not again.
+    expect((await monthRises(page)).sort()).toEqual([0, 1, 2]);
+  });
+});

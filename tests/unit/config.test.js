@@ -57,7 +57,21 @@ test('the real config is fully set up', () => {
 
 test('the movements start at the source column, and each source has an icon of the Total', () => {
   assert.equal(config.goal.movements, 'Movements!A:E');
-  assert.deepEqual(config.goal.sources, { Cash: 'cash', Después: 'card', 'BBVA David': 'bank' });
+  // Every source of the sheet has an icon: the bank, a card or cash (issue #120).
+  assert.deepEqual(config.goal.sources, {
+    'BBVA David': 'bank',
+    'BBVA Común': 'bank',
+    Polina: 'bank',
+    Provisioned: 'bank',
+    Deprovisioned: 'bank',
+    Después: 'card',
+    AMEX: 'card',
+    ECI: 'card',
+    ICON: 'card',
+    Pluxee: 'card',
+    Edenred: 'card',
+    Cash: 'cash',
+  });
   for (const icon of Object.values(config.goal.sources)) assert.ok(ICONS[icon], icon);
 });
 

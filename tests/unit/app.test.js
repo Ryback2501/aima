@@ -77,6 +77,8 @@ function setup({
   // Everything the form and the delete panel showed, in order, with the spinner and the icon
   // that ends it (issue #108).
   const order = [];
+  // How many screens were shown when the thumbs-up or the warning came.
+  const ends = { screens: null };
   const languages = [];
   const handlers = {};
   const view = {
@@ -123,7 +125,7 @@ function setup({
     // The spinner ends with the thumbs-up (ok) or the warning, and the view waits for it.
     workDone: async (ok) => {
       order.push(ok ? 'thumbs-up' : 'warning');
-      order.screensAtEnd = screens.length;
+      ends.screens = screens.length;
     },
     deleted: async () => {
       deleteLog.events.push('deleted');
@@ -214,6 +216,7 @@ function setup({
     formLog,
     deleteLog,
     order,
+    ends,
   };
 }
 
@@ -912,14 +915,14 @@ test('when the save worked but the sheet cannot be read again, the form still cl
 
 // Issue #108: the spinner while saving, then the thumbs-up or the warning.
 test('a saved movement shows the spinner, then the thumbs-up after the sheet is read again, then the form closes', async () => {
-  const { handlers, order, screens } = await signedInEditor();
+  const { handlers, order, ends, screens } = await signedInEditor();
   const before = screens.length;
 
   await handlers.save(filled);
 
   assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes']);
   // The list is already read again while the thumbs-up shows.
-  assert.equal(order.screensAtEnd, before + 1);
+  assert.equal(ends.screens, before + 1);
 });
 
 test('a movement that is not saved shows the spinner, then the message is set, then the warning', async () => {
@@ -1330,7 +1333,7 @@ test('an edit with nothing changed closes the form with no spinner', async () =>
 
 test('an edited row changed by hand shows the message, then the warning after the sheet is read again', async () => {
   let rows = editRows;
-  const { handlers, order, screens } = await signedInEditor({
+  const { handlers, order, ends, screens } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
   });
@@ -1341,7 +1344,7 @@ test('an edited row changed by hand shows the message, then the warning after th
   await handlers.save({ ...valuesOf(mv('B', -2)), concept: 'Bee' });
 
   assert.deepEqual(order, ['spinner', 'changed message', 'warning']);
-  assert.equal(order.screensAtEnd, before + 1);
+  assert.equal(ends.screens, before + 1);
 });
 
 test('deleted movements show the spinner, then the thumbs-up, then they go', async () => {
@@ -1367,7 +1370,7 @@ test('movements that are not deleted show the spinner, then the message is set, 
 
 test('a delete stopped by a change by hand shows the message, then the warning after the sheet is read again', async () => {
   let rows = sheetRows;
-  const { handlers, order, screens } = await signedInEditor({
+  const { handlers, order, ends, screens } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
   });
@@ -1377,5 +1380,5 @@ test('a delete stopped by a change by hand shows the message, then the warning a
   await handlers.delete([2, 3]);
 
   assert.deepEqual(order, ['spinner', 'changed message', 'warning']);
-  assert.equal(order.screensAtEnd, before + 1);
+  assert.equal(ends.screens, before + 1);
 });

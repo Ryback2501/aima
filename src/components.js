@@ -225,17 +225,22 @@ export function pillStyle({ width, height, border, borderColor, colors, valueWid
   };
 }
 
-// CATEGORY_ICONS: the icon (from icons.js) for each spending category of the movements
-// (column C of the sheet). A category that is not here gets the money bag with a euro sign.
-// A General movement whose description has the word "compra" (a purchase) gets the cart.
+// CATEGORY_ICONS: the icon (from icons.js) for each category of the movements (column C of the
+// sheet), including the categories the goal leaves out, which the eye button shows. A category
+// that is not here gets the money bag with a euro sign. A General movement whose description has
+// the word "compra" (a purchase) gets the cart.
 export const CATEGORY_ICONS = {
   Car: 'car',
+  'Credit Cards': 'billTransfer',
   'Debts paid': 'handshake',
   General: 'sackEuro',
   House: 'house',
   Investing: 'investing',
   Leisure: 'cocktail',
+  Mortgage: 'housePie',
+  Salary: 'sackInHand',
   Traveling: 'suitcase',
+  Whitening: 'pumpSoap',
   Yoshi: 'paw',
 };
 
@@ -256,6 +261,10 @@ export const ICON_COLORS = {
   paw: '#b8860b',
   cart: '#2b8a3e',
   sackEuro: '#4b5563',
+  sackInHand: '#65a30d',
+  housePie: '#c47d4a',
+  billTransfer: '#1296d6',
+  pumpSoap: '#b06ad9',
 };
 
 // The color of a movement's icon. It comes from the icon, so the two always go together.

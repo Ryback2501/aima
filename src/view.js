@@ -177,6 +177,9 @@ export function createView(document, language) {
   // movement only) and Delete on its right.
   const editButton = element('edit');
   const deleteButton = element('delete');
+  // The eye button shows or hides the movements the goal leaves out, in the open goal card, for
+  // the same people as "+". It is off every time the goal card opens.
+  const eyeButton = element('eye');
   let canAdd = false;
   // How many movements are selected: "none", "one" or "many" (see selectionChanged).
   let selection = 'none';
@@ -226,8 +229,8 @@ export function createView(document, language) {
       part.style.setProperty('--rise-order', String(index));
       part.style.setProperty('--sink-order', String(parts.length - index));
     });
-    // The "+", Edit and Delete buttons rise in and sink away together with the back button.
-    for (const button of [backButton, addButton, editButton, deleteButton]) {
+    // The "+", Edit, Delete and eye buttons rise in and sink away together with the back button.
+    for (const button of [backButton, addButton, editButton, deleteButton, eyeButton]) {
       button.style.setProperty('--card-order', String(parts.length));
       button.style.setProperty('--sink-order', '0');
     }
@@ -236,15 +239,15 @@ export function createView(document, language) {
   // The buttons next to "+" for each number of selected movements.
   const besidePlus = { none: [], one: [editButton, deleteButton], many: [deleteButton] };
 
-  // The buttons at the bottom of an open card: the back button, and "+" in the goal card, with
-  // the buttons for the selected movements.
+  // The buttons at the bottom of an open card: the back button, and in the goal card "+" with
+  // the buttons for the selected movements, and the eye button.
   function bottomButtons() {
     if (!canAdd || openCard?.dataset.card !== 'goal') return [backButton];
-    return [backButton, addButton, ...besidePlus[selection]];
+    return [backButton, addButton, ...besidePlus[selection], eyeButton];
   }
 
   // While a card is open, only the card (with the buttons inside it) and its buttons react.
-  const allButtons = [backButton, addButton, editButton, deleteButton];
+  const allButtons = [backButton, addButton, editButton, deleteButton, eyeButton];
   function coverTheRest(covered) {
     for (const node of mainScreen.querySelectorAll('[data-card]')) {
       node.inert = covered && !openCard.contains(node) && !allButtons.includes(node);
@@ -351,8 +354,9 @@ export function createView(document, language) {
       button.hidden = true;
       button.classList.remove('sinking');
     }
-    // The buttons are hidden now, so the selection goes at once.
+    // The buttons are hidden now, so the selection goes at once. The eye button is off again.
     months.reset();
+    eyeButton.setAttribute('aria-pressed', 'false');
     formOpen = false;
     formAsked = false;
     panelOpen = false;
@@ -423,6 +427,13 @@ export function createView(document, language) {
     });
   }
   backButton.addEventListener('click', () => close());
+
+  // A tap on the eye button shows the movements the goal leaves out, or hides them again.
+  eyeButton.addEventListener('click', () => {
+    if (moving || openCard?.dataset.card !== 'goal') return;
+    const on = eyeButton.getAttribute('aria-pressed') !== 'true';
+    eyeButton.setAttribute('aria-pressed', String(on));
+  });
 
   // The new movement form takes the place of the months in the open goal card ("adding", see
   // styles.css). The back and "+" buttons hide while it is open.

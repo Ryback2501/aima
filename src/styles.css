@@ -481,6 +481,20 @@ html:not(.loading) .label {
   z-index: 30;
 }
 
+/* The eye button of the open goal card, in the bottom-right corner, at the same height as the
+   back button. It shows the open eye while it is on, and the crossed-out eye while it is off. */
+#eye {
+  position: fixed;
+  right: calc(env(safe-area-inset-right, 0px) + var(--back-gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  z-index: 30;
+}
+
+#eye[aria-pressed='true'] .eye-off,
+#eye[aria-pressed='false'] .eye-on {
+  display: none;
+}
+
 /* The "+" button of the open goal card: in the middle, at the same height as the back button.
    While movements are selected, buttons for them sit right next to it, 14px away: Edit on its
    left (one movement only) and Delete on its right. With one movement, "+" stays in the middle;
@@ -544,7 +558,8 @@ html:not(.loading) .label {
 #back.sinking,
 #add.sinking,
 #edit.sinking,
-#delete.sinking {
+#delete.sinking,
+#eye.sinking {
   animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
 }
 
@@ -559,7 +574,8 @@ html:not(.loading) .label {
   #back.sinking,
   #add.sinking,
   #edit.sinking,
-  #delete.sinking {
+  #delete.sinking,
+  #eye.sinking {
     animation: none;
   }
 

@@ -272,6 +272,22 @@
         >
           <span data-icon="pen" data-icon-size="24"></span>
         </button>
+        <!-- Shows or hides the movements the goal leaves out, in the open goal card, for people
+             who can edit the sheet. A card without a corner icon: its content is an eye, crossed
+             out while they are hidden (aria-pressed, see styles.css). -->
+        <button
+          id="eye"
+          class="label card-button"
+          data-card="eye"
+          data-i18n-label="showLeftOut"
+          aria-label="Show the movements the goal leaves out"
+          aria-pressed="false"
+          type="button"
+          hidden
+        >
+          <span class="eye-on" data-icon="eye" data-icon-size="24"></span>
+          <span class="eye-off" data-icon="eyeSlash" data-icon-size="24"></span>
+        </button>
         <!-- While the language selector is open, covers the rest of the screen (see styles.css). -->
         <div id="picker-shield" hidden></div>
         <!-- The bottom row: Log out and the language selector, side by side in the middle. -->

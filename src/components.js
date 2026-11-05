@@ -137,6 +137,17 @@ export const CARDS = {
     colors: ['#6b7280', '#e5e7eb'],
     padding: { x: 0, y: 0 },
   },
+  // The eye button of the open goal card, in the bottom-right corner, for people who can edit the
+  // sheet: it shows the movements the goal leaves out. It looks like the back button. Its content
+  // is an eye, open or crossed out.
+  eye: {
+    width: 56,
+    height: 56,
+    border: 3,
+    radius: 16,
+    colors: ['#6b7280', '#e5e7eb'],
+    padding: { x: 0, y: 0 },
+  },
   // The "Log out" button: as big as the back button, in red. Its content is the exit icon.
   logOut: {
     width: 56,

@@ -211,6 +211,24 @@ test.describe('saving a new movement', () => {
     expect(gone.time - shown.time).toBeLessThan(1700);
   });
 
+  test('on a short screen, with the form scrolled down to Save, the spinner shows in the middle of the card', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 400, height: 480 });
+    await openFilledForm(page);
+    await form(page).evaluate((node) => (node.scrollTop = node.scrollHeight));
+    expect(await form(page).evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await slowWrites(page, 3000);
+
+    await save(page).click();
+
+    await expect(spinner(form(page))).toBeVisible();
+    const card = await form(page).boundingBox();
+    const ring = await spinner(form(page)).boundingBox();
+    expect(Math.abs(ring.y + ring.height / 2 - (card.y + card.height / 2))).toBeLessThan(2);
+    expect(Math.abs(ring.x + ring.width / 2 - (card.x + card.width / 2))).toBeLessThan(2);
+  });
+
   test('the spinner shows for at least 300 ms, even when the sheet answers at once', async ({
     page,
   }) => {

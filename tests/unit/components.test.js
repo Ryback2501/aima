@@ -161,14 +161,34 @@ test('every spending category has an icon that exists in icons.js', () => {
   }
 });
 
-// Movements of a left-out category are never shown, so they need no icon. Investing keeps its
-// own: showing the left-out movements is planned for later (#113).
-test('the categories that the goal leaves out have no icon, apart from Investing', () => {
+// The eye button shows the movements the goal leaves out (#113), so their categories have
+// their own icon and color too (#117).
+test('Salary, Mortgage, Credit Cards and Whitening have their own icon and color', () => {
+  const expected = {
+    Salary: ['sackInHand', '#65a30d'],
+    Mortgage: ['housePie', '#c47d4a'],
+    'Credit Cards': ['billTransfer', '#1296d6'],
+    Whitening: ['pumpSoap', '#b06ad9'],
+  };
+  for (const [category, [icon, color]] of Object.entries(expected)) {
+    assert.equal(categoryIcon(category), icon, category);
+    assert.ok(ICONS[icon], `${icon} is not in icons.js`);
+    assert.equal(categoryColor(category), color, category);
+  }
+});
+
+test('every category the goal leaves out has its own icon, and Investing keeps its arrow', () => {
   for (const category of config.goal.skip.categories) {
-    if (category === 'Investing') continue;
-    assert.equal(Object.hasOwn(CATEGORY_ICONS, category), false, category);
+    assert.ok(Object.hasOwn(CATEGORY_ICONS, category), category);
   }
   assert.equal(categoryIcon('Investing'), 'investing');
+});
+
+test('the House bills the goal leaves out keep the House icon and color', () => {
+  for (const description of config.goal.skip.descriptions.House) {
+    assert.equal(categoryIcon('House', description), 'house', description);
+    assert.equal(categoryColor('House', description), ICON_COLORS.house, description);
+  }
 });
 
 test('a category without its own icon gets the money bag with a euro sign', () => {

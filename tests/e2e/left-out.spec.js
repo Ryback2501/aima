@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { setUp, sheetDay } from './helpers.js';
-import { CARDS } from '../../src/components.js';
+import { CARDS, ICON_COLORS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 import { STRINGS } from '../../src/i18n.js';
 
@@ -716,5 +716,61 @@ test.describe('deleting the last counted movement of a month that has left-out o
     await expect(month(page, 1).locator('.month-list')).toBeHidden();
     // Each month rises in once, when the panel goes and the months come back, and not again.
     expect((await monthRises(page)).sort()).toEqual([0, 1, 2]);
+  });
+});
+
+test.describe('the icons of the movements the goal leaves out (issue #117)', () => {
+  // October has one movement of each left-out kind, and a counted Car movement.
+  const october = [
+    ['BBVA David', sheetDay('2026-10-02'), 'Salary', 'October pay', 2500],
+    ['BBVA David', sheetDay('2026-10-03'), 'Mortgage', 'October loan', -700],
+    ['BBVA David', sheetDay('2026-10-04'), 'Credit Cards', 'Cards in October', -843.12],
+    ['Cash', sheetDay('2026-10-05'), 'Whitening', 'Whitening', -300],
+    ['BBVA David', sheetDay('2026-10-06'), 'House', 'Luz - Endesa', -60],
+    ['BBVA David', sheetDay('2026-10-07'), 'Investing', 'Fund', -300],
+    ['Cash', sheetDay('2026-10-08'), 'Car', 'Petrol', -40],
+  ];
+  const rgb = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
+  test('each one shows its own drawing and color, on a soft background of that color', async ({
+    page,
+  }) => {
+    await openGoal(page, { movements: october });
+    await tapMonth(page, 0);
+    await tapEye(page);
+
+    const expected = [
+      ['October pay', 'sackInHand', '#65a30d'],
+      ['October loan', 'housePie', '#c47d4a'],
+      ['Cards in October', 'billTransfer', '#1296d6'],
+      ['Whitening', 'pumpSoap', '#b06ad9'],
+      ['Luz - Endesa', 'house', ICON_COLORS.house],
+      ['Fund', 'investing', ICON_COLORS.investing],
+      ['Petrol', 'car', ICON_COLORS.car],
+    ];
+    for (const [description, icon, color] of expected) {
+      const row = month(page, 0).locator('.movement', { hasText: description });
+      // The first drawing of a movement is its kind; the last one is where the money came from.
+      const drawing = row.locator('svg').first();
+      await expect(drawing.locator('path')).toHaveAttribute('d', ICONS[icon].path);
+      expect(await drawing.evaluate((node) => getComputedStyle(node).fill)).toBe(rgb(color));
+      // The soft shape behind it: 8% of the icon's color, the rest white.
+      const channels = await row.evaluate((node) => {
+        const css = getComputedStyle(node, '::before').backgroundColor;
+        const parts = css
+          .match(/[\d.]+/g)
+          .map(Number)
+          .slice(0, 3);
+        // Chromium writes a mixed color as color(srgb 0-1 0-1 0-1), other colors as rgb(0-255).
+        return css.startsWith('color(') ? parts.map((part) => part * 255) : parts;
+      });
+      const light = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16) * 0.08 + 255 * 0.92);
+      channels.forEach((channel, i) =>
+        expect(Math.abs(channel - light[i]), description).toBeLessThan(1.5),
+      );
+    }
   });
 });

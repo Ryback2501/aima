@@ -35,6 +35,15 @@ export class SheetsError extends Error {
   }
 }
 
+// The document has no sheet with this name (see getSheetRows).
+export class NoSuchSheetError extends SheetsError {
+  constructor(sheet) {
+    super(`The document has no sheet called ${sheet}.`, { status: 400 });
+    this.name = 'NoSuchSheetError';
+    this.sheet = sheet;
+  }
+}
+
 export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis.fetch }) {
   const sheetUrl = `${API}/${encodeURIComponent(spreadsheetId)}`;
 
@@ -74,6 +83,19 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     else if (raw) query = `?${RAW}`;
     const data = await request(`${sheetUrl}/values/${encodeURIComponent(range)}${query}`);
     return data.values ?? [];
+  }
+
+  // Returns the rows of a whole sheet, found by its name, as plain numbers and dates (see
+  // getValues with raw). The name is written between quotes, as the sheet writes it, so names
+  // with spaces work too. Google answers 400 when it cannot find the sheet: then this fails with
+  // NoSuchSheetError.
+  async function getSheetRows(name) {
+    try {
+      return await getValues(`'${name.replaceAll("'", "''")}'`, { raw: true });
+    } catch (error) {
+      if (error instanceof SheetsError && error.status === 400) throw new NoSuchSheetError(name);
+      throw error;
+    }
   }
 
   // Reads several single cells in one request, for example ["Sheet1!A1", "Sheet1!B7"].
@@ -165,7 +187,7 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     await request(`${sheetUrl}:batchUpdate`, { requests });
   }
 
-  return { getValues, getCells, canEdit, getDropdown, getSheet, writeRows };
+  return { getValues, getSheetRows, getCells, canEdit, getDropdown, getSheet, writeRows };
 }
 
 // One cell for writeRows: a number, a formula, a text, or nothing (an empty cell). A value

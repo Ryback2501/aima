@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 
 import { createApp } from '../../src/app.js';
 import { createSession } from '../../src/session.js';
-import { NoAccessError, SignInExpiredError, SheetsError } from '../../src/sheets.js';
+import {
+  NoAccessError,
+  NoSuchSheetError,
+  SignInExpiredError,
+  SheetsError,
+} from '../../src/sheets.js';
 import { SignInFailedError, PermissionMissingError } from '../../src/auth.js';
 
 const config = {
@@ -29,6 +34,8 @@ const config = {
   },
   // The cells whose dropdown lists give the options of the new movement form.
   form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2', sheet: 'Sheet2', firstRow: 2 },
+  // The sheet with the app's settings (issue #122).
+  appSheet: 'App',
 };
 
 // 5 October 2026 as the sheet sends it: days since 30 December 1899.
@@ -66,6 +73,8 @@ function setup({
   sheet = async () => ({ sheetId: 7, rowCount: 100 }),
   // What happens when rows are written.
   write = async () => {},
+  // The rows of the App sheet, as Google sends them (issue #122). Empty by default.
+  appRows = async () => [],
   // Parts of the view that work differently in a test, for example one that breaks.
   viewChanges = {},
 } = {}) {
@@ -84,7 +93,10 @@ function setup({
   const languages = [];
   const handlers = {};
   const view = {
-    render: (state) => screens.push(state),
+    render: (state) => {
+      screens.push(state);
+      if (state.screen === 'mistakes') order.push('mistakes');
+    },
     setLanguage: (language) => languages.push(language),
     onSignIn: (handler) => (handlers.signIn = handler),
     onSignOut: (handler) => (handlers.signOut = handler),
@@ -125,8 +137,9 @@ function setup({
       order.push('not deleted message');
     },
     // The spinner ends with the thumbs-up (ok) or the warning, and the view waits for it.
-    workDone: async (ok) => {
-      order.push(ok ? 'thumbs-up' : 'warning');
+    // With leave, the content of the panel does not come back after the warning (issue #122).
+    workDone: async (ok, { leave = false } = {}) => {
+      order.push(ok ? 'thumbs-up' : `warning${leave ? ', the content stays hidden' : ''}`);
       ends.screens = screens.length;
     },
     deleted: async () => {
@@ -150,6 +163,8 @@ function setup({
     edits: 0,
     dropdowns: [],
     writes: [],
+    // The reads of the sheet, in the order they started: 'app', 'cells' or 'values'.
+    reads: [],
   };
   const auth = {
     signIn: (options) => {
@@ -179,12 +194,18 @@ function setup({
       };
     },
     createSheets: ({ spreadsheetId, getToken }) => ({
+      getSheetRows: async (name) => {
+        log.reads.push(`app ${name}`);
+        return appRows(name);
+      },
       getCells: async (ranges) => {
+        log.reads.push('cells');
         log.cells.push({ spreadsheetId, ranges });
         log.tokens.push(getToken());
         return cells(ranges);
       },
       getValues: async (range, options) => {
+        log.reads.push('values');
         log.values.push({ spreadsheetId, range, options });
         return options?.formulas ? formulas(range) : movements(range);
       },
@@ -1430,4 +1451,231 @@ test('when something breaks while saying the delete stopped, the spinner still e
   await assert.rejects(handlers.delete([2, 3]));
 
   assert.deepEqual(order, ['spinner', 'warning']);
+});
+
+// Issue #122: the App sheet is read first at every load, and a mistake in it shows only the
+// message.
+const noAppSheet = async () => {
+  throw new NoSuchSheetError('App');
+};
+// An App sheet with one mistake: row 3 of CATEGORIES has an empty first column.
+const brokenApp = async () => [['CATEGORIES'], [], ['', 'car']];
+const FIRST_COLUMN_EMPTY = { kind: 'firstColumnEmpty', table: 'CATEGORIES', row: 3, sheet: 'App' };
+
+test('every load reads the App sheet first, then the Total and the movements', async () => {
+  const { app, handlers, log, last } = setup();
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.reads.slice(0, 3), ['app App', 'cells', 'values']);
+  assert.equal(last().screen, 'main');
+});
+
+test('an empty App sheet shows the same main screen as before', async () => {
+  const { app, handlers, last } = setup({ appRows: async () => [] });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().screen, 'main');
+  assert.equal(last().total, 549.5);
+});
+
+test('with no App sheet, only the message shows, and the rest is not read', async () => {
+  const { app, handlers, log, last } = setup({ appRows: noAppSheet });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'noAppSheet', sheet: 'App' }],
+  });
+  assert.deepEqual(log.reads, ['app App']);
+});
+
+test('the mistakes of the App sheet are shown, each with the name of the sheet', async () => {
+  const { app, handlers, last } = setup({
+    // CATEGORIES covers the columns B and C; its second copy starts at D.
+    appRows: async () => [['', 'CATEGORIES', '', 'CATEGORIES'], [], ['x', '', 'car']],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [
+      { kind: 'tableTwice', table: 'CATEGORIES', column: 'D', sheet: 'App' },
+      { kind: 'notInTable', cell: 'A3', sheet: 'App' },
+      { kind: 'firstColumnEmpty', table: 'CATEGORIES', row: 3, sheet: 'App' },
+    ],
+  });
+});
+
+test('the sign-in is kept with the message: the person stays signed in', async () => {
+  const { app, handlers, session } = setup({ appRows: noAppSheet });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(session.getToken(), 'tok');
+});
+
+test('a person who has not picked the document gets the Google picker at the App sheet read', async () => {
+  let picked = false;
+  const { app, handlers, log, last } = setup({
+    appRows: async () => {
+      if (!picked) throw new NoAccessError();
+      return [];
+    },
+    pick: async () => (picked = true),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(log.picks, ['tok']);
+  assert.equal(last().screen, 'main');
+});
+
+test('a person who cannot open the document gets the same access message as before', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => {
+      throw new NoAccessError();
+    },
+    pick: async () => true,
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), { screen: 'login', message: 'noAccess' });
+});
+
+test('a saved movement with a broken App sheet: the thumbs-up, then the message', async () => {
+  let broken = false;
+  const { handlers, order, last, log } = await signedInEditor({
+    appRows: async () => (broken ? brokenApp() : []),
+    write: async () => (broken = true),
+  });
+
+  await handlers.save(filled);
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes', 'mistakes']);
+  assert.deepEqual(last(), { screen: 'mistakes', mistakes: [FIRST_COLUMN_EMPTY] });
+});
+
+test('a saved change with a broken App sheet: the thumbs-up, then the message', async () => {
+  let broken = false;
+  const { handlers, order, log } = await signedInEditor({
+    ...editSheet(),
+    appRows: async () => (broken ? noAppSheet() : []),
+    write: async () => (broken = true),
+  });
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Aye' });
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes', 'mistakes']);
+});
+
+test('deleted movements with a broken App sheet: the thumbs-up, then the message', async () => {
+  let broken = false;
+  const { handlers, order, log, last } = await signedInEditor({
+    ...deleteSheet(),
+    appRows: async () => (broken ? noAppSheet() : []),
+    write: async () => (broken = true),
+  });
+
+  await handlers.delete([1]);
+
+  assert.equal(log.writes.length, 1);
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'movements go', 'mistakes']);
+  assert.equal(last().screen, 'mistakes');
+});
+
+test('an edited row changed by hand with a broken App sheet: the warning, then the message', async () => {
+  let rows = editRows;
+  let broken = false;
+  const { handlers, order, log, last } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+    appRows: async () => (broken ? noAppSheet() : []),
+  });
+  await handlers.edit(2);
+  rows = [mv('A', -1), mv('New', -9), mv('C', -3, OCTOBER_5 + 1)];
+  broken = true;
+
+  await handlers.save({ ...valuesOf(mv('B', -2)), concept: 'Bee' });
+
+  assert.equal(log.writes.length, 0);
+  // The form does not come back: the message takes the place of the main screen.
+  assert.deepEqual(order, [
+    'spinner',
+    'changed message',
+    'warning, the content stays hidden',
+    'mistakes',
+  ]);
+  assert.equal(last().screen, 'mistakes');
+});
+
+test('a delete stopped by a change by hand with a broken App sheet: the warning, then the message', async () => {
+  let rows = sheetRows;
+  let broken = false;
+  const { handlers, order, log } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+    appRows: async () => (broken ? noAppSheet() : []),
+  });
+  rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
+  broken = true;
+
+  await handlers.delete([2, 3]);
+
+  assert.equal(log.writes.length, 0);
+  assert.deepEqual(order, [
+    'spinner',
+    'changed message',
+    'warning, the content stays hidden',
+    'mistakes',
+  ]);
+});
+
+test('when the sheet cannot be read again at all after a save, the app does what it did before', async () => {
+  let saved = false;
+  const { handlers, order, last } = await signedInEditor({
+    appRows: async () => {
+      if (saved) throw new SheetsError('Could not reach Google.');
+      return [];
+    },
+    write: async () => (saved = true),
+  });
+
+  await handlers.save(filled);
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes']);
+  assert.equal(last().screen, 'main');
+});
+
+test('when the sheet cannot be read again at all after a delete, the goal shows without them', async () => {
+  let deleted = false;
+  const { handlers, order, last } = await signedInEditor({
+    ...deleteSheet(),
+    appRows: async () => {
+      if (deleted) throw new SheetsError('Could not reach Google.');
+      return [];
+    },
+    write: async () => (deleted = true),
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'movements go']);
+  assert.equal(last().screen, 'main');
+  // The movements of the same day show in the order of the sheet.
+  assert.deepEqual(shown(last()), ['B', 'C', 'D']);
 });

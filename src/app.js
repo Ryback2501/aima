@@ -6,9 +6,12 @@
 //   checking  - we ask the sheet if this person may see it. The first time, the Google file
 //               picker opens on top, so the person can give the sheet to aima.
 //   main      - the Total (the sum of its parts that are switched on) and the spending goal
+//   mistakes  - only a message about the mistakes in the App sheet, with logout and the
+//               language selector (issue #122)
 
 import { isConfigured } from './config.js';
-import { NoAccessError, SignInExpiredError } from './sheets.js';
+import { NoAccessError, NoSuchSheetError, SignInExpiredError } from './sheets.js';
+import { readAppSheet } from './app-sheet.js';
 import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
@@ -22,6 +25,16 @@ import {
   sameMovement,
   sameMovements,
 } from './movements.js';
+
+// The App sheet has mistakes (see app-sheet.js), or the document has no App sheet. The app
+// shows them instead of the main screen.
+class AppSheetMistakes extends Error {
+  constructor(mistakes) {
+    super('The App sheet has mistakes.');
+    this.name = 'AppSheetMistakes';
+    this.mistakes = mistakes;
+  }
+}
 
 // What was typed is always text: a concept that starts with "=" must not become a formula.
 const typed = (cell) => (typeof cell === 'string' && cell.startsWith('=') ? { text: cell } : cell);
@@ -177,9 +190,33 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.openForm(edit ? { ...form, edit } : form);
   }
 
-  // Reads the parts of the Total and the movements, both at the same time, and works out what
-  // the main screen shows.
+  // Reads the App sheet. Fails with AppSheetMistakes when it is not there or has mistakes; each
+  // mistake also says the name of the sheet, for its line in the message.
+  async function readSettings() {
+    const sheet = config.appSheet;
+    let rows;
+    try {
+      rows = await sheets.getSheetRows(sheet);
+    } catch (error) {
+      if (error instanceof NoSuchSheetError)
+        throw new AppSheetMistakes([{ kind: 'noAppSheet', sheet }]);
+      throw error;
+    }
+    const { mistakes } = readAppSheet(rows);
+    if (mistakes.length > 0)
+      throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
+  }
+
+  // Shows only the message about the mistakes of the App sheet.
+  function showMistakes(mistakes) {
+    view.render({ screen: 'mistakes', mistakes });
+  }
+
+  // Reads the App sheet first: it is the app's first read of the document. Then reads the parts
+  // of the Total and the movements, both at the same time, and works out what the main screen
+  // shows.
   async function load() {
+    await readSettings();
     const [amounts, movements] = await Promise.all([
       sheets.getCells(config.pills.map(({ cell }) => cell)),
       sheets.getValues(config.goal.movements, { raw: true }),
@@ -235,14 +272,28 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     return typeof result === 'string' ? result : 'saved';
   }
 
+  // Reads the sheet again after a save or a delete, and shows the main screen. Returns the
+  // mistakes of the App sheet when it has some (then the main screen is not shown), or null.
+  // When the sheet cannot be read at all, the main screen stays as it was.
+  function reload() {
+    return load().then(
+      () => {
+        showMain();
+        return null;
+      },
+      (error) => (error instanceof AppSheetMistakes ? error.mistakes : null),
+    );
+  }
+
   // The spinner of a save or a delete ends with the thumbs-up or the warning (done). The spinner
   // blocks taps until then, so if something breaks before done, end still shows the warning:
-  // the panel comes back and the app can be tapped again.
+  // the panel comes back and the app can be tapped again. With leave, the panel does not come
+  // back after the warning: the message about the App sheet takes its place.
   function workOf() {
     let ended = false;
-    const done = (ok) => {
+    const done = (ok, options) => {
       ended = true;
-      return view.workDone(ok);
+      return view.workDone(ok, options);
     };
     return { done, end: () => (ended ? undefined : done(false)) };
   }
@@ -254,7 +305,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // read again, the same happens: the movement is saved, and saying otherwise would make the
   // person save it twice. When it is not saved, or the sheet was changed by hand (then the main
   // screen shows the sheet as it is now), the form gets its message, and the warning shows
-  // before the form comes back with it.
+  // before the form comes back with it. When the App sheet has a mistake at the read after the
+  // save, its message shows after the thumbs-up or the warning, and the form does not come back.
   let saving = false;
   async function saveMovement(values) {
     if (saving) return;
@@ -274,13 +326,20 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       else result = (await write(values)) ? 'saved' : 'failed';
       if (result === 'saved') {
         editing = null;
-        await load().then(showMain, () => {});
+        const mistakes = await reload();
         await work.done(true);
-        view.closeForm();
+        if (mistakes) {
+          // The form closes first: its closing must not run on the message screen.
+          await view.closeForm();
+          showMistakes(mistakes);
+        } else {
+          view.closeForm();
+        }
       } else if (result === 'changed') {
         view.saveChanged();
-        await load().then(showMain, () => {});
-        await work.done(false);
+        const mistakes = await reload();
+        await work.done(false, { leave: Boolean(mistakes) });
+        if (mistakes) showMistakes(mistakes);
       } else {
         view.saveFailed();
         await work.done(false);
@@ -297,7 +356,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // changed by hand: nothing is deleted, and the screen shows the sheet as it is now.
   // Otherwise every movement below moves up (see movements.js), in one write. While it runs,
   // the spinner shows and another Yes does nothing. Then the thumbs-up shows before the
-  // movements go, or the warning before the question comes back with its message.
+  // movements go, or the warning before the question comes back with its message. When the App
+  // sheet has a mistake at the read after it, its message shows after the thumbs-up or the
+  // warning.
   let deleting = false;
   async function deleteMovements(indexes) {
     if (deleting) return;
@@ -311,18 +372,24 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         await work.done(false);
       } else if (fresh === 'changed') {
         view.deleteChanged();
-        await load().then(showMain, () => {});
-        await work.done(false);
+        const mistakes = await reload();
+        await work.done(false, { leave: Boolean(mistakes) });
+        if (mistakes) showMistakes(mistakes);
       } else {
         // The sheet is read again while the view takes the deleted rows away. If it cannot be
         // read, the goal is worked out from the rows read just before, without the deleted ones.
         const reloaded = load().then(
-          () => true,
-          () => false,
+          () => 'read',
+          (error) => (error instanceof AppSheetMistakes ? error : 'failed'),
         );
         await work.done(true);
         await view.deleted();
-        if (!(await reloaded)) {
+        const result = await reloaded;
+        if (result instanceof AppSheetMistakes) {
+          showMistakes(result.mistakes);
+          return;
+        }
+        if (result === 'failed') {
           const gone = new Set(indexes);
           showGoalOf(fresh.filter((row, index) => !gone.has(index)));
         }
@@ -402,7 +469,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (canAdd) getLists().catch(() => {});
       showMain();
     } catch (error) {
-      if (error instanceof NoAccessError && !picked) {
+      if (error instanceof AppSheetMistakes) {
+        // The person may open the document: they stay signed in, and see what to fix.
+        showMistakes(error.mistakes);
+      } else if (error instanceof NoAccessError && !picked) {
         await pickSheet(token, { fresh });
       } else if (error instanceof NoAccessError) {
         // The person picked the sheet, but Google still says no. We sign them out, but we do

@@ -113,8 +113,9 @@ export function createBusy(panel, { document, window, createIcon, t }) {
 
   // The spinner (after at least BUSY.minimum) makes way for the thumbs-up (ok) or the
   // warning, which stays BUSY.iconTime and fades out. After the warning the content fades back
-  // in. After the thumbs-up it stays hidden: the panel closes.
-  async function end(ok) {
+  // in, unless leave is set: then something else takes the place of the panel (issue #122).
+  // After the thumbs-up it stays hidden: the panel closes.
+  async function end(ok, { leave = false } = {}) {
     const shown = window.performance.now() - started;
     if (shown < BUSY.minimum) await wait(BUSY.minimum - shown);
     layer.dataset.show = ok ? 'done' : 'failed';
@@ -124,7 +125,7 @@ export function createBusy(panel, { document, window, createIcon, t }) {
     await wait(BUSY.iconTime);
     delete layer.dataset.show;
     await wait(BUSY.fade);
-    if (!ok) {
+    if (!ok && !leave) {
       panel.classList.remove('working');
       await wait(BUSY.fade);
     }

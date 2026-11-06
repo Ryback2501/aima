@@ -33,6 +33,8 @@ const FAKE_DROPDOWNS = {
   },
   [FAKE_CATEGORY_LIST]: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=Lists!A1:A5' }] },
 };
+// The App sheet as the app asks for it: the whole sheet, by its name.
+export const FAKE_APP_RANGE = "'App'";
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
@@ -64,6 +66,8 @@ export async function setUp(
     // What Google answers to each save, in order: 200, another status, or 'offline'. The
     // last one is used for the saves after it.
     saves = [200],
+    // The rows of the App sheet (issue #122), or null when the document has no App sheet.
+    appSheet = [],
   } = {},
 ) {
   const sheetRequests = [];
@@ -73,6 +77,9 @@ export async function setUp(
   sheetRequests.saves = [];
   let rows = rowCount;
   let picked = !needsPick;
+  let app = appSheet;
+  // Changes the App sheet while the app is open, as a person would by hand (null: no App sheet).
+  sheetRequests.setAppSheet = (changed) => (app = changed);
 
   await page.exposeFunction('__sheetPicked', () => (picked = true));
 
@@ -158,7 +165,13 @@ export async function setUp(
     // The goal reads the whole columns, with the headers in the first row; the save and the
     // delete read from the first movement row.
     const range = decodeURIComponent(url.pathname.split('/values/')[1] ?? '');
+    // The App sheet: Google cannot find the range when there is no such sheet.
+    if (range === FAKE_APP_RANGE && app === null && sheetStatus === 200) {
+      await route.fulfill({ status: 400, json: { error: { code: 400 } } });
+      return;
+    }
     let answer = { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    if (range === FAKE_APP_RANGE) answer = { values: app };
     if (range === FAKE_MOVEMENTS) answer = { values: [FAKE_HEADERS, ...movements] };
     if (range === FAKE_SAVE_RANGE) answer = { values: movements };
     const body = sheetStatus === 200 ? answer : { error: {} };

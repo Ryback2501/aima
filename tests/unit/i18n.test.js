@@ -10,6 +10,7 @@ import {
   createMonthNamer,
   createDayNamer,
   createDeleteQuestion,
+  createMistakeWriter,
   STRINGS,
 } from '../../src/i18n.js';
 
@@ -168,4 +169,44 @@ test('the spinner, the thumbs-up and the warning have their texts in every langu
       language,
     );
   }
+});
+
+// The lines of the message when the App sheet has a mistake (issue #122). Each line says where
+// and what.
+const MISTAKES = [
+  { kind: 'noAppSheet', sheet: 'App' },
+  { kind: 'firstColumnEmpty', sheet: 'App', table: 'CATEGORIES', row: 3 },
+  { kind: 'tableTwice', sheet: 'App', table: 'CATEGORIES', column: 'F' },
+  { kind: 'notInTable', sheet: 'App', cell: 'A3' },
+];
+
+test('the lines about mistakes in the App sheet are written in English', () => {
+  assert.deepEqual(MISTAKES.map(createMistakeWriter('en')), [
+    'The document has no sheet called App.',
+    'App, CATEGORIES, row 3: the first column is empty.',
+    'App, CATEGORIES, column F: the table is there twice.',
+    'App, A3: this cell is not in any table.',
+  ]);
+});
+
+test('the lines about mistakes in the App sheet are written in Spanish', () => {
+  assert.deepEqual(MISTAKES.map(createMistakeWriter('es')), [
+    'El documento no tiene ninguna hoja llamada App.',
+    'App, CATEGORIES, fila 3: la primera columna está vacía.',
+    'App, CATEGORIES, columna F: la tabla está dos veces.',
+    'App, A3: esta celda no está en ninguna tabla.',
+  ]);
+});
+
+test('the lines about mistakes in the App sheet are written in Russian', () => {
+  assert.deepEqual(MISTAKES.map(createMistakeWriter('ru')), [
+    'В документе нет листа с названием App.',
+    'App, CATEGORIES, строка 3: первый столбец пуст.',
+    'App, CATEGORIES, столбец F: таблица указана дважды.',
+    'App, A3: эта ячейка не входит ни в одну таблицу.',
+  ]);
+});
+
+test('an unknown language writes the lines in English', () => {
+  assert.equal(createMistakeWriter('fr')(MISTAKES[0]), 'The document has no sheet called App.');
 });

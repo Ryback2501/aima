@@ -832,6 +832,11 @@ export function createView(document, language) {
     shownKind = state.screen;
 
     if (mistakes) {
+      // After a delete, taps wait for the months to show again (see deleted). They never show
+      // here, so the wait ends now.
+      keepMonths = false;
+      monthsShown?.();
+      monthsShown = null;
       mistakeLines.replaceChildren(
         ...state.mistakes.map((mistake) => {
           const line = document.createElement('li');

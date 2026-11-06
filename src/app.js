@@ -328,8 +328,13 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         editing = null;
         const mistakes = await reload();
         await work.done(true);
-        view.closeForm();
-        if (mistakes) showMistakes(mistakes);
+        if (mistakes) {
+          // The form closes first: its closing must not run on the message screen.
+          await view.closeForm();
+          showMistakes(mistakes);
+        } else {
+          view.closeForm();
+        }
       } else if (result === 'changed') {
         view.saveChanged();
         const mistakes = await reload();

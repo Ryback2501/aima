@@ -35,6 +35,9 @@ export class SheetsError extends Error {
   }
 }
 
+// The document has no sheet with this name. Not used yet.
+export class NoSuchSheetError extends SheetsError {}
+
 export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis.fetch }) {
   const sheetUrl = `${API}/${encodeURIComponent(spreadsheetId)}`;
 

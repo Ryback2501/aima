@@ -214,3 +214,33 @@ test('the mistakes of one row come in the order of its columns', () => {
     { kind: 'unknownPartner', table: 'SOURCES', row: 4, partner: 'Bank' },
   ]);
 });
+
+test('a row paired with itself does not make a later row a "Paired with twice" mistake', () => {
+  assert.deepEqual(mistakesOf(['Cash', 'cash', 'Cash'], ['Polina', 'bank', 'Cash']), [
+    { kind: 'pairedWithItself', table: 'SOURCES', row: 3, source: 'Cash' },
+  ]);
+});
+
+test('the pair of a source there twice does not count, so it adds no other line', () => {
+  const twice = { kind: 'sourceTwice', table: 'SOURCES', row: 4, source: 'Cash' };
+  // Polina may name Provisioned: the row of the second Cash does not count.
+  assert.deepEqual(
+    mistakesOf(
+      ['Cash', 'cash'],
+      ['Cash', 'cash', 'Provisioned'],
+      ['Provisioned', 'bank'],
+      ['Polina', 'bank', 'Provisioned'],
+    ),
+    [twice],
+  );
+  // Provisioned may name Deprovisioned: it goes below no source.
+  assert.deepEqual(
+    mistakesOf(
+      ['Cash', 'cash'],
+      ['Cash', 'cash', 'Provisioned'],
+      ['Provisioned', 'bank', 'Deprovisioned'],
+      ['Deprovisioned', 'bank'],
+    ),
+    [twice],
+  );
+});

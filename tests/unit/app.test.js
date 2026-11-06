@@ -1686,3 +1686,54 @@ test('when the sheet cannot be read again at all after a delete, the goal shows 
   // The movements of the same day show in the order of the sheet.
   assert.deepEqual(shown(last()), ['B', 'C', 'D']);
 });
+
+// Issue #123: the icon and the color of each movement come from the CATEGORIES table.
+const movementsOf = (screen) =>
+  screen.goal.months.flatMap(({ days }) => days.flatMap(({ movements }) => movements));
+
+test('each movement on the main screen gets its icon and color from the CATEGORIES table', async () => {
+  const { app, handlers, last } = setup({
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Cash', OCTOBER_5, 'Toys', 'Ball', -3],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(
+    movementsOf(last()).map(({ description, icon, color }) => [description, icon, color]),
+    [
+      ['Shop', 'cart', '#2b8a3e'],
+      // Toys is not in the table: the grey money bag.
+      ['Ball', 'sackEuro', '#4b5563'],
+    ],
+  );
+});
+
+test('an App sheet without the CATEGORIES table shows the message that it is missing', async () => {
+  const { app, handlers, last } = setup({ appRows: async () => [['SOURCES']] });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'tableMissing', table: 'CATEGORIES', sheet: 'App' }],
+  });
+});
+
+test('a mistake in the CATEGORIES table shows its line', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => [['CATEGORIES'], [], ['Food', '', 'carr', '#2b8a3e']],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'unknownIcon', table: 'CATEGORIES', row: 3, icon: 'carr', sheet: 'App' }],
+  });
+});

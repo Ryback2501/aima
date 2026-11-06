@@ -181,3 +181,58 @@ test('columns after Z are named like the sheet names them: AA, AB, …', () => {
     { kind: 'tableTwice', table: 'CELLS', column: 'AB' },
   ]);
 });
+
+// Each table is read by its own reader (issue #123): it turns the items into settings, and says
+// what is wrong in them, each with its row.
+test('a reader gets its table, and its settings come back under the title', () => {
+  const seen = [];
+  const { settings, mistakes } = readAppSheet([['CATEGORIES'], [], ['Car', '', 'car']], {
+    CATEGORIES: (table) => {
+      seen.push(table);
+      return { value: 'the categories', mistakes: [] };
+    },
+  });
+
+  assert.deepEqual(seen, [{ column: 1, rows: [{ row: 3, cells: ['Car', '', 'car'] }] }]);
+  assert.deepEqual(settings, { CATEGORIES: 'the categories' });
+  assert.deepEqual(mistakes, []);
+});
+
+test('without readers, there are no settings', () => {
+  assert.deepEqual(readAppSheet([['CATEGORIES']]).settings, {});
+});
+
+test('a table with a reader that is not there is a mistake, after all the others', () => {
+  const reader = () => ({ value: 'never', mistakes: [] });
+
+  const { settings, mistakes } = readAppSheet([['SOURCES'], [], ['', 'x'], ['note']], {
+    CATEGORIES: reader,
+  });
+
+  assert.deepEqual(settings, {});
+  assert.deepEqual(mistakes, [
+    { kind: 'firstColumnEmpty', table: 'SOURCES', row: 3 },
+    { kind: 'tableMissing', table: 'CATEGORIES' },
+  ]);
+});
+
+test("a reader's mistakes go with the others, from the top of the sheet down", () => {
+  const reader = () => ({
+    value: [],
+    mistakes: [
+      { kind: 'iconMissing', table: 'CATEGORIES', row: 3 },
+      { kind: 'colorMissing', table: 'CATEGORIES', row: 5 },
+    ],
+  });
+
+  const { mistakes } = readAppSheet(
+    [['', 'CATEGORIES'], [], ['', 'Car'], ['note'], ['', 'Yoshi']],
+    { CATEGORIES: reader },
+  );
+
+  assert.deepEqual(mistakes, [
+    { kind: 'iconMissing', table: 'CATEGORIES', row: 3 },
+    { kind: 'notInTable', cell: 'A4' },
+    { kind: 'colorMissing', table: 'CATEGORIES', row: 5 },
+  ]);
+});

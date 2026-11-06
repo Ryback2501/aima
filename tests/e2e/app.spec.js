@@ -108,7 +108,9 @@ test('a card without corner icon settings has no corner icon area, and icons can
   await expect(icon.locator('path')).toHaveAttribute('d', ICONS.back.path);
 });
 
-test('no shadow in the app shows above or to the left of its item', async ({ page }) => {
+test('no shadow in the app shows above or to the left of its item @both-screens', async ({
+  page,
+}) => {
   const checked = [];
   const check = async (locator) => {
     const shadow = await shadowOf(locator);
@@ -160,7 +162,7 @@ test.describe('loading', () => {
     await expect(page.locator('main')).toBeVisible({ timeout: 6000 });
   });
 
-  test('the app appears with its final look', async ({ page }) => {
+  test('the app appears with its final look @both-screens', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
 
@@ -172,7 +174,7 @@ test.describe('loading', () => {
   });
 });
 
-test('each card follows its settings', async ({ page }) => {
+test('each card follows its settings @both-screens', async ({ page }) => {
   await setUp(page);
   await page.goto('./');
   await expectCardFollowsSettings(signInButton(page), 'signIn');
@@ -186,7 +188,7 @@ test('each card follows its settings', async ({ page }) => {
 });
 
 test.describe('login page', () => {
-  test('shows the logo, the name, what aima does and the Google button, and nothing else', async ({
+  test('shows the logo, the name, what aima does and the Google button, and nothing else @both-screens', async ({
     page,
   }) => {
     await setUp(page);
@@ -213,7 +215,9 @@ test.describe('login page', () => {
     await expect(page.locator('#login-message')).toBeHidden();
   });
 
-  test('the Google button looks like the main label, in Google colors', async ({ page }) => {
+  test('the Google button looks like the main label, in Google colors @both-screens', async ({
+    page,
+  }) => {
     await setUp(page);
     await page.goto('./');
 
@@ -253,7 +257,7 @@ test.describe('login page', () => {
     expect(y).toBeGreaterThan(0);
   });
 
-  test('shows a small copyright line at the bottom, with links to about, terms and privacy', async ({
+  test('shows a small copyright line at the bottom, with links to about, terms and privacy @both-screens', async ({
     page,
   }) => {
     await setUp(page);
@@ -352,7 +356,7 @@ test.describe('sign-in', () => {
     expect(log.requests[0].scope).toContain('drive.file');
   });
 
-  test('the Log out button is a small card with only the exit icon, like the back button', async ({
+  test('the Log out button is a small card with only the exit icon, like the back button @both-screens', async ({
     page,
   }) => {
     await setUp(page);
@@ -391,7 +395,7 @@ test.describe('sign-in', () => {
     await expect(signInButton(page)).toBeVisible();
   });
 
-  test('the text sits in a rounded label with a star badge', async ({ page }) => {
+  test('the text sits in a rounded label with a star badge @both-screens', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
 
@@ -666,7 +670,7 @@ test.describe('language selector', () => {
     await expect.poll(() => locked(locator.page())).toBe(false);
   }
 
-  test('Log out and the language selector sit side by side, in the middle, at the bottom', async ({
+  test('Log out and the language selector sit side by side, in the middle, at the bottom @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -684,7 +688,7 @@ test.describe('language selector', () => {
     await expect(flag(page, 'en')).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('a tap opens it upward: its bottom stays, and the flags are UK, Russia, Spain', async ({
+  test('a tap opens it upward: its bottom stays, and the flags are UK, Russia, Spain @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -705,7 +709,7 @@ test.describe('language selector', () => {
     }
   });
 
-  test('picking a flag closes it and shows the app in that language, also after a reload', async ({
+  test('picking a flag closes it and shows the app in that language, also after a reload @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -745,7 +749,9 @@ test.describe('language selector', () => {
     await expect(page.locator('.month-head').first()).toHaveAttribute('aria-label', /^Октябрь: /);
   });
 
-  test('a tap outside, or Esc, closes it without changing anything', async ({ page }) => {
+  test('a tap outside, or Esc, closes it without changing anything @both-screens', async ({
+    page,
+  }) => {
     await openMain(page);
     const closed = await box(picker(page));
 
@@ -778,7 +784,7 @@ test.describe('language selector', () => {
     await expect(flag(page, 'en')).toHaveAttribute('aria-current', 'true');
   });
 
-  test('closed, the other flags are hidden only by the border that crops them, never faded', async ({
+  test('closed, the other flags are hidden only by the border that crops them, never faded @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -800,7 +806,7 @@ test.describe('language selector', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('opening and closing move everything at the same time; the bottom never moves', async ({
+    test('opening and closing move everything at the same time; the bottom never moves @both-screens', async ({
       page,
     }) => {
       // Russian is in the middle, so the column of flags moves both when it opens and when
@@ -842,7 +848,7 @@ test.describe('language selector', () => {
 });
 
 test.describe('phone app', () => {
-  test('pinch zoom and double-tap zoom are turned off', async ({ page }) => {
+  test('pinch zoom and double-tap zoom are turned off @both-screens', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
 
@@ -861,7 +867,7 @@ test.describe('phone app', () => {
     expect(zoomable).toEqual([]);
   });
 
-  test('pulling down never moves or reloads the whole app', async ({ page }) => {
+  test('pulling down never moves or reloads the whole app @both-screens', async ({ page }) => {
     await setUp(page);
     await page.goto('./');
 
@@ -972,7 +978,7 @@ test.describe('spending goal', () => {
     await expect(page.locator('#total-value')).toHaveText(FAKE_TOTAL);
   }
 
-  test('a card with a flag below the Total shows the spending', async ({ page }) => {
+  test('a card with a flag below the Total shows the spending @both-screens', async ({ page }) => {
     await openMain(page, movements);
 
     const goal = page.locator('#goal-value');
@@ -1108,7 +1114,7 @@ test.describe('open a card full screen', () => {
   }
 
   for (const name of ['total', 'goal']) {
-    test(`tapping the ${name} card opens it full screen, and back puts it back`, async ({
+    test(`tapping the ${name} card opens it full screen, and back puts it back @both-screens`, async ({
       page,
     }) => {
       await openMain(page);
@@ -1176,7 +1182,7 @@ test.describe('open a card full screen', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('the card grows while taps are ignored, then the back button rises in', async ({
+    test('the card grows while taps are ignored, then the back button rises in @both-screens', async ({
       page,
     }) => {
       await openMain(page);
@@ -1224,7 +1230,7 @@ test.describe('the open Total card', () => {
     await expect.poll(() => locked(page)).toBe(false);
   }
 
-  test('shows the Total at the top with its caption, and the four parts as pills', async ({
+  test('shows the Total at the top with its caption, and the four parts as pills @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -1269,7 +1275,7 @@ test.describe('the open Total card', () => {
     expect(Math.abs(after.y - closed.y)).toBeLessThan(1);
   });
 
-  test('the pills have the same space above (to the number) and below (to the back button)', async ({
+  test('the pills have the same space above (to the number) and below (to the back button) @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -1306,7 +1312,9 @@ test.describe('the open Total card', () => {
     expect(await colorOf('#total-value')).toBe(normal);
   });
 
-  test('each pill follows its settings, and its value part has a fixed width', async ({ page }) => {
+  test('each pill follows its settings, and its value part has a fixed width @both-screens', async ({
+    page,
+  }) => {
     await openMain(page);
     await openTotal(page);
 
@@ -1330,7 +1338,7 @@ test.describe('the open Total card', () => {
     }
   });
 
-  test('each pill shows its icon left of its name, in the same color as the name', async ({
+  test('each pill shows its icon left of its name, in the same color as the name @both-screens', async ({
     page,
   }) => {
     await openMain(page);
@@ -1400,7 +1408,7 @@ test.describe('the open Total card', () => {
         return `${css.animationName} ${css.animationDelay}`;
       });
 
-    test('the number glides up while the card grows', async ({ page }) => {
+    test('the number glides up while the card grows @both-screens', async ({ page }) => {
       await openMain(page);
       const closed = await page.locator('#total-value').boundingBox();
 
@@ -1438,7 +1446,7 @@ test.describe('the open Total card', () => {
       await expect.poll(() => locked(page)).toBe(false);
     });
 
-    test('closing plays it all backwards and in reverse order, then the card shrinks', async ({
+    test('closing plays it all backwards and in reverse order, then the card shrinks @both-screens', async ({
       page,
     }) => {
       await openMain(page);
@@ -1544,7 +1552,9 @@ test.describe('the open goal card', () => {
     await expect.poll(() => locked(page)).toBe(false);
   }
 
-  test('shows "Goal 4K" above the number and the three months below it', async ({ page }) => {
+  test('shows "Goal 4K" above the number and the three months below it @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
 
     const title = goalCard(page).locator('.total-caption');
@@ -1570,7 +1580,7 @@ test.describe('the open goal card', () => {
     }
   });
 
-  test("a month's shadow ends where the next month starts, and is not cut on the right", async ({
+  test("a month's shadow ends where the next month starts, and is not cut on the right @both-screens", async ({
     page,
   }) => {
     await openGoal(page);
@@ -1735,7 +1745,7 @@ test.describe('the open goal card', () => {
     ).toHaveCount(0);
   });
 
-  test('each movement shows where its money came from, with the same icon as the Total', async ({
+  test('each movement shows where its money came from, with the same icon as the Total @both-screens', async ({
     page,
   }) => {
     await openGoal(page, [
@@ -1781,7 +1791,7 @@ test.describe('the open goal card', () => {
     expect(row.x + row.width - (icon.x + icon.width)).toBeLessThan(20);
   });
 
-  test('with "reduce motion", a long description stays still on one line and ends with "…"', async ({
+  test('with "reduce motion", a long description stays still on one line and ends with "…" @both-screens', async ({
     page,
   }) => {
     await openGoal(page, [['Cash', sheetDay('2026-10-04'), 'General', LONG, -4]]);
@@ -1812,7 +1822,7 @@ test.describe('the open goal card', () => {
         ),
       );
 
-  test('the movements of an open month are grouped by day, with the date above each day', async ({
+  test('the movements of an open month are grouped by day, with the date above each day @both-screens', async ({
     page,
   }) => {
     await openGoal(page, [
@@ -1870,7 +1880,7 @@ test.describe('the open goal card', () => {
     });
   });
 
-  test('while the list scrolls, the date stays at the top until the next date covers it', async ({
+  test('while the list scrolls, the date stays at the top until the next date covers it @both-screens', async ({
     page,
   }) => {
     // Three days in November with ten movements each.
@@ -1922,7 +1932,7 @@ test.describe('the open goal card', () => {
     expect(later.seen).toBe('Monday, November 2');
   });
 
-  test('with many movements the open month fills the room, and only its list scrolls', async ({
+  test('with many movements the open month fills the room, and only its list scrolls @both-screens', async ({
     page,
   }) => {
     const many = Array.from({ length: 40 }, (_, index) => [
@@ -1972,7 +1982,7 @@ test.describe('the open goal card', () => {
   });
 
   for (const count of [3, 6, 8]) {
-    test(`a fade shows exactly when a closed month is cut by a limit (${count} movements)`, async ({
+    test(`a fade shows exactly when a closed month is cut by a limit (${count} movements) @both-screens`, async ({
       page,
     }) => {
       const some = Array.from({ length: count }, (_, index) => [
@@ -2035,7 +2045,7 @@ test.describe('the open goal card', () => {
     return look;
   };
 
-  test('in a short window with no month open, the area scrolls like a normal list', async ({
+  test('in a short window with no month open, the area scrolls like a normal list @both-screens', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 412, height: 380 });
@@ -2068,7 +2078,7 @@ test.describe('the open goal card', () => {
     await expect(() => fadesMatchCuts(page)).toPass();
   });
 
-  test('when the window gets smaller with a month open, the months are placed again', async ({
+  test('when the window gets smaller with a month open, the months are placed again @both-screens', async ({
     page,
   }) => {
     const many = Array.from({ length: 40 }, (_, index) => [
@@ -2146,7 +2156,7 @@ test.describe('the open goal card', () => {
       await expect(page.locator('#backdrop')).toBeHidden();
     });
 
-    test('while a month opens, the area edges stay still and the fades follow the months', async ({
+    test('while a month opens, the area edges stay still and the fades follow the months @both-screens', async ({
       page,
     }) => {
       const some = Array.from({ length: 7 }, (_, index) => [
@@ -2221,7 +2231,7 @@ test.describe('the open goal card', () => {
       await expect.poll(() => locked(page)).toBe(false);
     });
 
-    test('opening a month moves smoothly and taps wait', async ({ page }) => {
+    test('opening a month moves smoothly and taps wait @both-screens', async ({ page }) => {
       await setUp(page, { movements });
       await page.goto('./');
       await signInButton(page).click();
@@ -2240,7 +2250,7 @@ test.describe('the open goal card', () => {
       expect((await month(page, 0).boundingBox()).height).toBeGreaterThan(closedHeight);
     });
 
-    test('a description that does not fit moves left without end, with a dot between the copies', async ({
+    test('a description that does not fit moves left without end, with a dot between the copies @both-screens', async ({
       page,
     }) => {
       await setUp(page, {

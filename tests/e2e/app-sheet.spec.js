@@ -303,6 +303,21 @@ test.describe('after a save, a change or a delete', () => {
     expect(movements.some((row) => row[3] === 'Cinema')).toBe(false);
   });
 
+  test('after a delete with a broken App sheet, the message screen can still be tapped', async ({
+    page,
+  }) => {
+    const { requests } = await openGoal(page);
+    await selectMovement(page, 1);
+    await tapAndWait(page, remove(page));
+    requests.setAppSheet(null);
+    await yes(page).click();
+    await expect(lines(page)).toHaveText([NO_APP_SHEET], { timeout: 5000 });
+
+    await expect.poll(() => locked(page)).toBe(false);
+    await logOut(page).click();
+    await expect(page.locator('#login')).toBeVisible();
+  });
+
   test('a change stopped by a change by hand, with a broken App sheet: the warning, then the message', async ({
     page,
   }) => {

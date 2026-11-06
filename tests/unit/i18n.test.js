@@ -264,3 +264,68 @@ test('the lines about the CATEGORIES table are written in Russian', () => {
     'App, CATEGORIES, строка 7: категория General с "compra" указана дважды.',
   ]);
 });
+
+// The lines about the SOURCES table (issue #124).
+const SOURCE_MISTAKES = [
+  { kind: 'tableMissing', sheet: 'App', table: 'SOURCES' },
+  { kind: 'sourceTwice', sheet: 'App', table: 'SOURCES', row: 5, source: 'Cash' },
+  { kind: 'badSourceIcon', sheet: 'App', table: 'SOURCES', row: 5, icon: 'wallet' },
+  { kind: 'unknownPartner', sheet: 'App', table: 'SOURCES', row: 5, partner: 'Bank' },
+  { kind: 'pairedWithItself', sheet: 'App', table: 'SOURCES', row: 5, source: 'Cash' },
+  { kind: 'partnerTwice', sheet: 'App', table: 'SOURCES', row: 7, partner: 'Provisioned' },
+  {
+    kind: 'pairedBothWays',
+    sheet: 'App',
+    table: 'SOURCES',
+    row: 13,
+    first: 'Cash',
+    second: 'Provisioned',
+  },
+  {
+    kind: 'pairedChain',
+    sheet: 'App',
+    table: 'SOURCES',
+    row: 13,
+    source: 'Provisioned',
+    above: 'Cash',
+  },
+];
+
+test('the lines about the SOURCES table are written in English', () => {
+  assert.deepEqual(SOURCE_MISTAKES.map(createMistakeWriter('en')), [
+    'App, SOURCES: the table is missing.',
+    'App, SOURCES, row 5: the source Cash is there twice.',
+    'App, SOURCES, row 5: "wallet" is not a source icon. Write bank, card or cash, or leave it empty.',
+    'App, SOURCES, row 5: the source "Bank" in Paired with is not in the table.',
+    'App, SOURCES, row 5: Cash cannot be paired with itself.',
+    'App, SOURCES, row 7: Provisioned is in Paired with twice.',
+    'App, SOURCES, row 13: Cash and Provisioned are paired with each other.',
+    'App, SOURCES, row 13: Provisioned goes below Cash, so it cannot be paired with another source.',
+  ]);
+});
+
+test('the lines about the SOURCES table are written in Spanish', () => {
+  assert.deepEqual(SOURCE_MISTAKES.map(createMistakeWriter('es')), [
+    'App, SOURCES: falta la tabla.',
+    'App, SOURCES, fila 5: el origen Cash está dos veces.',
+    'App, SOURCES, fila 5: "wallet" no es un icono de origen. Escribe bank, card o cash, o déjalo vacío.',
+    'App, SOURCES, fila 5: el origen "Bank" de Paired with no está en la tabla.',
+    'App, SOURCES, fila 5: Cash no puede ir emparejado consigo mismo.',
+    'App, SOURCES, fila 7: Provisioned está dos veces en Paired with.',
+    'App, SOURCES, fila 13: Cash y Provisioned están emparejados entre sí.',
+    'App, SOURCES, fila 13: Provisioned va debajo de Cash, así que no puede ir emparejado con otro origen.',
+  ]);
+});
+
+test('the lines about the SOURCES table are written in Russian', () => {
+  assert.deepEqual(SOURCE_MISTAKES.map(createMistakeWriter('ru')), [
+    'App, SOURCES: таблица отсутствует.',
+    'App, SOURCES, строка 5: источник Cash указан дважды.',
+    'App, SOURCES, строка 5: "wallet" — это не значок источника. Укажите bank, card или cash или оставьте пустым.',
+    'App, SOURCES, строка 5: источника "Bank" из Paired with нет в таблице.',
+    'App, SOURCES, строка 5: Cash нельзя связать с самим собой.',
+    'App, SOURCES, строка 7: Provisioned указан в Paired with дважды.',
+    'App, SOURCES, строка 13: Cash и Provisioned связаны друг с другом.',
+    'App, SOURCES, строка 13: Provisioned идёт под Cash, поэтому его нельзя связать с другим источником.',
+  ]);
+});

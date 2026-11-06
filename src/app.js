@@ -74,8 +74,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // The rules of the CATEGORIES table of the App sheet: the icon and the color of each movement.
   let categories = [];
   // The goal's settings, with the icons, the order and the pairs of the sources from the SOURCES
-  // table of the App sheet (see sources.js).
-  let goalSettings = config.goal;
+  // table of the App sheet (see sources.js). Until the App sheet is read: no sources.
+  let goalSettings = { ...config.goal, sources: {}, sourceOrder: [], sourcePairs: {} };
   // The movement the form is changing ({ index, row }: its place in movementRows, and the row
   // as it was read), or null when the form adds a new movement.
   let editing = null;

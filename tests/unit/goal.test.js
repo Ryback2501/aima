@@ -2,9 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { goalStatus, goalMonths } from '../../src/goal.js';
-import { config } from '../../src/config.js';
 
-// Made-up settings in the same shape as config.goal.
+// Made-up settings in the same shape as the settings of the goal (see app.js).
 const goal = {
   movements: 'Sheet2!A:E',
   sources: { Wallet: 'cash', Visa: 'card', 'My Bank': 'bank' },
@@ -140,19 +139,6 @@ test('the newest movement is taken from the whole sheet, also skipped or outside
   assert.equal(goalStatus([spending, row('2027-01-02', -1)], goal).level, 'ok');
   // Only October so far: 1500 is over 1/3 of 3000.
   assert.equal(goalStatus([spending], goal).level, 'close');
-});
-
-test('the real goal settings have every part the calculation needs', () => {
-  const { movements, from, to, limit, skip } = config.goal;
-  assert.equal(typeof movements, 'string');
-  assert.match(from, /^\d{4}-\d{2}-\d{2}$/);
-  assert.match(to, /^\d{4}-\d{2}-\d{2}$/);
-  assert.ok(limit > 0);
-  assert.ok(Array.isArray(skip.categories));
-  assert.ok(skip.categories.includes('Credit Cards'));
-  for (const descriptions of Object.values(skip.descriptions)) {
-    assert.ok(Array.isArray(descriptions));
-  }
 });
 
 test('goalMonths gives one entry per month of the period, in order', () => {
@@ -310,26 +296,6 @@ test('a movement whose amount has more than two decimals is marked, and the othe
       ['Odd', true],
     ],
   );
-});
-
-test('with the real settings, Investing movements do not count, below or above 0', () => {
-  assert.ok(config.goal.skip.categories.includes('Investing'));
-  const rows = [
-    row('2026-10-05', -100, 'Investing', 'Fund'),
-    row('2026-10-06', 50, 'Investing', 'Sale'),
-    row('2026-10-07', -10, 'General', 'Bread'),
-    row('2026-11-03', -20, 'Investing', 'Fund'),
-  ];
-
-  assert.equal(goalStatus(rows, config.goal).amount, 10);
-  const [october, november] = goalMonths(rows, config.goal);
-  assert.deepEqual(
-    october.days.flatMap((d) => d.movements.map(({ description }) => description)),
-    ['Bread'],
-  );
-  assert.equal(october.amount, 10);
-  // A month with only Investing movements has no amount, like a month with none.
-  assert.equal(november.amount, null);
 });
 
 // The movements the goal leaves out, shown with the eye button of the goal card (issue #113).

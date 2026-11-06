@@ -14,7 +14,7 @@ test('the five tables of this work have these titles', () => {
 });
 
 test('an empty App sheet has no tables and no mistakes', () => {
-  assert.deepEqual(readAppSheet([]), { tables: {}, mistakes: [] });
+  assert.deepEqual(readAppSheet([]), { tables: {}, settings: {}, mistakes: [] });
 });
 
 test('each table starts at its title and covers the columns up to the next title', () => {

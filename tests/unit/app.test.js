@@ -38,6 +38,13 @@ const config = {
   appSheet: 'App',
 };
 
+// An App sheet with its CATEGORIES table (issue #123): from then on the table is required.
+const CATEGORIES_SHEET = [
+  ['CATEGORIES'],
+  ['Category', 'Description has', 'Icon', 'Color'],
+  ['Food', '', 'cart', '#2b8a3e'],
+];
+
 // 5 October 2026 as the sheet sends it: days since 30 December 1899.
 const OCTOBER_5 = 46300;
 
@@ -73,8 +80,8 @@ function setup({
   sheet = async () => ({ sheetId: 7, rowCount: 100 }),
   // What happens when rows are written.
   write = async () => {},
-  // The rows of the App sheet, as Google sends them (issue #122). Empty by default.
-  appRows = async () => [],
+  // The rows of the App sheet, as Google sends them (issue #122), with its CATEGORIES table.
+  appRows = async () => CATEGORIES_SHEET,
   // Parts of the view that work differently in a test, for example one that breaks.
   viewChanges = {},
 } = {}) {
@@ -1472,8 +1479,8 @@ test('every load reads the App sheet first, then the Total and the movements', a
   assert.equal(last().screen, 'main');
 });
 
-test('an empty App sheet shows the same main screen as before', async () => {
-  const { app, handlers, last } = setup({ appRows: async () => [] });
+test('an App sheet with its tables shows the same main screen as before', async () => {
+  const { app, handlers, last } = setup({ appRows: async () => CATEGORIES_SHEET });
   await app.start();
 
   await handlers.signIn();
@@ -1528,7 +1535,7 @@ test('a person who has not picked the document gets the Google picker at the App
   const { app, handlers, log, last } = setup({
     appRows: async () => {
       if (!picked) throw new NoAccessError();
-      return [];
+      return CATEGORIES_SHEET;
     },
     pick: async () => (picked = true),
   });
@@ -1557,7 +1564,7 @@ test('a person who cannot open the document gets the same access message as befo
 test('a saved movement with a broken App sheet: the thumbs-up, then the message', async () => {
   let broken = false;
   const { handlers, order, last, log } = await signedInEditor({
-    appRows: async () => (broken ? brokenApp() : []),
+    appRows: async () => (broken ? brokenApp() : CATEGORIES_SHEET),
     write: async () => (broken = true),
   });
 
@@ -1572,7 +1579,7 @@ test('a saved change with a broken App sheet: the thumbs-up, then the message', 
   let broken = false;
   const { handlers, order, log } = await signedInEditor({
     ...editSheet(),
-    appRows: async () => (broken ? noAppSheet() : []),
+    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
     write: async () => (broken = true),
   });
   await handlers.edit(1);
@@ -1587,7 +1594,7 @@ test('deleted movements with a broken App sheet: the thumbs-up, then the message
   let broken = false;
   const { handlers, order, log, last } = await signedInEditor({
     ...deleteSheet(),
-    appRows: async () => (broken ? noAppSheet() : []),
+    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
     write: async () => (broken = true),
   });
 
@@ -1604,7 +1611,7 @@ test('an edited row changed by hand with a broken App sheet: the warning, then t
   const { handlers, order, log, last } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
-    appRows: async () => (broken ? noAppSheet() : []),
+    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
   });
   await handlers.edit(2);
   rows = [mv('A', -1), mv('New', -9), mv('C', -3, OCTOBER_5 + 1)];
@@ -1629,7 +1636,7 @@ test('a delete stopped by a change by hand with a broken App sheet: the warning,
   const { handlers, order, log } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
-    appRows: async () => (broken ? noAppSheet() : []),
+    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
   });
   rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
   broken = true;
@@ -1650,7 +1657,7 @@ test('when the sheet cannot be read again at all after a save, the app does what
   const { handlers, order, last } = await signedInEditor({
     appRows: async () => {
       if (saved) throw new SheetsError('Could not reach Google.');
-      return [];
+      return CATEGORIES_SHEET;
     },
     write: async () => (saved = true),
   });
@@ -1667,7 +1674,7 @@ test('when the sheet cannot be read again at all after a delete, the goal shows 
     ...deleteSheet(),
     appRows: async () => {
       if (deleted) throw new SheetsError('Could not reach Google.');
-      return [];
+      return CATEGORIES_SHEET;
     },
     write: async () => (deleted = true),
   });

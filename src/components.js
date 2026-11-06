@@ -149,6 +149,18 @@ export const CARDS = {
     padding: { x: 0, y: 0 },
   },
   // The "Log out" button: as big as the back button, in red. Its content is the exit icon.
+  // The message when the App sheet has mistakes (issue #122): as wide as the Total card, with
+  // the red border of Log out and the warning icon in its corner.
+  mistakes: {
+    width: 544,
+    height: 136,
+    border: 6,
+    radius: 24,
+    icon: 'warning',
+    iconSize: 26,
+    colors: ['#b91c1c', '#fca5a5'],
+    padding: { x: 24, y: 48 },
+  },
   logOut: {
     width: 56,
     height: 56,

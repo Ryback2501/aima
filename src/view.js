@@ -6,6 +6,7 @@ import {
   createDayNamer,
   createAmountFormatter,
   createDeleteQuestion,
+  createMistakeWriter,
   createMoneyFormatter,
   createMonthNamer,
   createTranslator,
@@ -22,6 +23,10 @@ const FLAG_SIZE = 34;
 export function createView(document, language) {
   const element = (id) => document.getElementById(id);
   const screens = ['login', 'checking', 'main'].map((id) => element(id));
+  // The mistakes of the App sheet show on the main screen, in place of the Total and the goal.
+  const cardStack = document.querySelector('.card-stack');
+  const mistakesCard = document.querySelector('[data-card="mistakes"]');
+  const mistakeLines = mistakesCard.querySelector('.mistake-lines');
   const signInButton = element('sign-in');
   const signOutButton = element('sign-out');
   const loginMessage = element('login-message');
@@ -31,7 +36,7 @@ export function createView(document, language) {
 
   // The words, the amounts, the month names and the dates, in the app's language. useLanguage
   // changes them.
-  let appLanguage, t, formatMoney, formatAmount, monthName, dayName, deleteQuestion;
+  let appLanguage, t, formatMoney, formatAmount, monthName, dayName, deleteQuestion, mistakeLine;
   function useLanguage(language) {
     appLanguage = language;
     document.documentElement.lang = language;
@@ -41,6 +46,7 @@ export function createView(document, language) {
     monthName = createMonthNamer(language);
     dayName = createDayNamer(language);
     deleteQuestion = createDeleteQuestion(language);
+    mistakeLine = createMistakeWriter(language);
     // Put the fixed words (button texts and so on) in the language.
     for (const node of document.querySelectorAll('[data-i18n]')) {
       node.textContent = t(node.dataset.i18n);
@@ -669,12 +675,13 @@ export function createView(document, language) {
   }
 
   // The spinner makes way for the thumbs-up (ok) or the warning, which then fades out (see
-  // busy-view.js). After the warning the content of the panel is back.
-  async function workDone(ok) {
+  // busy-view.js). After the warning the content of the panel is back, unless leave is set:
+  // then the message about the App sheet takes the place of the main screen.
+  async function workDone(ok, options) {
     if (!busy) return;
     const which = busy;
     busy = null;
-    await which.end(ok);
+    await which.end(ok, options);
     unlock();
   }
 
@@ -800,19 +807,39 @@ export function createView(document, language) {
   }
 
   let shownState = null;
+  let shownKind = null;
   function render(state) {
     shownState = state;
+    // The mistakes of the App sheet show on the main screen, with its bottom row (issue #122).
+    const mistakes = state.screen === 'mistakes';
+    const id = mistakes ? 'main' : state.screen;
     if (openCard && state.screen !== 'main') putBack();
-    if (pickerOpen && state.screen !== 'main') {
+    if (pickerOpen && id !== 'main') {
       pickerOpen = false;
       placeFlags();
     }
-    for (const screen of screens) screen.hidden = screen.id !== state.screen;
+    for (const screen of screens) screen.hidden = screen.id !== id;
+    cardStack.hidden = mistakes;
+    mistakesCard.hidden = !mistakes;
     if (!visible) show();
-    const screen = screens.find(({ id }) => id === state.screen);
-    if (screen !== current) {
+    const screen = screens.find((each) => each.id === id);
+    // A screen that appears waits until its cards have risen. The message card rises too when
+    // it takes the place of the Total and the goal.
+    if (screen !== current || state.screen !== shownKind) {
       current = screen;
       settle(screen);
+    }
+    shownKind = state.screen;
+
+    if (mistakes) {
+      mistakeLines.replaceChildren(
+        ...state.mistakes.map((mistake) => {
+          const line = document.createElement('li');
+          line.className = 'mistake-line';
+          line.textContent = mistakeLine(mistake);
+          return line;
+        }),
+      );
     }
 
     if (state.screen === 'login') {

@@ -218,6 +218,11 @@
             </div>
           </div>
         </div>
+        <!-- When the App sheet has mistakes (issue #122), this card takes the place of the Total
+             and the goal: one line per mistake. Its look is set in components.js. -->
+        <div class="label mistakes-card" data-card="mistakes" role="alert" hidden>
+          <ul class="mistake-lines"></ul>
+        </div>
         <!-- Covers everything behind an open card in white. -->
         <div id="backdrop" hidden></div>
         <!-- Closes an open card. A card without a corner icon: its content is the back icon. -->

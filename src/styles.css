@@ -259,6 +259,28 @@ html:not(.loading) .label {
   --card-order: 2;
 }
 
+/* The message about the mistakes of the App sheet takes the place of the Total and the goal,
+   in the middle of the free space. Its lines are on the left. */
+.card-stack[hidden] {
+  display: none;
+}
+
+.mistakes-card {
+  margin: auto 0;
+  align-items: stretch;
+}
+
+.mistake-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  line-height: 1.4;
+}
+
 /* People who asked their phone to reduce motion get the cards at once, without movement. */
 @media (prefers-reduced-motion: reduce) {
   html:not(.loading) .label {

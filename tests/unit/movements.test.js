@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { createAmountFormatter } from '../../src/i18n.js';
 import {
   cutToCents,
   firstRowOf,
@@ -439,4 +440,21 @@ test('a Provisioned movement right below its Cash keeps its place when only its 
     m('Provisioned', -12, 'p'),
     m('Polina', -1, 'y'),
   ]);
+});
+
+// The edit form, as it shows a movement of the sheet in English (issue #131).
+const amountShown = (digits) => createAmountFormatter('en')(Number(digits));
+
+test('in the edit form, an amount added to the sheet shows its sign and always two decimals', () => {
+  const { digits, sign } = formValues(['Cash', sheetDay('2026-10-12'), 'Leisure', 'Refund', 125.5]);
+
+  assert.equal(amountShown(digits), '125.50');
+  assert.equal(sign, 'plus');
+});
+
+test('in the edit form, an amount of 0 shows as 0.00 with "−"', () => {
+  const { digits, sign } = formValues(['Cash', sheetDay('2026-10-12'), 'Leisure', 'Free', 0]);
+
+  assert.equal(amountShown(digits), '0.00');
+  assert.equal(sign, 'minus');
 });

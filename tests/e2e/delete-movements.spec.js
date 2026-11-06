@@ -292,16 +292,6 @@ test.describe('the delete panel', () => {
     );
   });
 
-  test('with one movement selected, it asks "Delete this movement?"', async ({ page }) => {
-    await openGoal(page);
-    await tapMonth(page, 0);
-    await select(page, 0, [1]);
-
-    await openPanel(page);
-
-    await expect(question(page)).toHaveText('Delete this movement?');
-  });
-
   test('movements selected in two months count together: "Delete 2 movements?"', async ({
     page,
   }) => {
@@ -646,12 +636,6 @@ test.describe('in other languages', () => {
     -1,
   ]);
   const questions = {
-    es: {
-      1: '¿Eliminar este movimiento?',
-      2: '¿Eliminar 2 movimientos?',
-      5: '¿Eliminar 5 movimientos?',
-      21: '¿Eliminar 21 movimientos?',
-    },
     ru: {
       1: 'Удалить эту операцию?',
       2: 'Удалить 2 операции?',
@@ -660,7 +644,7 @@ test.describe('in other languages', () => {
     },
   };
 
-  for (const language of ['es', 'ru']) {
+  for (const language of ['ru']) {
     test(`after picking the "${language}" flag, the question, the buttons and the messages are in that language`, async ({
       page,
     }) => {

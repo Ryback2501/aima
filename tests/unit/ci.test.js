@@ -39,3 +39,11 @@ test('the phone screen runs every browser test, the computer screen only those m
   assert.equal(runs('computer', 'a month opens on a tap'), false);
   assert.equal(runs('computer', 'the pills sit in a row @both-screens'), true);
 });
+
+// Most of the time a browser test waits for the app, so four of them run at the same time, on a
+// computer and in CI (issue #131).
+test('four browser tests run at the same time', async () => {
+  const { default: config } = await import('../../playwright.config.js');
+
+  assert.equal(config.workers, 4);
+});

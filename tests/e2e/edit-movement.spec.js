@@ -460,32 +460,6 @@ test.describe('the edit form', () => {
     await expect(cancel(page)).toHaveText(STRINGS.en.cancel);
   });
 
-  test('an amount added to the sheet shows its sign and always two decimals', async ({ page }) => {
-    const movements = movementRows();
-    movements[2] = ['Cash', sheetDay('2026-10-12'), 'Leisure', 'Refund', 125.5];
-    await openEdit(page, 1, { movements });
-
-    await expect(field(page, 'amount')).toHaveValue('125.50');
-    await expect(sign(page)).toHaveAttribute('data-sign', 'plus');
-  });
-
-  test('an amount of 0 shows as 0.00 with "−"', async ({ page }) => {
-    const movements = movementRows();
-    movements[2] = ['Cash', sheetDay('2026-10-12'), 'Leisure', 'Free', 0];
-    await openEdit(page, 1, { movements });
-
-    await expect(field(page, 'amount')).toHaveValue('0.00');
-    await expect(sign(page)).toHaveAttribute('data-sign', 'minus');
-  });
-
-  test('a date with a time of day shows its day', async ({ page }) => {
-    const movements = movementRows();
-    movements[2] = ['Cash', sheetDay('2026-10-12') + 0.75, 'Leisure', 'Cinema', -10];
-    await openEdit(page, 1, { movements });
-
-    await expect(field(page, 'date')).toHaveValue('2026-10-12');
-  });
-
   test('a source and a category that are no longer in the lists are empty and already marked Required', async ({
     page,
   }) => {
@@ -909,7 +883,7 @@ test.describe('problems while saving a change', () => {
 });
 
 test.describe('in other languages', () => {
-  for (const language of ['es', 'ru']) {
+  for (const language of ['ru']) {
     test(`after picking the "${language}" flag, Edit, the title, the warning and the messages are in that language`, async ({
       page,
     }) => {

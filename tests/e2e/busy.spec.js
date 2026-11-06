@@ -145,7 +145,7 @@ const dotOpacities = (owner) =>
 const opacityOf = (locator) => locator.evaluate((node) => Number(getComputedStyle(node).opacity));
 
 test.describe('saving a new movement', () => {
-  test('the content of the form fades out, its card stays, and the spinner shows in its middle', async ({
+  test('the content of the form fades out, its card stays, and the spinner shows in its middle @both-screens', async ({
     page,
   }) => {
     await openFilledForm(page);
@@ -183,7 +183,7 @@ test.describe('saving a new movement', () => {
     expect(later).not.toEqual(first);
   });
 
-  test('when it is saved, a green thumbs-up stays for 1 second, then the form closes and the list shows it', async ({
+  test('when it is saved, a green thumbs-up stays for 1 second, then the form closes and the list shows it @both-screens', async ({
     page,
   }) => {
     await openFilledForm(page);
@@ -211,7 +211,7 @@ test.describe('saving a new movement', () => {
     expect(gone.time - shown.time).toBeLessThan(1700);
   });
 
-  test('on a short screen, with the form scrolled down to Save, the spinner shows in the middle of the card', async ({
+  test('on a short screen, with the form scrolled down to Save, the spinner shows in the middle of the card @both-screens', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 400, height: 480 });
@@ -367,7 +367,7 @@ test.describe('saving a change', () => {
 });
 
 test.describe('deleting movements', () => {
-  test('the content of the question fades out, the spinner shows, then the thumbs-up, then they go', async ({
+  test('the content of the question fades out, the spinner shows, then the thumbs-up, then they go @both-screens', async ({
     page,
   }) => {
     await openDelete(page);

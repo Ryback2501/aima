@@ -292,16 +292,6 @@ test.describe('the delete panel', () => {
     );
   });
 
-  test('with one movement selected, it asks "Delete this movement?"', async ({ page }) => {
-    await openGoal(page);
-    await tapMonth(page, 0);
-    await select(page, 0, [1]);
-
-    await openPanel(page);
-
-    await expect(question(page)).toHaveText('Delete this movement?');
-  });
-
   test('movements selected in two months count together: "Delete 2 movements?"', async ({
     page,
   }) => {

@@ -22,13 +22,8 @@ const config = {
     { name: 'provisioned', cell: 'Sheet1!A3', subtract: true },
     { name: 'cash', cell: 'Sheet1!A4' },
   ],
-  goal: {
-    movements: 'Sheet2!A:E',
-    from: '2026-10-01',
-    to: '2026-12-31',
-    limit: 3000,
-    skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
-  },
+  // The dates, the limit and the left-out movements come from the App sheet (issue #125).
+  goal: { movements: 'Sheet2!A:E' },
   // The cells whose dropdown lists give the options of the new movement form.
   form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2', sheet: 'Sheet2', firstRow: 2 },
   // The sheet with the app's settings (issue #122).
@@ -1901,5 +1896,124 @@ test('a mistake in the SOURCES table shows its line', async () => {
   assert.deepEqual(last(), {
     screen: 'mistakes',
     mistakes: [{ kind: 'badSourceIcon', table: 'SOURCES', row: 3, icon: 'wallet', sheet: 'App' }],
+  });
+});
+
+// Issue #125: the dates, the limit and the left-out movements of the goal come from the GOAL and
+// GOAL LEAVE OUT tables.
+// The App sheet of the tests with these goal tables (from row 1: titles, headers, then items).
+const withGoalTables = (...rows) =>
+  withGoal(CATEGORIES_AND_SOURCES, [
+    ['GOAL', '', '', 'GOAL LEAVE OUT'],
+    ['Setting', 'Value', '', 'Category', 'Description'],
+    ...rows,
+  ]);
+
+test('the limit of the goal comes from the GOAL table', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () =>
+      withGoalTables(['From', OCTOBER_1, '', 'Pay'], ['To', DECEMBER_31], ['Limit', 10]),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(last().goal.limit, 10);
+  // Shop: 12.50 of spending, over the limit.
+  assert.equal(last().goal.amount, 12.5);
+  assert.equal(last().goal.level, 'over');
+});
+
+test('the dates of the goal come from the GOAL table', async () => {
+  const NOVEMBER_15 = dateCell(OCTOBER_5 + 41, '15/11/2026');
+  const { app, handlers, last } = setup({
+    appRows: async () =>
+      withGoalTables(['From', NOVEMBER_15], ['To', DECEMBER_31], ['Limit', 3000]),
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Cash', OCTOBER_5 + 40, 'Food', 'Bread', -2],
+      ['Cash', OCTOBER_5 + 41, 'Food', 'Milk', -1],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(
+    last().goal.months.map(({ month }) => month),
+    [11, 12],
+  );
+  assert.equal(last().goal.amount, 1);
+  assert.deepEqual(
+    movementsOf(last()).map(({ description }) => description),
+    ['Milk'],
+  );
+});
+
+test('the movements the goal leaves out come from the GOAL LEAVE OUT table', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () =>
+      withGoalTables(
+        ['From', OCTOBER_1, '', 'Food', 'Bread'],
+        ['To', DECEMBER_31, '', 'Toys'],
+        ['Limit', 3000],
+      ),
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Cash', OCTOBER_5, 'Food', 'Bread', -2],
+      ['Cash', OCTOBER_5, 'Toys', 'Ball', -3],
+      ['Cash', OCTOBER_5, 'Pay', 'Salary', 100],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  // Pay is not in this table: it counts.
+  assert.equal(last().goal.amount, -87.5);
+  assert.deepEqual(
+    movementsOf(last()).map(({ description, leftOut }) => [description, Boolean(leftOut)]),
+    [
+      ['Shop', false],
+      ['Bread', true],
+      ['Ball', true],
+      ['Salary', false],
+    ],
+  );
+});
+
+test('a mistake in the GOAL table shows its line', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () =>
+      withGoalTables(['From', OCTOBER_1, '', 'Pay'], ['To', DECEMBER_31], ['Limit', 0]),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'badLimit', table: 'GOAL', row: 5, sheet: 'App' }],
+  });
+});
+
+test('an App sheet without the GOAL LEAVE OUT table shows the message that it is missing', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () =>
+      withGoal(CATEGORIES_AND_SOURCES, [
+        ['GOAL'],
+        [],
+        ['From', OCTOBER_1],
+        ['To', DECEMBER_31],
+        ['Limit', 3000],
+      ]),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'tableMissing', table: 'GOAL LEAVE OUT', sheet: 'App' }],
   });
 });

@@ -26,6 +26,12 @@ class DateCell {
   }
 }
 
+// True when a cell from getSheetRows holds a date. A plain number, or a text that looks like a
+// date, does not. It looks at the cell's day number, so a cell made in the same shape by hand
+// (in the tests) counts too.
+export const isDateCell = (cell) =>
+  typeof cell === 'object' && cell !== null && Number.isFinite(cell.day);
+
 // The person's Google account cannot open the sheet.
 export class NoAccessError extends Error {
   constructor() {

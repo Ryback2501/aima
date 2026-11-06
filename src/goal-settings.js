@@ -10,16 +10,13 @@
 //   Names are matched with the same capital letters; spaces around them do not matter.
 
 import { dateOf } from './goal.js';
+import { isDateCell } from './sheets.js';
 
 // The settings of GOAL, written as in the lines about mistakes, in this order.
 const SETTINGS = ['From', 'To', 'Limit'];
 
 // A cell as a text, without the spaces around it ('' when it is empty).
 const textOf = (cell) => (cell === undefined || cell === null ? '' : String(cell).trim());
-
-// True when a cell is a date cell (see getSheetRows in sheets.js): a plain number or a text that
-// looks like a date is not one.
-const isDate = (cell) => typeof cell === 'object' && cell !== null && Number.isFinite(cell.day);
 
 // Reads the GOAL table (see app-sheet.js). Returns { value, mistakes }. value has the settings
 // goal.js uses: from and to as '2026-10-01' (a time in the cell does not matter), and limit.
@@ -52,7 +49,7 @@ export function readGoal(table) {
     if (setting === 'Limit') {
       if (typeof cell === 'number' && Number.isFinite(cell) && cell > 0) value.limit = cell;
       else mistake('badLimit', { row });
-    } else if (isDate(cell)) {
+    } else if (isDateCell(cell)) {
       value[setting.toLowerCase()] = dateOf(cell.day);
     } else {
       mistake('notADate', { row, setting });

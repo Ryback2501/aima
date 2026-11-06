@@ -92,7 +92,7 @@ const momentOf = (log, who, step, name) =>
   log.find((entry) => entry.who === who && entry.step === step && entry.name === name)?.time;
 
 test.describe('the "+" button', () => {
-  test('a person who can edit sees it at the bottom, in the middle, like the back button', async ({
+  test('a person who can edit sees it at the bottom, in the middle, like the back button @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -195,7 +195,9 @@ test.describe('the "+" button', () => {
 });
 
 test.describe('the new movement form', () => {
-  test('a tap on "+" opens it inside the goal card, in place of the months', async ({ page }) => {
+  test('a tap on "+" opens it inside the goal card, in place of the months @both-screens', async ({
+    page,
+  }) => {
     await openForm(page);
 
     expect(
@@ -341,7 +343,7 @@ test.describe('the new movement form', () => {
     await expect(concept).toHaveValue('Bread and milk');
   });
 
-  test('a long concept wraps and the field grows taller; shorter again after deleting', async ({
+  test('a long concept wraps and the field grows taller; shorter again after deleting @both-screens', async ({
     page,
   }) => {
     await openForm(page);
@@ -360,7 +362,7 @@ test.describe('the new movement form', () => {
     near(await height(), oneLine);
   });
 
-  test('Amount has a "− / +" switch on its left, set to "−"', async ({ page }) => {
+  test('Amount has a "− / +" switch on its left, set to "−" @both-screens', async ({ page }) => {
     await openForm(page);
     const amount = field(page, 'amount');
 
@@ -392,7 +394,7 @@ test.describe('the new movement form', () => {
     expect(await backgroundOf(fieldBox(page, 'concept'))).not.toContain(PURPLE);
   });
 
-  test('it has the look of the preview: grey panel with white border, grey boxes, red Cancel', async ({
+  test('it has the look of the preview: grey panel with white border, grey boxes, red Cancel @both-screens', async ({
     page,
   }) => {
     await openForm(page);
@@ -492,7 +494,7 @@ test.describe('the new movement form', () => {
     test.use({ reducedMotion: 'no-preference' });
     const months = ['month0', 'month1', 'month2'];
 
-    test('a tap on "+" sinks the buttons, then the months from the bottom up, then the form rises in', async ({
+    test('a tap on "+" sinks the buttons, then the months from the bottom up, then the form rises in @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -524,7 +526,7 @@ test.describe('the new movement form', () => {
       expect(await page.locator('#goal-value').boundingBox()).toEqual(number);
     });
 
-    test('Cancel plays it in reverse: the form sinks, the months rise from the top, the buttons last', async ({
+    test('Cancel plays it in reverse: the form sinks, the months rise from the top, the buttons last @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -597,7 +599,7 @@ test.describe('the new movement form', () => {
       await expect(field(page, 'amount')).toHaveAttribute('placeholder', '0.00');
     });
 
-    test('the amount, its hint and its cursor sit on the right side of the box', async ({
+    test('the amount, its hint and its cursor sit on the right side of the box @both-screens', async ({
       page,
     }) => {
       await openForm(page);
@@ -862,7 +864,9 @@ test.describe('the new movement form', () => {
   test.describe('on a narrow phone', () => {
     test.use({ viewport: { width: 360, height: 780 } });
 
-    test('every field and button fits, with no sideways scrolling', async ({ page }) => {
+    test('every field and button fits, with no sideways scrolling @both-screens', async ({
+      page,
+    }) => {
       await openForm(page);
 
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
@@ -884,7 +888,9 @@ test.describe('the new movement form', () => {
   test.describe('on a short phone', () => {
     test.use({ viewport: { width: 375, height: 667 } });
 
-    test('the goal card scrolls to reach every field and the Cancel button', async ({ page }) => {
+    test('the goal card scrolls to reach every field and the Cancel button @both-screens', async ({
+      page,
+    }) => {
       await openForm(page);
 
       await cancel(page).scrollIntoViewIfNeeded();

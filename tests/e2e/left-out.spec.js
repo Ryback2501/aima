@@ -128,7 +128,7 @@ const playing = (page) =>
   );
 
 test.describe('the eye button', () => {
-  test('in the bottom-right corner, at the height of the back button, with a crossed-out eye', async ({
+  test('in the bottom-right corner, at the height of the back button, with a crossed-out eye @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -164,7 +164,7 @@ test.describe('the eye button', () => {
   test.describe('on a screen 360 pixels wide', () => {
     test.use({ viewport: { width: 360, height: 740 } });
 
-    test('with one movement selected, the eye, Edit, "+" and Delete fit next to the back button', async ({
+    test('with one movement selected, the eye, Edit, "+" and Delete fit next to the back button @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -211,7 +211,7 @@ test.describe('showing the left-out movements', () => {
     await expect(goalValue(page)).toHaveText('€640.00');
   });
 
-  test('each month with an amount shows the spending of all its movements next to it', async ({
+  test('each month with an amount shows the spending of all its movements next to it @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -296,7 +296,7 @@ test.describe('showing the left-out movements', () => {
       });
     const middle = ({ top, height }) => top + height / 2;
 
-    test('a second amount that fits shows whole, smaller and grey, on one line with the amount and the arrow', async ({
+    test('a second amount that fits shows whole, smaller and grey, on one line with the amount and the arrow @both-screens', async ({
       page,
     }) => {
       await openGoal(page, withSalary(5056.78));
@@ -317,7 +317,7 @@ test.describe('showing the left-out movements', () => {
       near(parts.head.height, parts.emptyHead.height);
     });
 
-    test('a second amount that does not fit ends with "…", and screen readers hear it whole', async ({
+    test('a second amount that does not fit ends with "…", and screen readers hear it whole @both-screens', async ({
       page,
     }) => {
       await openGoal(page, withSalary(1238024.67));
@@ -525,7 +525,7 @@ test.describe('with motion', () => {
     );
   });
 
-  test('showing: the movements below make room, then the left-out movements and the second amounts fade in', async ({
+  test('showing: the movements below make room, then the left-out movements and the second amounts fade in @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -560,7 +560,7 @@ test.describe('with motion', () => {
     expect(frames.at(-1).month).toBeGreaterThan(startMonth + 10);
   });
 
-  test('hiding: they fade out, then the movements below move up and the month gets shorter', async ({
+  test('hiding: they fade out, then the movements below move up and the month gets shorter @both-screens', async ({
     page,
   }) => {
     await openGoal(page);

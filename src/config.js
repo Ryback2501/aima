@@ -35,43 +35,6 @@ export const config = {
   goal: {
     // The movements: source, date, category, description and amount, one movement per row.
     movements: 'Movements!A:E',
-    // Where the money came from: the word in the first column, and its icon: the bank, a card or
-    // cash, the same drawings as in the Total. A source can have another icon than the part of
-    // the Total with its name (Provisioned shows the bank here, and the piggy bank in the Total).
-    // A movement with another word, or none, shows no icon.
-    sources: {
-      'BBVA David': 'bank',
-      'BBVA Común': 'bank',
-      Polina: 'bank',
-      Provisioned: 'bank',
-      Deprovisioned: 'bank',
-      Después: 'card',
-      AMEX: 'card',
-      ECI: 'card',
-      ICON: 'card',
-      Pluxee: 'card',
-      Edenred: 'card',
-      Cash: 'cash',
-    },
-    // When a new movement is saved, the movements of one day are sorted by their source, in this
-    // order from top to bottom. A source that is not here goes last.
-    sourceOrder: [
-      'BBVA David',
-      'BBVA Común',
-      'Después',
-      'AMEX',
-      'ECI',
-      'ICON',
-      'Pluxee',
-      'Edenred',
-      'Cash',
-      'Polina',
-      'Provisioned',
-      'Deprovisioned',
-    ],
-    // Each Cash movement is followed right below by its Provisioned movement, the one with the
-    // same amount. A Provisioned movement with no Cash keeps its own place in the order above.
-    sourcePairs: { Cash: 'Provisioned' },
     // The first and the last day that count.
     from: '2026-10-01',
     to: '2026-12-31',

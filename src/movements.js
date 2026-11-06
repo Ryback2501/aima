@@ -17,11 +17,12 @@ const dayOf = (row) => (typeof row[1] === 'number' ? Math.floor(row[1]) : null);
 const centsOf = (amount) => (typeof amount === 'number' ? Math.round(amount * 100) : null);
 
 // Sorts the movements of one day by their source, in the order of sourceOrder. A source that is
-// not in it goes last. Each movement of a paired source (Cash) is followed by its partner (a
-// Provisioned movement): the first one of the day with the same amount, and the same sign, that
-// is not paired yet. A partner with no pair keeps its own place in the order. Movements with
-// the same source keep the order they had. kept: pairs that stay together whatever their
-// amounts (a changed Cash movement and the Provisioned movement that was right below it).
+// not in it goes last. Each movement of a paired source is followed by its partner, a movement
+// of the source in sourcePairs (both come from the SOURCES table of the App sheet, see
+// sources.js): the first one of the day with the same amount, and the same sign, that is not
+// paired yet. A partner with no pair keeps its own place in the order. Movements with the same
+// source keep the order they had. kept: pairs that stay together whatever their amounts (a
+// changed movement and the partner that was right below it).
 function sortDay(rows, { sourceOrder, sourcePairs }, kept = new Map()) {
   const rank = (row) => {
     const place = sourceOrder.indexOf(text(row[0]));
@@ -79,7 +80,7 @@ export function planSave(rows, newRow, settings) {
 // The rows that change when the movement at index is changed into newRow. rows are the rows of
 // the sheet from the first movement row down, and index counts from there, from 0.
 // - With the same day and source, the movement keeps its place among the movements of its day,
-//   and a Cash movement and the Provisioned movement right below it stay together.
+//   and a movement and the partner right below it stay together (see sortDay).
 // - Otherwise it goes after the movements of its source on its new day.
 // The old and the new day, and every day after the earlier of them, are sorted again. The sheet
 // keeps its number of rows. Returns { start, rows }: the first row that changes, and the rows to
@@ -88,14 +89,14 @@ export function planEdit(rows, index, newRow, settings) {
   const movements = rows.slice(0, rows.findLastIndex((row) => text(row[1]) !== '') + 1);
   const old = movements[index];
   const inPlace = dayOf(old) === dayOf(newRow) && text(old[0]) === text(newRow[0]);
-  // A changed movement that stays in its place keeps its pair: a Cash movement the Provisioned
-  // movement right below it, and a Provisioned movement the Cash movement right above it.
+  // A changed movement that stays in its place keeps its pair: a movement of a paired source
+  // keeps the partner right below it, and a partner keeps the movement right above it.
   const kept = new Map();
-  const pairs = (cash, partner) =>
-    cash &&
+  const pairs = (upper, partner) =>
+    upper &&
     partner &&
-    settings.sourcePairs[text(cash[0])] === text(partner[0]) &&
-    dayOf(cash) === dayOf(partner);
+    settings.sourcePairs[text(upper[0])] === text(partner[0]) &&
+    dayOf(upper) === dayOf(partner);
   const above = movements[index - 1];
   const below = movements[index + 1];
   if (inPlace && pairs(old, below)) kept.set(newRow, below);

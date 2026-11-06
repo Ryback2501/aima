@@ -1497,7 +1497,8 @@ test('with no App sheet, only the message shows, and the rest is not read', asyn
 
 test('the mistakes of the App sheet are shown, each with the name of the sheet', async () => {
   const { app, handlers, last } = setup({
-    appRows: async () => [['', 'CATEGORIES', 'CATEGORIES'], [], ['x', '', 'car']],
+    // CATEGORIES covers the columns B and C; its second copy starts at D.
+    appRows: async () => [['', 'CATEGORIES', '', 'CATEGORIES'], [], ['x', '', 'car']],
   });
   await app.start();
 
@@ -1506,7 +1507,7 @@ test('the mistakes of the App sheet are shown, each with the name of the sheet',
   assert.deepEqual(last(), {
     screen: 'mistakes',
     mistakes: [
-      { kind: 'tableTwice', table: 'CATEGORIES', column: 'C', sheet: 'App' },
+      { kind: 'tableTwice', table: 'CATEGORIES', column: 'D', sheet: 'App' },
       { kind: 'notInTable', cell: 'A3', sheet: 'App' },
       { kind: 'firstColumnEmpty', table: 'CATEGORIES', row: 3, sheet: 'App' },
     ],
@@ -1675,5 +1676,6 @@ test('when the sheet cannot be read again at all after a delete, the goal shows 
 
   assert.deepEqual(order, ['spinner', 'thumbs-up', 'movements go']);
   assert.equal(last().screen, 'main');
-  assert.deepEqual(shown(last()), ['D', 'C', 'B']);
+  // The movements of the same day show in the order of the sheet.
+  assert.deepEqual(shown(last()), ['B', 'C', 'D']);
 });

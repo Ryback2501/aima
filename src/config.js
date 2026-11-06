@@ -31,30 +31,11 @@ export const config = {
     { name: 'cash', cell: 'Briefing!K7' },
   ],
 
-  // The spending goal shown below the Total.
+  // The spending goal shown below the Total. Its dates, its limit and the movements it leaves
+  // out are in the App sheet (see goal-settings.js).
   goal: {
     // The movements: source, date, category, description and amount, one movement per row.
     movements: 'Movements!A:E',
-    // The first and the last day that count.
-    from: '2026-10-01',
-    to: '2026-12-31',
-    // Spending over this amount shows in red.
-    limit: 4000,
-    // Movements that do not count.
-    skip: {
-      categories: ['Whitening', 'Salary', 'Mortgage', 'Credit Cards', 'Investing'],
-      // In these categories, only the movements with these descriptions are left out.
-      descriptions: {
-        House: [
-          'Seguro hogar BBVA',
-          'Pepephone - Internet',
-          'Impuesto vivienda',
-          'Comunidad',
-          'Luz - Endesa',
-          'Gas - Endesa',
-        ],
-      },
-    },
   },
 
   // The new movement form (only for people who can edit the sheet). Its Source and Category

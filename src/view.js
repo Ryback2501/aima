@@ -10,6 +10,7 @@ import {
   createMonthNamer,
   createTranslator,
 } from './i18n.js';
+import { createBusy } from './busy-view.js';
 import { createForm } from './form-view.js';
 import { ICONS } from './icons.js';
 import { createMonths, endless } from './months-view.js';
@@ -364,6 +365,8 @@ export function createView(document, language) {
     openCard.classList.remove('open', 'settled', 'closing', 'adding', 'asking', 'hiding-months');
     formPanel.classList.remove('sinking');
     deletePanel.classList.remove('sinking');
+    formBusy.reset();
+    panelBusy.reset();
     openCard.setAttribute('aria-expanded', 'false');
     placeholder.remove();
     backdrop.hidden = true;
@@ -446,6 +449,8 @@ export function createView(document, language) {
     t: (key) => t(key),
   });
   let formOpen = false;
+  // The spinner, the thumbs-up and the warning over the form while a movement is saved.
+  const formBusy = createBusy(formPanel, { document, window, createIcon, t: (key) => t(key) });
   // True after a tap on "+", until the form opens or the goal card closes.
   let formAsked = false;
 
@@ -471,6 +476,7 @@ export function createView(document, language) {
         }
         // The months are hidden now. When the form closes, no movement is selected.
         months.unselectAll();
+        formBusy.reset();
         form.reset(lists);
         card.classList.add('adding');
         card.classList.remove('hiding-months');
@@ -493,6 +499,7 @@ export function createView(document, language) {
         formPanel.classList.add('sinking');
         await still(formPanel);
         formPanel.classList.remove('sinking');
+        formBusy.reset();
         formOpen = false;
         card.classList.remove('adding');
         const buttons = bottomButtons();
@@ -534,6 +541,8 @@ export function createView(document, language) {
   const noText = noButton.querySelector('.no-text');
   const yesButton = deletePanel.querySelector('[data-card="yes"]');
   let panelOpen = false;
+  // The spinner, the thumbs-up and the warning over the question while movements are deleted.
+  const panelBusy = createBusy(deletePanel, { document, window, createIcon, t: (key) => t(key) });
   // True when the sheet was changed by hand: only Close is left, and it shows the sheet as it
   // is now, with nothing selected.
   let sheetChanged = false;
@@ -554,6 +563,7 @@ export function createView(document, language) {
           button.classList.remove('sinking');
         }
         sheetChanged = false;
+        panelBusy.reset();
         deleteQuestionText.textContent = deleteQuestion(selectedCount);
         deleteMessage.hidden = true;
         yesButton.hidden = false;
@@ -575,6 +585,7 @@ export function createView(document, language) {
     deletePanel.classList.add('sinking');
     await still(deletePanel);
     deletePanel.classList.remove('sinking');
+    panelBusy.reset();
     panelOpen = false;
     card.classList.remove('asking');
     if (sheetChanged) months.unselectAll();
@@ -626,11 +637,45 @@ export function createView(document, language) {
     lockWhile(sinkAway(yesButton));
   }
 
-  // While the movements are being deleted, No and Yes cannot be tapped. A message from the try
-  // before stays until there is a new answer, so it does not blink.
+  // While the movements are being deleted, No and Yes cannot be tapped, and the spinner shows
+  // over the question. A message from the try before stays until there is a new answer.
   function setDeleting(deleting) {
     noButton.disabled = deleting;
     yesButton.disabled = deleting;
+    if (deleting) {
+      startWork(panelBusy, {
+        working: 'busyDeleting',
+        done: 'busyDeleted',
+        failed: 'busyNotDeleted',
+      });
+    }
+  }
+
+  // While a movement is being saved, Save and Cancel cannot be tapped, and the spinner shows
+  // over the form.
+  function setSaving(saving) {
+    form.setSaving(saving);
+    if (saving)
+      startWork(formBusy, { working: 'busySaving', done: 'busySaved', failed: 'busyNotSaved' });
+  }
+
+  // The spinner shows over a panel, and taps wait until workDone has finished.
+  let busy = null;
+  let unlock = null;
+  function startWork(which, words) {
+    busy = which;
+    which.start(words);
+    lockWhile(new Promise((done) => (unlock = done)));
+  }
+
+  // The spinner makes way for the thumbs-up (ok) or the warning, which then fades out (see
+  // busy-view.js). After the warning the content of the panel is back.
+  async function workDone(ok) {
+    if (!busy) return;
+    const which = busy;
+    busy = null;
+    await which.end(ok);
+    unlock();
   }
 
   // The language selector on the main screen (see index.html and styles.css). Closed, it shows
@@ -820,7 +865,8 @@ export function createView(document, language) {
     onPickLanguage: (handler) => (pickLanguage = handler),
     onSave: (handler) => saveButton.addEventListener('click', () => handler(form.values())),
     showMissing: (names) => form.showMissing(names),
-    setSaving: (saving) => form.setSaving(saving),
+    setSaving,
+    workDone,
     saveFailed: () => form.saveFailed(),
     saveChanged,
     closeForm,

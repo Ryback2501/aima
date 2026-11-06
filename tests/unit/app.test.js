@@ -66,6 +66,8 @@ function setup({
   sheet = async () => ({ sheetId: 7, rowCount: 100 }),
   // What happens when rows are written.
   write = async () => {},
+  // Parts of the view that work differently in a test, for example one that breaks.
+  viewChanges = {},
 } = {}) {
   const screens = [];
   const forms = [];
@@ -74,6 +76,11 @@ function setup({
   const formLog = { missing: [], saving: [], failed: 0, closed: 0, changed: 0 };
   // What the delete panel showed: the deleting state, and each result in order.
   const deleteLog = { deleting: [], events: [] };
+  // Everything the form and the delete panel showed, in order, with the spinner and the icon
+  // that ends it (issue #108).
+  const order = [];
+  // How many screens were shown when the thumbs-up or the warning came.
+  const ends = { screens: null };
   const languages = [];
   const handlers = {};
   const view = {
@@ -87,19 +94,47 @@ function setup({
     openForm: (form) => forms.push(form),
     onSave: (handler) => (handlers.save = handler),
     showMissing: (names) => formLog.missing.push(names),
-    setSaving: (saving) => formLog.saving.push(saving),
-    saveFailed: () => (formLog.failed += 1),
-    closeForm: () => (formLog.closed += 1),
+    setSaving: (saving) => {
+      formLog.saving.push(saving);
+      if (saving) order.push('spinner');
+    },
+    saveFailed: () => {
+      formLog.failed += 1;
+      order.push('not saved message');
+    },
+    closeForm: () => {
+      formLog.closed += 1;
+      order.push('form closes');
+    },
     onEdit: (handler) => (handlers.edit = handler),
-    saveChanged: () => (formLog.changed += 1),
+    saveChanged: () => {
+      formLog.changed += 1;
+      order.push('changed message');
+    },
     onDelete: (handler) => (handlers.delete = handler),
-    setDeleting: (deleting) => deleteLog.deleting.push(deleting),
-    deleteChanged: () => deleteLog.events.push('changed'),
-    deleteFailed: () => deleteLog.events.push('failed'),
+    setDeleting: (deleting) => {
+      deleteLog.deleting.push(deleting);
+      if (deleting) order.push('spinner');
+    },
+    deleteChanged: () => {
+      deleteLog.events.push('changed');
+      order.push('changed message');
+    },
+    deleteFailed: () => {
+      deleteLog.events.push('failed');
+      order.push('not deleted message');
+    },
+    // The spinner ends with the thumbs-up (ok) or the warning, and the view waits for it.
+    workDone: async (ok) => {
+      order.push(ok ? 'thumbs-up' : 'warning');
+      ends.screens = screens.length;
+    },
     deleted: async () => {
       deleteLog.events.push('deleted');
+      order.push('movements go');
       deleteLog.screensBefore = screens.length;
     },
+    ...viewChanges,
   };
   const session = createSession({
     sessionStorage: storage(),
@@ -172,7 +207,20 @@ function setup({
     }),
   });
   const last = () => screens.at(-1);
-  return { app, session, screens, languages, handlers, log, last, forms, formLog, deleteLog };
+  return {
+    app,
+    session,
+    screens,
+    languages,
+    handlers,
+    log,
+    last,
+    forms,
+    formLog,
+    deleteLog,
+    order,
+    ends,
+  };
 }
 
 test('the app starts on the login page when nobody is signed in', async () => {
@@ -868,6 +916,53 @@ test('when the save worked but the sheet cannot be read again, the form still cl
   assert.equal(formLog.closed, 1);
 });
 
+// Issue #108: the spinner while saving, then the thumbs-up or the warning.
+test('a saved movement shows the spinner, then the thumbs-up after the sheet is read again, then the form closes', async () => {
+  const { handlers, order, ends, screens } = await signedInEditor();
+  const before = screens.length;
+
+  await handlers.save(filled);
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes']);
+  // The list is already read again while the thumbs-up shows.
+  assert.equal(ends.screens, before + 1);
+});
+
+test('a movement that is not saved shows the spinner, then the message is set, then the warning', async () => {
+  const { handlers, order } = await signedInEditor({
+    write: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+  });
+
+  await handlers.save(filled);
+
+  assert.deepEqual(order, ['spinner', 'not saved message', 'warning']);
+});
+
+test('when the save worked but the sheet cannot be read again, the thumbs-up shows as usual', async () => {
+  let saved = false;
+  const { handlers, order } = await signedInEditor({
+    cells: async () => {
+      if (saved) throw new SheetsError('Could not reach Google.');
+      return [1000, -200.5, 300, 50];
+    },
+    write: async () => (saved = true),
+  });
+
+  await handlers.save(filled);
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes']);
+});
+
+test('Save with an empty required field shows no spinner', async () => {
+  const { handlers, order } = await signedInEditor();
+
+  await handlers.save({ ...filled, source: '' });
+
+  assert.deepEqual(order, []);
+});
+
 test('a concept typed with "=" at the start is saved as text, never as a formula', async () => {
   const { handlers, log } = await signedInEditor({ formulas: async () => [] });
 
@@ -1218,4 +1313,121 @@ test('a tap on "+" and then on Edit while the lists load opens only the Edit for
   await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Ay' });
   // A change: as many rows as before, not one more.
   assert.equal(log.writes[0].rows.length, editRows.length);
+});
+
+// Issue #108: the spinner for edits and deletes, then the thumbs-up or the warning.
+test('a saved change shows the spinner, then the thumbs-up, then the form closes', async () => {
+  const { handlers, order } = await signedInEditor(editSheet());
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: 'Aye' });
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'form closes']);
+});
+
+test('an edit with nothing changed closes the form with no spinner', async () => {
+  const { handlers, order } = await signedInEditor(editSheet());
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(mv('A', -1)), concept: ' A ' });
+
+  assert.deepEqual(order, ['form closes']);
+});
+
+test('an edited row changed by hand shows the message, then the warning after the sheet is read again', async () => {
+  let rows = editRows;
+  const { handlers, order, ends, screens } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+  });
+  await handlers.edit(2);
+  rows = [mv('A', -1), mv('New', -9), mv('C', -3, OCTOBER_5 + 1)];
+  const before = screens.length;
+
+  await handlers.save({ ...valuesOf(mv('B', -2)), concept: 'Bee' });
+
+  assert.deepEqual(order, ['spinner', 'changed message', 'warning']);
+  assert.equal(ends.screens, before + 1);
+});
+
+test('deleted movements show the spinner, then the thumbs-up, then they go', async () => {
+  const { handlers, order } = await signedInEditor(deleteSheet());
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(order, ['spinner', 'thumbs-up', 'movements go']);
+});
+
+test('movements that are not deleted show the spinner, then the message is set, then the warning', async () => {
+  const { handlers, order } = await signedInEditor({
+    ...deleteSheet(),
+    write: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(order, ['spinner', 'not deleted message', 'warning']);
+});
+
+test('a delete stopped by a change by hand shows the message, then the warning after the sheet is read again', async () => {
+  let rows = sheetRows;
+  const { handlers, order, ends, screens } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+  });
+  rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
+  const before = screens.length;
+
+  await handlers.delete([2, 3]);
+
+  assert.deepEqual(order, ['spinner', 'changed message', 'warning']);
+  assert.equal(ends.screens, before + 1);
+});
+
+// Issue #108: the spinner blocks taps until workDone. If something breaks on the way, the
+// spinner must still end, or the app could never be tapped again.
+const broken = () => {
+  throw new Error('Something broke.');
+};
+
+test('when something breaks after a save, the spinner still ends with the warning', async () => {
+  // Drawing the main screen breaks, but only after the sign-in.
+  let breaking = false;
+  const { handlers, order } = await signedInEditor({
+    viewChanges: { render: () => breaking && broken() },
+  });
+  breaking = true;
+
+  await assert.rejects(handlers.save(filled));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
+});
+
+test('when something breaks while saying the save failed, the spinner still ends', async () => {
+  const { handlers, order } = await signedInEditor({
+    write: async () => {
+      throw new SheetsError('Could not reach Google.');
+    },
+    viewChanges: { saveFailed: broken },
+  });
+
+  await assert.rejects(handlers.save(filled));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
+});
+
+test('when something breaks while saying the delete stopped, the spinner still ends', async () => {
+  let rows = sheetRows;
+  const { handlers, order } = await signedInEditor({
+    movements: async () => [HEADERS, ...rows],
+    formulas: async () => rows,
+    viewChanges: { deleteChanged: broken },
+  });
+  rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
+
+  await assert.rejects(handlers.delete([2, 3]));
+
+  assert.deepEqual(order, ['spinner', 'warning']);
 });

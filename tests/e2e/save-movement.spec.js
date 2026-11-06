@@ -328,9 +328,12 @@ test.describe('with motion', () => {
 
     await save(page).click();
 
-    // The form sinks away like with Cancel, then the months and the buttons rise in.
+    // The form sinks away like with Cancel, then the months and the buttons rise in. It sinks
+    // after the thumbs-up (issue #108), so look often enough to see the short sinking.
     await expect
-      .poll(() => form(page).evaluate((node) => getComputedStyle(node).animationName))
+      .poll(() => form(page).evaluate((node) => getComputedStyle(node).animationName), {
+        intervals: [50],
+      })
       .toBe('card-sink');
     await expect(back(page)).toBeVisible();
     await expect.poll(() => locked(page)).toBe(false);

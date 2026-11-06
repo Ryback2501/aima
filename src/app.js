@@ -235,12 +235,26 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     return typeof result === 'string' ? result : 'saved';
   }
 
+  // The spinner of a save or a delete ends with the thumbs-up or the warning (done). The spinner
+  // blocks taps until then, so if something breaks before done, end still shows the warning:
+  // the panel comes back and the app can be tapped again.
+  function workOf() {
+    let ended = false;
+    const done = (ok) => {
+      ended = true;
+      return view.workDone(ok);
+    };
+    return { done, end: () => (ended ? undefined : done(false)) };
+  }
+
   // A tap on Save. Empty required fields are marked, and nothing is saved. A changed movement
   // with nothing changed closes the form and writes nothing. While a movement is being saved,
-  // Save and Cancel wait, and another tap does nothing. After the save, the main screen is read
-  // again and the form closes. If the sheet cannot be read again, the form closes anyway: the
-  // movement is saved, and saying otherwise would make the person save it twice. When the sheet
-  // was changed by hand, the form says so, and the main screen shows the sheet as it is now.
+  // the spinner shows, Save and Cancel wait, and another tap does nothing. After the save, the
+  // main screen is read again, the thumbs-up shows and the form closes. If the sheet cannot be
+  // read again, the same happens: the movement is saved, and saying otherwise would make the
+  // person save it twice. When it is not saved, or the sheet was changed by hand (then the main
+  // screen shows the sheet as it is now), the form gets its message, and the warning shows
+  // before the form comes back with it.
   let saving = false;
   async function saveMovement(values) {
     if (saving) return;
@@ -253,6 +267,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     }
     saving = true;
     view.setSaving(true);
+    const work = workOf();
     try {
       let result;
       if (editing) result = await rewrite(editing.index, values);
@@ -260,14 +275,18 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (result === 'saved') {
         editing = null;
         await load().then(showMain, () => {});
+        await work.done(true);
         view.closeForm();
       } else if (result === 'changed') {
         view.saveChanged();
         await load().then(showMain, () => {});
+        await work.done(false);
       } else {
         view.saveFailed();
+        await work.done(false);
       }
     } finally {
+      await work.end();
       saving = false;
       view.setSaving(false);
     }
@@ -277,19 +296,23 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // The rows are read again first. If one of them holds another movement now, the sheet was
   // changed by hand: nothing is deleted, and the screen shows the sheet as it is now.
   // Otherwise every movement below moves up (see movements.js), in one write. While it runs,
-  // another Yes does nothing.
+  // the spinner shows and another Yes does nothing. Then the thumbs-up shows before the
+  // movements go, or the warning before the question comes back with its message.
   let deleting = false;
   async function deleteMovements(indexes) {
     if (deleting) return;
     deleting = true;
     view.setDeleting(true);
+    const work = workOf();
     try {
       const fresh = await changeRows(indexes, planDelete);
       if (fresh === 'failed') {
         view.deleteFailed();
+        await work.done(false);
       } else if (fresh === 'changed') {
         view.deleteChanged();
         await load().then(showMain, () => {});
+        await work.done(false);
       } else {
         // The sheet is read again while the view takes the deleted rows away. If it cannot be
         // read, the goal is worked out from the rows read just before, without the deleted ones.
@@ -297,6 +320,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
           () => true,
           () => false,
         );
+        await work.done(true);
         await view.deleted();
         if (!(await reloaded)) {
           const gone = new Set(indexes);
@@ -305,6 +329,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         showMain();
       }
     } finally {
+      await work.end();
       deleting = false;
       view.setDeleting(false);
     }

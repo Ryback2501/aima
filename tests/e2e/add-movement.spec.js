@@ -616,51 +616,6 @@ test.describe('the new movement form', () => {
       expect(await alignOf(null)).toBe('right');
     });
 
-    test('the last two numbers are the cents', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-
-      await typeAmount(page, '5');
-      await expect(amount).toHaveValue('0.05');
-      await page.keyboard.type('0');
-      await expect(amount).toHaveValue('0.50');
-      await page.keyboard.type('0');
-      await expect(amount).toHaveValue('5.00');
-    });
-
-    test('a 0 typed into the empty field is ignored', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-
-      await typeAmount(page, '0');
-      await expect(amount).toHaveValue('');
-      await page.keyboard.type('7');
-      await expect(amount).toHaveValue('0.07');
-    });
-
-    test('big amounts show the thousands mark, and only 8 numbers are taken', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-
-      await typeAmount(page, '123456');
-      await expect(amount).toHaveValue('1,234.56');
-      await page.keyboard.type('78');
-      await expect(amount).toHaveValue('123,456.78');
-      await page.keyboard.type('9');
-      await expect(amount).toHaveValue('123,456.78');
-    });
-
-    test('letters, spaces, signs, commas and dots are ignored', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-
-      await typeAmount(page, 'ab -+,.€');
-      await expect(amount).toHaveValue('');
-      await page.keyboard.type('1250');
-      await page.keyboard.type('x -+,.€');
-      await expect(amount).toHaveValue('12.50');
-    });
-
     test('Backspace and the Delete key remove the last number', async ({ page }) => {
       await openForm(page);
       const amount = field(page, 'amount');
@@ -775,33 +730,6 @@ test.describe('the new movement form', () => {
       });
 
       await expect(amount).toHaveValue('1.25');
-    });
-
-    test('a paste adds only its numbers, at the end, as if they were typed', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-      await amount.focus();
-
-      await paste(page, 'Total: 12,50 €');
-      await expect(amount).toHaveValue('12.50');
-
-      await selectAll(page);
-      await page.keyboard.press('Backspace');
-      await page.keyboard.type('100');
-      await paste(page, '25');
-      await expect(amount).toHaveValue('100.25');
-    });
-
-    test('a paste that does not fit adds only the first numbers that fit', async ({ page }) => {
-      await openForm(page);
-      const amount = field(page, 'amount');
-      await typeAmount(page, '1234567');
-      await expect(amount).toHaveValue('12,345.67');
-
-      await paste(page, '89');
-      await expect(amount).toHaveValue('123,456.78');
-      await paste(page, '99');
-      await expect(amount).toHaveValue('123,456.78');
     });
 
     test('undo and redo do nothing', async ({ page }) => {

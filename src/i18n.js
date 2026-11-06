@@ -231,9 +231,40 @@ export function createDeleteQuestion(language) {
   };
 }
 
-// Writes the lines about mistakes in the App sheet. Not built yet.
-export function createMistakeWriter() {
-  return () => '';
+// The lines of the message when the App sheet has a mistake (issue #122), in each language.
+// Each line says where (the sheet, the table, the row, the column or the cell) and what.
+const MISTAKE_LINES = {
+  en: {
+    noAppSheet: ({ sheet }) => `The document has no sheet called ${sheet}.`,
+    firstColumnEmpty: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, row ${row}: the first column is empty.`,
+    tableTwice: ({ sheet, table, column }) =>
+      `${sheet}, ${table}, column ${column}: the table is there twice.`,
+    notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: this cell is not in any table.`,
+  },
+  es: {
+    noAppSheet: ({ sheet }) => `El documento no tiene ninguna hoja llamada ${sheet}.`,
+    firstColumnEmpty: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, fila ${row}: la primera columna está vacía.`,
+    tableTwice: ({ sheet, table, column }) =>
+      `${sheet}, ${table}, columna ${column}: la tabla está dos veces.`,
+    notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: esta celda no está en ninguna tabla.`,
+  },
+  ru: {
+    noAppSheet: ({ sheet }) => `В документе нет листа с названием ${sheet}.`,
+    firstColumnEmpty: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, строка ${row}: первый столбец пуст.`,
+    tableTwice: ({ sheet, table, column }) =>
+      `${sheet}, ${table}, столбец ${column}: таблица указана дважды.`,
+    notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: эта ячейка не входит ни в одну таблицу.`,
+  },
+};
+
+// Returns a function that writes one mistake of the App sheet (see app-sheet.js) as a line in
+// the language.
+export function createMistakeWriter(language) {
+  const lines = MISTAKE_LINES[Object.hasOwn(MISTAKE_LINES, language) ? language : FALLBACK];
+  return (mistake) => lines[mistake.kind](mistake);
 }
 
 // Returns a function that writes an amount of euros the way the language does, for example

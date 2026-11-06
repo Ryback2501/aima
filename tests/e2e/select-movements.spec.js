@@ -115,7 +115,9 @@ const borderFades = (locator) =>
   );
 
 test.describe('selecting movements', () => {
-  test('a person who can only view the sheet cannot select a movement', async ({ page }) => {
+  test('a person who can only view the sheet cannot select a movement @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page, { canEdit: false });
     await tapMonth(page, 0);
 
@@ -170,7 +172,9 @@ test.describe('selecting movements', () => {
     ).toBe(true);
   });
 
-  test('a selected movement gets the blue-to-purple border of a field in use', async ({ page }) => {
+  test('a selected movement gets the blue-to-purple border of a field in use @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
     await tapMonth(page, 0);
     expect((await borderOf(movement(page, 0, 0))).opacity).toBe(0);
@@ -187,7 +191,9 @@ test.describe('selecting movements', () => {
     expect((await borderOf(movement(page, 0, 1))).opacity).toBe(0);
   });
 
-  test('a short press, or a tap with nothing selected, selects nothing', async ({ page }) => {
+  test('a short press, or a tap with nothing selected, selects nothing @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
     await tapMonth(page, 0);
 
@@ -230,7 +236,7 @@ test.describe('selecting movements', () => {
     await expect(selected(page)).toHaveCount(0);
   });
 
-  test('on a computer, holding the mouse button for half a second selects a movement', async ({
+  test('on a computer, holding the mouse button for half a second selects a movement @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -246,7 +252,7 @@ test.describe('selecting movements', () => {
     await expect(movement(page, 0, 2)).toHaveClass(/\bselected\b/);
   });
 
-  test('with one selected, taps select movements of other days and months, and a tap unselects one', async ({
+  test('with one selected, taps select movements of other days and months, and a tap unselects one @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -268,7 +274,9 @@ test.describe('selecting movements', () => {
     await expect(movement(page, 0, 2)).toHaveClass(/\bselected\b/);
   });
 
-  test('closing a month and opening it again keeps its movements selected', async ({ page }) => {
+  test('closing a month and opening it again keeps its movements selected @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
     await tapMonth(page, 0);
     await hold(page, movement(page, 0, 0));
@@ -282,7 +290,9 @@ test.describe('selecting movements', () => {
     await expect(movement(page, 0, 1)).toHaveClass(/\bselected\b/);
   });
 
-  test('"+" opens the form as before, and after Cancel nothing is selected', async ({ page }) => {
+  test('"+" opens the form as before, and after Cancel nothing is selected @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
     await tapMonth(page, 0);
     await hold(page, movement(page, 0, 0));
@@ -298,7 +308,7 @@ test.describe('selecting movements', () => {
     await expect(selected(page)).toHaveCount(0);
   });
 
-  test('back closes the card as before, and when it opens again nothing is selected', async ({
+  test('back closes the card as before, and when it opens again nothing is selected @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -318,7 +328,9 @@ test.describe('selecting movements', () => {
     await expect(selected(page)).toHaveCount(0);
   });
 
-  test('with "reduce motion", the border appears and disappears at once', async ({ page }) => {
+  test('with "reduce motion", the border appears and disappears at once @both-screens', async ({
+    page,
+  }) => {
     await openGoal(page);
     await tapMonth(page, 0);
 
@@ -334,7 +346,7 @@ test.describe('selecting movements', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('the border fades in and out in a quarter of a second, like the pills', async ({
+    test('the border fades in and out in a quarter of a second, like the pills @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -355,7 +367,7 @@ test.describe('selecting movements', () => {
       await expect.poll(() => borderOf(movement(page, 0, 0)).then((b) => b.opacity)).toBe(0);
     });
 
-    test('a long description that slides keeps sliding when its movement is selected', async ({
+    test('a long description that slides keeps sliding when its movement is selected @both-screens', async ({
       page,
     }) => {
       await openGoal(page, {

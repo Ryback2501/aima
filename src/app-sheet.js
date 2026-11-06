@@ -39,7 +39,8 @@ function columnName(column) {
 //   - tableTwice: { table, column } - the second (or later) copy of a title;
 //   - notInTable: { cell } - a filled cell on the left of the first title.
 export function readAppSheet(rows) {
-  const width = Math.max(0, ...rows.map((row) => row.length));
+  // The widest row. A loop, not Math.max(...rows): a very tall sheet has too many rows for that.
+  const width = rows.reduce((widest, row) => Math.max(widest, row.length), 0);
   const cell = (row, column) => rows[row - 1]?.[column - 1];
 
   // The titles in row 1, from left to right, each with the columns of its table.

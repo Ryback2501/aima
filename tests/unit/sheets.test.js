@@ -438,3 +438,74 @@ test('getSheetRows still fails with SheetsError for the other errors', async () 
     return true;
   });
 });
+
+// Issue #125: the App sheet tells a date cell from a plain number and from a text.
+const RAW_DATES = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
+const TEXT_DATES = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING';
+
+// A fake fetch for the two reads of getSheetRows: one answer with the dates as day numbers, one
+// with the dates as the text the sheet shows. Each answer waits until open() is called.
+function fakeTwoReads(numbers, texts) {
+  const calls = [];
+  let open;
+  const opened = new Promise((resolve) => (open = resolve));
+  const fetch = async (url, options) => {
+    calls.push({ url, options });
+    await opened;
+    const values = url.endsWith(TEXT_DATES) ? texts : numbers;
+    return new Response(JSON.stringify({ values }), { status: 200 });
+  };
+  return { fetch, calls, open };
+}
+
+test('getSheetRows reads the sheet twice at the same time: dates as day numbers, and as text', async () => {
+  const { fetch, calls, open } = fakeTwoReads([['GOAL']], [['GOAL']]);
+
+  const reading = client(fetch).getSheetRows('App');
+  // Both reads are asked for before Google answers the first one.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls.length, 2);
+  open();
+  await reading;
+
+  const url = "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/'App'";
+  assert.deepEqual(calls.map((call) => call.url).sort(), [
+    `${url}?${TEXT_DATES}`,
+    `${url}?${RAW_DATES}`,
+  ]);
+  for (const call of calls) assert.equal(call.options.headers.Authorization, 'Bearer token-abc');
+});
+
+test('getSheetRows gives a date cell as its day number and the text the sheet shows', async () => {
+  const { fetch, open } = fakeTwoReads(
+    [['GOAL'], [], ['From', 46296], ['To', 46387.5]],
+    [['GOAL'], [], ['From', '1/10/2026'], ['To', '31/12/2026 12:00:00']],
+  );
+  open();
+
+  const rows = await client(fetch).getSheetRows('App');
+
+  const [from, to] = [rows[2][1], rows[3][1]];
+  assert.equal(from.day, 46296);
+  assert.equal(from.text, '1/10/2026');
+  assert.equal(to.day, 46387.5);
+  assert.equal(to.text, '31/12/2026 12:00:00');
+  // Where a text is read, a date cell is the text the sheet shows.
+  assert.equal(String(from), '1/10/2026');
+  assert.equal(`${to}`, '31/12/2026 12:00:00');
+  assert.deepEqual(rows.slice(0, 2), [['GOAL'], []]);
+  assert.deepEqual([rows[2][0], rows[3][0]], ['From', 'To']);
+});
+
+test('getSheetRows keeps a plain number, a text that looks like a date and a true/false as they are', async () => {
+  const cells = [
+    ['Limit', 4000],
+    ['To', 46000],
+    ['From', '1/10/2026'],
+    ['Soon', 'soon', true],
+  ];
+  const { fetch, open } = fakeTwoReads(cells, cells);
+  open();
+
+  assert.deepEqual(await client(fetch).getSheetRows('App'), cells);
+});

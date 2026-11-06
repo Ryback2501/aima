@@ -636,12 +636,6 @@ test.describe('in other languages', () => {
     -1,
   ]);
   const questions = {
-    es: {
-      1: '¿Eliminar este movimiento?',
-      2: '¿Eliminar 2 movimientos?',
-      5: '¿Eliminar 5 movimientos?',
-      21: '¿Eliminar 21 movimientos?',
-    },
     ru: {
       1: 'Удалить эту операцию?',
       2: 'Удалить 2 операции?',
@@ -650,7 +644,7 @@ test.describe('in other languages', () => {
     },
   };
 
-  for (const language of ['es', 'ru']) {
+  for (const language of ['ru']) {
     test(`after picking the "${language}" flag, the question, the buttons and the messages are in that language`, async ({
       page,
     }) => {

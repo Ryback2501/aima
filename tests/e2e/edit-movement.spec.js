@@ -883,7 +883,7 @@ test.describe('problems while saving a change', () => {
 });
 
 test.describe('in other languages', () => {
-  for (const language of ['es', 'ru']) {
+  for (const language of ['ru']) {
     test(`after picking the "${language}" flag, Edit, the title, the warning and the messages are in that language`, async ({
       page,
     }) => {

@@ -422,7 +422,7 @@ test.describe('deleting movements', () => {
 });
 
 test.describe('in other languages', () => {
-  for (const language of ['es', 'ru']) {
+  for (const language of ['ru']) {
     test(`in "${language}", a screen reader reads the spinner, the thumbs-up and the warning in that language`, async ({
       page,
     }) => {

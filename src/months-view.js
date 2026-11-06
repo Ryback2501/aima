@@ -7,7 +7,6 @@
 // moves up; the browser animates the change (styles.css). The months themselves never scroll:
 // only the list inside the open month does.
 
-import { categoryColor, categoryIcon } from './components.js';
 import { monthLayout } from './month-layout.js';
 
 // The size of the icons in a month item, in pixels.
@@ -171,15 +170,10 @@ export function createMonths({
         } else {
           text.append(total, description);
         }
-        const icon = createIcon(
-          categoryIcon(movement.category, movement.description),
-          MOVEMENT_ICON_SIZE,
-        );
-        // The color of this kind of movement, for its icon and its soft background (styles.css).
-        row.style.setProperty(
-          '--movement-color',
-          categoryColor(movement.category, movement.description),
-        );
+        // The icon and the color of this kind of movement come from the App sheet (issue #123).
+        // The color is for the icon and its soft background (styles.css).
+        const icon = createIcon(movement.icon, MOVEMENT_ICON_SIZE);
+        row.style.setProperty('--movement-color', movement.color);
         row.append(icon, text);
         // Where the money came from: cash, card or bank, with the same icon as the Total.
         if (movement.source) {

@@ -27,33 +27,40 @@ export function readSources(table) {
     const [source, icon, partner] = [0, 1, 2].map((index) => textOf(cells[index]));
     return { row, source, icon, partner };
   });
-  // The first row of each source, and the source each one names in "Paired with".
+  // The first row of each source. A later row of the same source is a mistake, and its pair
+  // does not count.
   const rowOf = new Map();
+  for (const { row, source } of items) if (!rowOf.has(source)) rowOf.set(source, row);
+  const counts = ({ row, source }) => rowOf.get(source) === row;
+  // A pair that counts: on the first row of its source, with another source of the table.
+  const pairCounts = (item) =>
+    counts(item) && item.partner && item.partner !== item.source && rowOf.has(item.partner);
+  // The source each source names in "Paired with", and for each source named: the source it
+  // goes below (the first row naming it).
   const partnerOf = new Map();
-  // For each source named in "Paired with": the source it goes below (the first row naming it).
   const below = new Map();
-  for (const { row, source, partner } of items) {
-    if (!rowOf.has(source)) rowOf.set(source, row);
-    if (partner && !partnerOf.has(source)) partnerOf.set(source, partner);
-    if (partner && !below.has(partner)) below.set(partner, source);
+  for (const item of items.filter(pairCounts)) {
+    partnerOf.set(item.source, item.partner);
+    if (!below.has(item.partner)) below.set(item.partner, item.source);
   }
 
   const icons = [];
   const order = [];
   const pairs = [];
   const mistakes = [];
-  const seen = new Set();
+  // The sources already named in "Paired with", from the top down.
   const named = new Set();
-  for (const { row, source, icon, partner } of items) {
+  for (const item of items) {
+    const { row, source, icon, partner } = item;
     const before = mistakes.length;
+    // The mistakes of a row, in the order of its columns: Source, Icon, Paired with.
     const mistake = (kind, details) => mistakes.push({ kind, table: TABLE, row, ...details });
+    if (!counts(item)) mistake('sourceTwice', { source });
     if (icon && !SOURCE_ICONS.includes(icon)) mistake('badSourceIcon', { icon });
-    if (seen.has(source)) mistake('sourceTwice', { source });
-    seen.add(source);
-    if (partner) {
-      if (partner === source) mistake('pairedWithItself', { source });
-      else if (!rowOf.has(partner)) mistake('unknownPartner', { partner });
-      else if (named.has(partner)) mistake('partnerTwice', { partner });
+    if (partner && partner === source) mistake('pairedWithItself', { source });
+    else if (partner && !rowOf.has(partner)) mistake('unknownPartner', { partner });
+    else if (pairCounts(item)) {
+      if (named.has(partner)) mistake('partnerTwice', { partner });
       else if (partnerOf.get(partner) === source) {
         // Two sources paired with each other: one line, on the lower of the two rows.
         if (rowOf.get(partner) < row) mistake('pairedBothWays', { first: partner, second: source });

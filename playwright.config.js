@@ -12,6 +12,9 @@ const PORT = 4173;
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
+  // Most of the time a test waits for the app, so four of them run at the same time, also on a
+  // computer with 4 processors (like the machines of CI).
+  workers: 4,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

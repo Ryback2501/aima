@@ -265,6 +265,17 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, row ${row}: ${first} and ${second} are paired with each other.`,
     pairedChain: ({ sheet, table, row, source, above }) =>
       `${sheet}, ${table}, row ${row}: ${source} goes below ${above}, so it cannot be paired with another source.`,
+    settingMissing: ({ sheet, table, setting }) =>
+      `${sheet}, ${table}: the row ${setting} is missing.`,
+    settingTwice: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, row ${row}: ${setting} is there twice.`,
+    unknownSetting: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, row ${row}: there is no setting called "${setting}". Use From, To or Limit.`,
+    notADate: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, row ${row}: ${setting} is not a date.`,
+    fromAfterTo: ({ sheet, table, row }) => `${sheet}, ${table}, row ${row}: From is after To.`,
+    badLimit: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, row ${row}: the limit must be a number above 0.`,
   },
   es: {
     noAppSheet: ({ sheet }) => `El documento no tiene ninguna hoja llamada ${sheet}.`,
@@ -296,6 +307,17 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, fila ${row}: ${first} y ${second} están emparejados entre sí.`,
     pairedChain: ({ sheet, table, row, source, above }) =>
       `${sheet}, ${table}, fila ${row}: ${source} va debajo de ${above}, así que no puede ir emparejado con otro origen.`,
+    settingMissing: ({ sheet, table, setting }) => `${sheet}, ${table}: falta la fila ${setting}.`,
+    settingTwice: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, fila ${row}: ${setting} está dos veces.`,
+    unknownSetting: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, fila ${row}: no hay ningún ajuste llamado "${setting}". Usa From, To o Limit.`,
+    notADate: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, fila ${row}: ${setting} no es una fecha.`,
+    fromAfterTo: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, fila ${row}: From es posterior a To.`,
+    badLimit: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, fila ${row}: el límite debe ser un número mayor que 0.`,
   },
   ru: {
     noAppSheet: ({ sheet }) => `В документе нет листа с названием ${sheet}.`,
@@ -327,6 +349,17 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, строка ${row}: ${first} и ${second} связаны друг с другом.`,
     pairedChain: ({ sheet, table, row, source, above }) =>
       `${sheet}, ${table}, строка ${row}: ${source} идёт под ${above}, поэтому его нельзя связать с другим источником.`,
+    settingMissing: ({ sheet, table, setting }) => `${sheet}, ${table}: нет строки ${setting}.`,
+    settingTwice: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, строка ${row}: ${setting} указан дважды.`,
+    unknownSetting: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, строка ${row}: нет настройки с названием "${setting}". Используйте From, To или Limit.`,
+    notADate: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, строка ${row}: ${setting} — это не дата.`,
+    fromAfterTo: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, строка ${row}: From позже, чем To.`,
+    badLimit: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, строка ${row}: лимит должен быть числом больше 0.`,
   },
 };
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { setUp, sheetDay } from './helpers.js';
-import { CARDS, ICON_COLORS } from '../../src/components.js';
+import { CARDS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 import { STRINGS } from '../../src/i18n.js';
 
@@ -747,9 +747,9 @@ test.describe('the icons of the movements the goal leaves out (issue #117)', () 
       ['October loan', 'housePie', '#c47d4a'],
       ['Cards in October', 'billTransfer', '#1296d6'],
       ['Whitening', 'pumpSoap', '#b06ad9'],
-      ['Luz - Endesa', 'house', ICON_COLORS.house],
-      ['Fund', 'investing', ICON_COLORS.investing],
-      ['Petrol', 'car', ICON_COLORS.car],
+      ['Luz - Endesa', 'house', '#e8620c'],
+      ['Fund', 'investing', '#0f8a8a'],
+      ['Petrol', 'car', '#2f6fd6'],
     ];
     for (const [description, icon, color] of expected) {
       const row = month(page, 0).locator('.movement', { hasText: description });

@@ -18,6 +18,9 @@ export const config = {
   // The long code in the sheet's address: https://docs.google.com/spreadsheets/d/<this part>/edit
   spreadsheetId: '1af4vfockvvLyh2JASL6URix3EdbV9XhmbZQO6vNsL3A',
 
+  // The sheet of the document with the app's settings (see app-sheet.js). The app reads it first.
+  appSheet: 'App',
+
   // The parts of the Total, each read from one cell. The Total adds up the parts that are
   // switched on; a part with "subtract" is taken away instead. Each part shows as a pill when
   // the Total card is open.

@@ -241,6 +241,16 @@ const MISTAKE_LINES = {
     tableTwice: ({ sheet, table, column }) =>
       `${sheet}, ${table}, column ${column}: the table is there twice.`,
     notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: this cell is not in any table.`,
+    tableMissing: ({ sheet, table }) => `${sheet}, ${table}: the table is missing.`,
+    iconMissing: ({ sheet, table, row }) => `${sheet}, ${table}, row ${row}: the icon is missing.`,
+    unknownIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, row ${row}: there is no icon called "${icon}".`,
+    colorMissing: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, row ${row}: the color is missing.`,
+    badColor: ({ sheet, table, row, color }) =>
+      `${sheet}, ${table}, row ${row}: "${color}" is not a color like #2f6fd6.`,
+    categoryTwice: ({ sheet, table, row, category, has }) =>
+      `${sheet}, ${table}, row ${row}: the category ${category}${has ? ` with "${has}"` : ''} is there twice.`,
   },
   es: {
     noAppSheet: ({ sheet }) => `El documento no tiene ninguna hoja llamada ${sheet}.`,
@@ -249,6 +259,15 @@ const MISTAKE_LINES = {
     tableTwice: ({ sheet, table, column }) =>
       `${sheet}, ${table}, columna ${column}: la tabla está dos veces.`,
     notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: esta celda no está en ninguna tabla.`,
+    tableMissing: ({ sheet, table }) => `${sheet}, ${table}: falta la tabla.`,
+    iconMissing: ({ sheet, table, row }) => `${sheet}, ${table}, fila ${row}: falta el icono.`,
+    unknownIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, fila ${row}: no hay ningún icono llamado "${icon}".`,
+    colorMissing: ({ sheet, table, row }) => `${sheet}, ${table}, fila ${row}: falta el color.`,
+    badColor: ({ sheet, table, row, color }) =>
+      `${sheet}, ${table}, fila ${row}: "${color}" no es un color como #2f6fd6.`,
+    categoryTwice: ({ sheet, table, row, category, has }) =>
+      `${sheet}, ${table}, fila ${row}: la categoría ${category}${has ? ` con "${has}"` : ''} está dos veces.`,
   },
   ru: {
     noAppSheet: ({ sheet }) => `В документе нет листа с названием ${sheet}.`,
@@ -257,6 +276,15 @@ const MISTAKE_LINES = {
     tableTwice: ({ sheet, table, column }) =>
       `${sheet}, ${table}, столбец ${column}: таблица указана дважды.`,
     notInTable: ({ sheet, cell }) => `${sheet}, ${cell}: эта ячейка не входит ни в одну таблицу.`,
+    tableMissing: ({ sheet, table }) => `${sheet}, ${table}: таблица отсутствует.`,
+    iconMissing: ({ sheet, table, row }) => `${sheet}, ${table}, строка ${row}: не указан значок.`,
+    unknownIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, строка ${row}: нет значка с названием "${icon}".`,
+    colorMissing: ({ sheet, table, row }) => `${sheet}, ${table}, строка ${row}: не указан цвет.`,
+    badColor: ({ sheet, table, row, color }) =>
+      `${sheet}, ${table}, строка ${row}: "${color}" — это не цвет вида #2f6fd6.`,
+    categoryTwice: ({ sheet, table, row, category, has }) =>
+      `${sheet}, ${table}, строка ${row}: категория ${category}${has ? ` с "${has}"` : ''} указана дважды.`,
   },
 };
 

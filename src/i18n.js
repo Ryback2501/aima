@@ -251,6 +251,20 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, row ${row}: "${color}" is not a color like #2f6fd6.`,
     categoryTwice: ({ sheet, table, row, category, has }) =>
       `${sheet}, ${table}, row ${row}: the category ${category}${has ? ` with "${has}"` : ''} is there twice.`,
+    sourceTwice: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, row ${row}: the source ${source} is there twice.`,
+    badSourceIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, row ${row}: "${icon}" is not a source icon. Write bank, card or cash, or leave it empty.`,
+    unknownPartner: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, row ${row}: the source "${partner}" in Paired with is not in the table.`,
+    pairedWithItself: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, row ${row}: ${source} cannot be paired with itself.`,
+    partnerTwice: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, row ${row}: ${partner} is in Paired with twice.`,
+    pairedBothWays: ({ sheet, table, row, first, second }) =>
+      `${sheet}, ${table}, row ${row}: ${first} and ${second} are paired with each other.`,
+    pairedChain: ({ sheet, table, row, source, above }) =>
+      `${sheet}, ${table}, row ${row}: ${source} goes below ${above}, so it cannot be paired with another source.`,
   },
   es: {
     noAppSheet: ({ sheet }) => `El documento no tiene ninguna hoja llamada ${sheet}.`,
@@ -268,6 +282,20 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, fila ${row}: "${color}" no es un color como #2f6fd6.`,
     categoryTwice: ({ sheet, table, row, category, has }) =>
       `${sheet}, ${table}, fila ${row}: la categoría ${category}${has ? ` con "${has}"` : ''} está dos veces.`,
+    sourceTwice: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, fila ${row}: el origen ${source} está dos veces.`,
+    badSourceIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, fila ${row}: "${icon}" no es un icono de origen. Escribe bank, card o cash, o déjalo vacío.`,
+    unknownPartner: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, fila ${row}: el origen "${partner}" de Paired with no está en la tabla.`,
+    pairedWithItself: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, fila ${row}: ${source} no puede ir emparejado consigo mismo.`,
+    partnerTwice: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, fila ${row}: ${partner} está dos veces en Paired with.`,
+    pairedBothWays: ({ sheet, table, row, first, second }) =>
+      `${sheet}, ${table}, fila ${row}: ${first} y ${second} están emparejados entre sí.`,
+    pairedChain: ({ sheet, table, row, source, above }) =>
+      `${sheet}, ${table}, fila ${row}: ${source} va debajo de ${above}, así que no puede ir emparejado con otro origen.`,
   },
   ru: {
     noAppSheet: ({ sheet }) => `В документе нет листа с названием ${sheet}.`,
@@ -285,6 +313,20 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, строка ${row}: "${color}" — это не цвет вида #2f6fd6.`,
     categoryTwice: ({ sheet, table, row, category, has }) =>
       `${sheet}, ${table}, строка ${row}: категория ${category}${has ? ` с "${has}"` : ''} указана дважды.`,
+    sourceTwice: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, строка ${row}: источник ${source} указан дважды.`,
+    badSourceIcon: ({ sheet, table, row, icon }) =>
+      `${sheet}, ${table}, строка ${row}: "${icon}" — это не значок источника. Укажите bank, card или cash или оставьте пустым.`,
+    unknownPartner: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, строка ${row}: источника "${partner}" из Paired with нет в таблице.`,
+    pairedWithItself: ({ sheet, table, row, source }) =>
+      `${sheet}, ${table}, строка ${row}: ${source} нельзя связать с самим собой.`,
+    partnerTwice: ({ sheet, table, row, partner }) =>
+      `${sheet}, ${table}, строка ${row}: ${partner} указан в Paired with дважды.`,
+    pairedBothWays: ({ sheet, table, row, first, second }) =>
+      `${sheet}, ${table}, строка ${row}: ${first} и ${second} связаны друг с другом.`,
+    pairedChain: ({ sheet, table, row, source, above }) =>
+      `${sheet}, ${table}, строка ${row}: ${source} идёт под ${above}, поэтому его нельзя связать с другим источником.`,
   },
 };
 

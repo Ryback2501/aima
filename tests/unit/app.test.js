@@ -314,7 +314,16 @@ test('a person with access sees the total after sign-in', async () => {
             {
               day: 5,
               movements: [
-                { category: 'Food', description: 'Shop', amount: 12.5, source: 'cash', row: 0 },
+                {
+                  category: 'Food',
+                  description: 'Shop',
+                  amount: 12.5,
+                  source: 'cash',
+                  row: 0,
+                  // Its look, from the CATEGORIES table of the App sheet (issue #123).
+                  icon: 'cart',
+                  color: '#2b8a3e',
+                },
               ],
             },
           ],
@@ -348,7 +357,16 @@ test('the goal card also gets the movements the goal leaves out, marked, with th
     {
       day: 5,
       movements: [
-        { category: 'Food', description: 'Shop', amount: 12.5, source: 'cash', row: 0 },
+        {
+          category: 'Food',
+          description: 'Shop',
+          amount: 12.5,
+          source: 'cash',
+          row: 0,
+          // Its look, from the CATEGORIES table of the App sheet (issue #123).
+          icon: 'cart',
+          color: '#2b8a3e',
+        },
         {
           category: 'Pay',
           description: 'Salary',
@@ -356,6 +374,9 @@ test('the goal card also gets the movements the goal leaves out, marked, with th
           source: 'cash',
           row: 1,
           leftOut: true,
+          // Pay is not in the CATEGORIES table: the grey money bag.
+          icon: 'sackEuro',
+          color: '#4b5563',
         },
       ],
     },

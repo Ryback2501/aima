@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createSheetsClient,
   NoAccessError,
+  NoSuchSheetError,
   SignInExpiredError,
   SheetsError,
 } from '../../src/sheets.js';
@@ -379,5 +380,61 @@ test('rows added at the end get the format of the last row, so dates still look 
       destination: { sheetId: 7, startRowIndex: 4, endRowIndex: 5 },
       pasteType: 'PASTE_FORMAT',
     },
+  });
+});
+
+// The App sheet is read as a whole sheet, by its name (issue #122).
+test('getSheetRows reads every cell of a sheet by its name, as plain numbers and dates', async () => {
+  const { fetch, calls } = fakeFetch(200, { values: [['CATEGORIES'], [], ['Car', 4000]] });
+
+  const rows = await client(fetch).getSheetRows('App');
+
+  assert.deepEqual(rows, [['CATEGORIES'], [], ['Car', 4000]]);
+  assert.equal(
+    calls[0].url,
+    "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/values/'App'" +
+      '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+  );
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token-abc');
+});
+
+test('getSheetRows gives no rows for an empty sheet', async () => {
+  const { fetch } = fakeFetch(200, {});
+
+  assert.deepEqual(await client(fetch).getSheetRows('App'), []);
+});
+
+test('getSheetRows writes a quote in the sheet name twice, as the sheet does', async () => {
+  const { fetch, calls } = fakeFetch(200, {});
+
+  await client(fetch).getSheetRows("Ana's App");
+
+  assert.ok(calls[0].url.includes(`/values/${encodeURIComponent("'Ana''s App'")}?`));
+});
+
+test('getSheetRows tells when the document has no sheet with that name', async () => {
+  // Google cannot find the range: it answers 400.
+  const { fetch } = fakeFetch(400, { error: { code: 400 } });
+
+  await assert.rejects(client(fetch).getSheetRows('App'), (error) => {
+    assert.ok(error instanceof NoSuchSheetError);
+    assert.equal(error.sheet, 'App');
+    return true;
+  });
+});
+
+test('getSheetRows still says when the person cannot open the document', async () => {
+  const { fetch } = fakeFetch(403, { error: { code: 403 } });
+
+  await assert.rejects(client(fetch).getSheetRows('App'), NoAccessError);
+});
+
+test('getSheetRows still fails with SheetsError for the other errors', async () => {
+  const { fetch } = fakeFetch(500);
+
+  await assert.rejects(client(fetch).getSheetRows('App'), (error) => {
+    assert.ok(error instanceof SheetsError);
+    assert.ok(!(error instanceof NoSuchSheetError));
+    return true;
   });
 });

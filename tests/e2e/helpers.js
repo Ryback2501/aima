@@ -35,6 +35,25 @@ const FAKE_DROPDOWNS = {
 };
 // The App sheet as the app asks for it: the whole sheet, by its name.
 export const FAKE_APP_RANGE = "'App'";
+// The App sheet of the tests: the CATEGORIES table with the rows of issue #123, as the app
+// looked before the settings moved to the sheet.
+export const FAKE_APP_SHEET = [
+  ['CATEGORIES'],
+  ['Category', 'Description has', 'Icon', 'Color'],
+  ['Car', '', 'car', '#2f6fd6'],
+  ['Credit Cards', '', 'billTransfer', '#1296d6'],
+  ['Debts paid', '', 'handshake', '#d9363e'],
+  ['General', 'compra', 'cart', '#2b8a3e'],
+  ['General', '', 'sackEuro', '#4b5563'],
+  ['House', '', 'house', '#e8620c'],
+  ['Investing', '', 'investing', '#0f8a8a'],
+  ['Leisure', '', 'cocktail', '#b8338f'],
+  ['Mortgage', '', 'housePie', '#c47d4a'],
+  ['Salary', '', 'sackInHand', '#65a30d'],
+  ['Traveling', '', 'suitcase', '#7a4fd6'],
+  ['Whitening', '', 'pumpSoap', '#b06ad9'],
+  ['Yoshi', '', 'paw', '#b8860b'],
+];
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
@@ -67,7 +86,7 @@ export async function setUp(
     // last one is used for the saves after it.
     saves = [200],
     // The rows of the App sheet (issue #122), or null when the document has no App sheet.
-    appSheet = [],
+    appSheet = FAKE_APP_SHEET,
   } = {},
 ) {
   const sheetRequests = [];

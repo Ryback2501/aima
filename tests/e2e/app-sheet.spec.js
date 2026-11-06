@@ -87,8 +87,8 @@ async function selectMovement(page, index) {
 }
 
 test.describe('reading the App sheet', () => {
-  test('with an empty App sheet, the main screen shows as before', async ({ page }) => {
-    await signIn(page, { appSheet: [] });
+  test('with an App sheet with its tables, the main screen shows as before', async ({ page }) => {
+    await signIn(page);
 
     await expect(page.locator('#total-value')).toHaveText('€549.50');
     await expect(goalCard(page)).toBeVisible();
@@ -162,7 +162,15 @@ test.describe('the mistakes', () => {
   });
 
   test('an empty row between two items: no message', async ({ page }) => {
-    await signIn(page, { appSheet: [['CATEGORIES'], [], ['Car'], [], ['Yoshi']] });
+    await signIn(page, {
+      appSheet: [
+        ['CATEGORIES'],
+        [],
+        ['Car', '', 'car', '#2f6fd6'],
+        [],
+        ['Yoshi', '', 'paw', '#b8860b'],
+      ],
+    });
 
     await expect(page.locator('#total-value')).toHaveText('€549.50');
     await expect(messageCard(page)).toBeHidden();
@@ -175,7 +183,8 @@ test.describe('the mistakes', () => {
   });
 
   test('a title the app does not read, there twice', async ({ page }) => {
-    await openMessage(page, [['NOTES', '', '', '', '', 'NOTES']]);
+    // CATEGORIES is there too, in K1: it is required (issue #123).
+    await openMessage(page, [['NOTES', '', '', '', '', 'NOTES', '', '', '', '', 'CATEGORIES']]);
 
     await expect(lines(page)).toHaveText(['App, NOTES, column F: the table is there twice.']);
   });

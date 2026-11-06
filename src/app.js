@@ -12,6 +12,7 @@
 import { isConfigured } from './config.js';
 import { NoAccessError, NoSuchSheetError, SignInExpiredError } from './sheets.js';
 import { readAppSheet } from './app-sheet.js';
+import { lookOf, readCategories } from './categories.js';
 import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
@@ -69,6 +70,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   let canAdd = false;
   // The Source and Category lists of the new movement form, once they are loading or loaded.
   let lists = null;
+  // The rules of the CATEGORIES table of the App sheet: the icon and the color of each movement.
+  let categories = [];
   // The movement the form is changing ({ index, row }: its place in movementRows, and the row
   // as it was read), or null when the form adds a new movement.
   let editing = null;
@@ -202,9 +205,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         throw new AppSheetMistakes([{ kind: 'noAppSheet', sheet }]);
       throw error;
     }
-    const { mistakes } = readAppSheet(rows);
+    const { settings, mistakes } = readAppSheet(rows, { CATEGORIES: readCategories });
     if (mistakes.length > 0)
       throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
+    categories = settings.CATEGORIES;
   }
 
   // Shows only the message about the mistakes of the App sheet.
@@ -237,7 +241,17 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       ...goalStatus(movements, config.goal),
       limit: config.goal.limit,
       // With the movements the goal leaves out: the eye button of the goal card shows them.
-      months: goalMonths(movements, config.goal, { leftOut: true }),
+      // Each movement gets its icon and color from the CATEGORIES table.
+      months: goalMonths(movements, config.goal, { leftOut: true }).map((month) => ({
+        ...month,
+        days: month.days.map((day) => ({
+          ...day,
+          movements: day.movements.map((movement) => ({
+            ...movement,
+            ...lookOf(categories, movement.category, movement.description),
+          })),
+        })),
+      })),
     };
   }
 

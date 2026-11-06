@@ -6,8 +6,8 @@
 // - Row 2 is the header row: it is only for people, the app does not read it.
 // - From row 3 down, one item per row. Empty rows are skipped. A cell with only spaces is empty.
 //
-// readAppSheet finds the tables and lists the mistakes in the layout. It does not read the
-// settings themselves: each table is read by the part of the app that uses it.
+// readAppSheet finds the tables and lists the mistakes in the layout. Each table's settings are
+// read by a reader, given by the part of the app that uses them (for example categories.js).
 
 // The titles of the tables of the App sheet. A table with another title is ignored.
 export const TABLES = ['CATEGORIES', 'SOURCES', 'GOAL', 'GOAL LEAVE OUT', 'CELLS'];
@@ -30,15 +30,20 @@ function columnName(column) {
 }
 
 // rows: the rows of the App sheet as Google sends them (each row from column A; empty cells at
-// the end of a row are left out). Returns:
+// the end of a row are left out). readers: for each title of TABLES the app reads, a function
+// that gets its table and returns { value, mistakes }: its settings, and what is wrong in them,
+// each mistake with its row. Returns:
 // - tables: for each title of TABLES that is there (its first copy), the column where it
 //   starts (1 for A) and its items: { row, cells }, with the cells of its columns only.
 // - mistakes: from the top of the sheet down, and from left to right in a row. Each one has its
 //   kind, and for each kind:
 //   - firstColumnEmpty: { table, row } - an item with no name;
 //   - tableTwice: { table, column } - the second (or later) copy of a title;
-//   - notInTable: { cell } - a filled cell on the left of the first title.
-export function readAppSheet(rows) {
+//   - notInTable: { cell } - a filled cell on the left of the first title;
+//   - the mistakes of the readers, with their rows;
+//   - tableMissing: { table } - a table with a reader is not there. These come last.
+// - settings: for each reader whose table is there, its value.
+export function readAppSheet(rows, readers = {}) {
   // The widest row. A loop, not Math.max(...rows): a very tall sheet has too many rows for that.
   const width = rows.reduce((widest, row) => Math.max(widest, row.length), 0);
   const cell = (row, column) => rows[row - 1]?.[column - 1];
@@ -88,8 +93,22 @@ export function readAppSheet(rows) {
     }
   });
 
+  // Each table with a reader gives its settings and its own mistakes.
+  const settings = {};
+  const missing = [];
+  for (const [title, reader] of Object.entries(readers)) {
+    const table = tables[title];
+    if (!table) {
+      missing.push({ kind: 'tableMissing', table: title });
+      continue;
+    }
+    const { value, mistakes } = reader(table);
+    settings[title] = value;
+    for (const mistake of mistakes) found.push({ ...mistake, at: [mistake.row, table.column] });
+  }
+
   // at: the row and the column of each mistake, only to sort them.
   found.sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1]);
   for (const mistake of found) delete mistake.at;
-  return { tables, mistakes: found };
+  return { tables, settings, mistakes: [...found, ...missing] };
 }

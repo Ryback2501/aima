@@ -210,3 +210,57 @@ test('the lines about mistakes in the App sheet are written in Russian', () => {
 test('an unknown language writes the lines in English', () => {
   assert.equal(createMistakeWriter('fr')(MISTAKES[0]), 'The document has no sheet called App.');
 });
+
+// The lines about the CATEGORIES table (issue #123).
+const CATEGORY_MISTAKES = [
+  { kind: 'tableMissing', sheet: 'App', table: 'CATEGORIES' },
+  { kind: 'iconMissing', sheet: 'App', table: 'CATEGORIES', row: 5 },
+  { kind: 'unknownIcon', sheet: 'App', table: 'CATEGORIES', row: 5, icon: 'carr' },
+  { kind: 'colorMissing', sheet: 'App', table: 'CATEGORIES', row: 5 },
+  { kind: 'badColor', sheet: 'App', table: 'CATEGORIES', row: 5, color: '#12' },
+  { kind: 'categoryTwice', sheet: 'App', table: 'CATEGORIES', row: 7, category: 'Car', has: '' },
+  {
+    kind: 'categoryTwice',
+    sheet: 'App',
+    table: 'CATEGORIES',
+    row: 7,
+    category: 'General',
+    has: 'compra',
+  },
+];
+
+test('the lines about the CATEGORIES table are written in English', () => {
+  assert.deepEqual(CATEGORY_MISTAKES.map(createMistakeWriter('en')), [
+    'App, CATEGORIES: the table is missing.',
+    'App, CATEGORIES, row 5: the icon is missing.',
+    'App, CATEGORIES, row 5: there is no icon called "carr".',
+    'App, CATEGORIES, row 5: the color is missing.',
+    'App, CATEGORIES, row 5: "#12" is not a color like #2f6fd6.',
+    'App, CATEGORIES, row 7: the category Car is there twice.',
+    'App, CATEGORIES, row 7: the category General with "compra" is there twice.',
+  ]);
+});
+
+test('the lines about the CATEGORIES table are written in Spanish', () => {
+  assert.deepEqual(CATEGORY_MISTAKES.map(createMistakeWriter('es')), [
+    'App, CATEGORIES: falta la tabla.',
+    'App, CATEGORIES, fila 5: falta el icono.',
+    'App, CATEGORIES, fila 5: no hay ningún icono llamado "carr".',
+    'App, CATEGORIES, fila 5: falta el color.',
+    'App, CATEGORIES, fila 5: "#12" no es un color como #2f6fd6.',
+    'App, CATEGORIES, fila 7: la categoría Car está dos veces.',
+    'App, CATEGORIES, fila 7: la categoría General con "compra" está dos veces.',
+  ]);
+});
+
+test('the lines about the CATEGORIES table are written in Russian', () => {
+  assert.deepEqual(CATEGORY_MISTAKES.map(createMistakeWriter('ru')), [
+    'App, CATEGORIES: таблица отсутствует.',
+    'App, CATEGORIES, строка 5: не указан значок.',
+    'App, CATEGORIES, строка 5: нет значка с названием "carr".',
+    'App, CATEGORIES, строка 5: не указан цвет.',
+    'App, CATEGORIES, строка 5: "#12" — это не цвет вида #2f6fd6.',
+    'App, CATEGORIES, строка 7: категория Car указана дважды.',
+    'App, CATEGORIES, строка 7: категория General с "compra" указана дважды.',
+  ]);
+});

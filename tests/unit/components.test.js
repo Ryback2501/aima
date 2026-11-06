@@ -1,17 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  CARDS,
-  cardStyle,
-  hasIcon,
-  PILLS,
-  pillStyle,
-  CATEGORY_ICONS,
-  categoryIcon,
-  ICON_COLORS,
-  categoryColor,
-} from '../../src/components.js';
+import { CARDS, cardStyle, hasIcon, PILLS, pillStyle } from '../../src/components.js';
 import { config } from '../../src/config.js';
 import { ICONS } from '../../src/icons.js';
 
@@ -154,105 +144,7 @@ test('every pill shows an icon that exists in icons.js, with a size', () => {
   }
 });
 
-test('every spending category has an icon that exists in icons.js', () => {
-  for (const [category, icon] of Object.entries(CATEGORY_ICONS)) {
-    assert.ok(ICONS[icon], `${category} uses an unknown icon`);
-    assert.equal(categoryIcon(category), icon);
-  }
-});
-
-// The eye button shows the movements the goal leaves out (#113), so their categories have
-// their own icon and color too (#117).
-test('Salary, Mortgage, Credit Cards and Whitening have their own icon and color', () => {
-  const expected = {
-    Salary: ['sackInHand', '#65a30d'],
-    Mortgage: ['housePie', '#c47d4a'],
-    'Credit Cards': ['billTransfer', '#1296d6'],
-    Whitening: ['pumpSoap', '#b06ad9'],
-  };
-  for (const [category, [icon, color]] of Object.entries(expected)) {
-    assert.equal(categoryIcon(category), icon, category);
-    assert.ok(ICONS[icon], `${icon} is not in icons.js`);
-    assert.equal(categoryColor(category), color, category);
-  }
-});
-
-test('every category the goal leaves out has its own icon, and Investing keeps its arrow', () => {
-  for (const category of config.goal.skip.categories) {
-    assert.ok(Object.hasOwn(CATEGORY_ICONS, category), category);
-  }
-  assert.equal(categoryIcon('Investing'), 'investing');
-});
-
-test('the House bills the goal leaves out keep the House icon and color', () => {
-  for (const description of config.goal.skip.descriptions.House) {
-    assert.equal(categoryIcon('House', description), 'house', description);
-    assert.equal(categoryColor('House', description), ICON_COLORS.house, description);
-  }
-});
-
-test('a category without its own icon gets the money bag with a euro sign', () => {
-  assert.equal(categoryIcon('Something new'), 'sackEuro');
-  assert.equal(categoryIcon(''), 'sackEuro');
-  assert.ok(ICONS.sackEuro);
-});
-
-test('a General movement that is a purchase ("compra") gets the cart', () => {
-  assert.equal(categoryIcon('General', 'Compra Mercadona'), 'cart');
-  assert.equal(categoryIcon('General', 'compras de la semana'), 'cart');
-  assert.equal(categoryIcon('General', 'Gran COMPRA'), 'cart');
-  assert.ok(ICONS.cart);
-});
-
-test('only General movements get the cart for a purchase', () => {
-  assert.equal(categoryIcon('General', 'Peluquería'), CATEGORY_ICONS.General);
-  assert.equal(categoryIcon('General'), CATEGORY_ICONS.General);
-  assert.equal(categoryIcon('House', 'Compra de muebles'), CATEGORY_ICONS.House);
-});
-
 test('the month items have their icons', () => {
   assert.ok(ICONS.calendar);
   assert.ok(ICONS.chevron);
-});
-
-// How much a color stands out from white, from 1 (not at all) to 21 (black), as WCAG counts it.
-function contrastWithWhite(hex) {
-  const [r, g, b] = [1, 3, 5].map((i) => {
-    const value = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05);
-}
-
-test('every movement icon has a color', () => {
-  for (const icon of [...Object.values(CATEGORY_ICONS), 'cart', 'sackEuro']) {
-    assert.match(ICON_COLORS[icon] ?? '', /^#[0-9a-f]{6}$/, `${icon} has no color`);
-  }
-});
-
-test('every icon color is easy to see on the white list', () => {
-  for (const [icon, color] of Object.entries(ICON_COLORS)) {
-    assert.ok(contrastWithWhite(color) >= 3, `${icon} (${color}) is too light`);
-  }
-});
-
-test('the color of a movement always goes with its icon', () => {
-  assert.equal(categoryColor('Car'), ICON_COLORS.car);
-  assert.equal(categoryColor('General', 'Compra Mercadona'), ICON_COLORS.cart);
-  assert.equal(categoryColor('General', 'Peluquería'), ICON_COLORS.sackEuro);
-  assert.equal(categoryColor('Something new'), ICON_COLORS.sackEuro);
-});
-
-// How colorful a color is, from 0 (grey) to 1 (fully colorful), as HSL counts it.
-function saturation(hex) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const light = (max + min) / 2;
-  return max === min ? 0 : (max - min) / (1 - Math.abs(2 * light - 1));
-}
-
-test('shopping has a clear color of its own, so it does not look like the grey of general', () => {
-  assert.ok(saturation(ICON_COLORS.sackEuro) < 0.2, 'general is grey');
-  assert.ok(saturation(ICON_COLORS.cart) >= 0.4, `shopping (${ICON_COLORS.cart}) looks grey`);
 });

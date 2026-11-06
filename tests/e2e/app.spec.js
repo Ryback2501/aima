@@ -12,7 +12,7 @@ import {
   FAKE_TOTAL,
   FAKE_MOVEMENTS,
 } from './helpers.js';
-import { CARDS, hasIcon, ICON_COLORS, PILLS } from '../../src/components.js';
+import { CARDS, hasIcon, PILLS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 import { DESCRIPTION_SPEED } from '../../src/months-view.js';
 
@@ -1641,7 +1641,8 @@ test.describe('the open goal card', () => {
       .locator('svg')
       .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).fill));
     expect(fills).toEqual(
-      [ICON_COLORS.car, ICON_COLORS.cocktail, ICON_COLORS.sackEuro].map((hex) => {
+      // The colors of Car, Leisure and General in the CATEGORIES table of the App sheet.
+      ['#2f6fd6', '#b8338f', '#4b5563'].map((hex) => {
         const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
         return `rgb(${r}, ${g}, ${b})`;
       }),
@@ -1659,7 +1660,7 @@ test.describe('the open goal card', () => {
         return { channels, filter: css.filter };
       }),
     );
-    [ICON_COLORS.car, ICON_COLORS.cocktail, ICON_COLORS.sackEuro].forEach((hex, index) => {
+    ['#2f6fd6', '#b8338f', '#4b5563'].forEach((hex, index) => {
       const light = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) * 0.08 + 255 * 0.92);
       shapes[index].channels.forEach((channel, i) =>
         expect(Math.abs(channel - light[i])).toBeLessThan(1.5),

@@ -217,3 +217,11 @@ test('an empty table is not a mistake: every movement gets the grey money bag', 
   assert.deepEqual(mistakes, []);
   assert.deepEqual(lookOf(value, 'Car', 'Petrol'), DEFAULT_LOOK);
 });
+
+test('two different rows are never taken for the same row, also with a line break in a cell', () => {
+  const { mistakes } = readCategories(
+    table(['A\nb', 'c', 'car', '#2f6fd6'], ['A', 'b\nc', 'paw', '#b8860b']),
+  );
+
+  assert.deepEqual(mistakes, []);
+});

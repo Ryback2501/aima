@@ -163,7 +163,7 @@ const playing = (page) =>
 
 test.describe('the Delete button', () => {
   // With one movement selected, Edit shows too (#102): two selected show "+" and Delete alone.
-  test('selecting two movements puts "+" on the left and Delete on its right, in the middle', async ({
+  test('selecting two movements puts "+" on the left and Delete on its right, in the middle @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -207,7 +207,7 @@ test.describe('the Delete button', () => {
     await expect(remove(page)).toBeHidden();
   });
 
-  test('"+" with movements selected opens the form as before; after Cancel nothing is selected', async ({
+  test('"+" with movements selected opens the form as before; after Cancel nothing is selected @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -384,7 +384,7 @@ test.describe('the delete panel', () => {
 });
 
 test.describe('deleting', () => {
-  test('Yes deletes them: the rows go, the amounts are lower, nothing is selected, "+" in the middle', async ({
+  test('Yes deletes them: the rows go, the amounts are lower, nothing is selected, "+" in the middle @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -471,7 +471,7 @@ test.describe('deleting', () => {
     expect(movements[0]).toEqual(movementRows()[1]);
   });
 
-  test('when the sheet was changed by hand, nothing is deleted, and Close shows the sheet as it is now', async ({
+  test('when the sheet was changed by hand, nothing is deleted, and Close shows the sheet as it is now @both-screens', async ({
     page,
   }) => {
     const { requests, movements } = await openGoal(page);
@@ -547,7 +547,7 @@ test.describe('deleting', () => {
     expect(requests.saves).toHaveLength(1);
   });
 
-  test('with "reduce motion", the buttons, the panel and the deleting all happen at once', async ({
+  test('with "reduce motion", the buttons, the panel and the deleting all happen at once @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -573,7 +573,7 @@ test.describe('deleting', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('after Yes the months come back still showing them, then the rows fade out and the rows below move up', async ({
+    test('after Yes the months come back still showing them, then the rows fade out and the rows below move up @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -801,7 +801,7 @@ test.describe('the list after a delete, with motion, when the sheet answers slow
     expect(rises).toHaveLength(1);
   });
 
-  test('the rows below move up while the month gets shorter, at the same time', async ({
+  test('the rows below move up while the month gets shorter, at the same time @both-screens', async ({
     page,
   }) => {
     await askToDeleteCinema(page);

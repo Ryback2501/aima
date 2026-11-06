@@ -206,9 +206,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       throw error;
     }
     const { settings, mistakes } = readAppSheet(rows, { CATEGORIES: readCategories });
-    if (mistakes.length === 0) categories = settings.CATEGORIES;
     if (mistakes.length > 0)
       throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
+    categories = settings.CATEGORIES;
   }
 
   // Shows only the message about the mistakes of the App sheet.

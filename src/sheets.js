@@ -9,6 +9,22 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 const RAW = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
 // The same, but a cell with a formula gives its formula (see getValues).
 const FORMULAS = 'valueRenderOption=FORMULA&dateTimeRenderOption=SERIAL_NUMBER';
+// Plain numbers, but dates as the text the sheet shows (see getSheetRows).
+const DATES_AS_TEXT = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING';
+
+// A cell of the sheet that holds a date (see getSheetRows): day is its day number (days since
+// 30 December 1899; a time is the part after the point), text is what the sheet shows. Where a
+// text is read, it is that text.
+class DateCell {
+  constructor(day, text) {
+    this.day = day;
+    this.text = text;
+  }
+
+  toString() {
+    return this.text;
+  }
+}
 
 // The person's Google account cannot open the sheet.
 export class NoAccessError extends Error {
@@ -79,19 +95,42 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
   // be written again as a formula.
   async function getValues(range, { raw = false, formulas = false } = {}) {
     let query = '';
-    if (formulas) query = `?${FORMULAS}`;
-    else if (raw) query = `?${RAW}`;
-    const data = await request(`${sheetUrl}/values/${encodeURIComponent(range)}${query}`);
+    if (formulas) query = FORMULAS;
+    else if (raw) query = RAW;
+    return valuesOf(range, query);
+  }
+
+  // The rows of a range, with the values asked for in the query ('' for the text the sheet
+  // shows).
+  async function valuesOf(range, query) {
+    const data = await request(
+      `${sheetUrl}/values/${encodeURIComponent(range)}${query ? `?${query}` : ''}`,
+    );
     return data.values ?? [];
   }
 
-  // Returns the rows of a whole sheet, found by its name, as plain numbers and dates (see
-  // getValues with raw). The name is written between quotes, as the sheet writes it, so names
-  // with spaces work too. Google answers 400 when it cannot find the sheet: then this fails with
-  // NoSuchSheetError.
+  // Returns the rows of a whole sheet, found by its name, as plain numbers (see getValues with
+  // raw). A date cell is a DateCell, so it is never taken for a plain number or for a text that
+  // looks like a date. To find the date cells, the sheet is read twice at the same time: with the
+  // dates as day numbers, and with the dates as text. A cell that is a number in the first read
+  // and a text in the second one holds a date.
+  // The name is written between quotes, as the sheet writes it, so names with spaces work too.
+  // Google answers 400 when it cannot find the sheet: then this fails with NoSuchSheetError.
   async function getSheetRows(name) {
+    const range = `'${name.replaceAll("'", "''")}'`;
     try {
-      return await getValues(`'${name.replaceAll("'", "''")}'`, { raw: true });
+      const [rows, texts] = await Promise.all([
+        valuesOf(range, RAW),
+        valuesOf(range, DATES_AS_TEXT),
+      ]);
+      return rows.map((row, index) =>
+        row.map((cell, column) => {
+          const text = texts[index]?.[column];
+          return typeof cell === 'number' && typeof text === 'string'
+            ? new DateCell(cell, text)
+            : cell;
+        }),
+      );
     } catch (error) {
       if (error instanceof SheetsError && error.status === 400) throw new NoSuchSheetError(name);
       throw error;

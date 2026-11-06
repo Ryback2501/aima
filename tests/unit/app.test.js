@@ -24,13 +24,10 @@ const config = {
   ],
   goal: {
     movements: 'Sheet2!A:E',
-    sources: { Cash: 'cash' },
     from: '2026-10-01',
     to: '2026-12-31',
     limit: 3000,
     skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
-    sourceOrder: ['Bank', 'Cash'],
-    sourcePairs: {},
   },
   // The cells whose dropdown lists give the options of the new movement form.
   form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2', sheet: 'Sheet2', firstRow: 2 },
@@ -1766,5 +1763,120 @@ test('a mistake in the CATEGORIES table shows its line', async () => {
   assert.deepEqual(last(), {
     screen: 'mistakes',
     mistakes: [{ kind: 'unknownIcon', table: 'CATEGORIES', row: 3, icon: 'carr', sheet: 'App' }],
+  });
+});
+
+// Issue #124: the icons, the order and the pairs of the sources come from the SOURCES table.
+// An App sheet with this SOURCES table (from row 3 down) and the CATEGORIES table of APP_SHEET.
+const withSources = (...items) => [
+  ['CATEGORIES', '', '', '', '', 'SOURCES'],
+  [],
+  ...Array.from({ length: Math.max(items.length, 1) }, (_, index) => [
+    ...(index === 0 ? ['Food', '', 'cart', '#2b8a3e'] : ['', '', '', '']),
+    '',
+    ...(items[index] ?? []),
+  ]),
+];
+
+test('each movement on the main screen gets its source icon from the SOURCES table', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withSources(['Cash', 'card'], ['Bank']),
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Bank', OCTOBER_5, 'Food', 'Bread', -2],
+      ['Other', OCTOBER_5, 'Food', 'Milk', -1],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(
+    movementsOf(last()).map(({ description, source }) => [description, source]),
+    [
+      ['Shop', 'card'],
+      // Bank has no icon in the table, and Other is not in it: no source icon.
+      ['Bread', null],
+      ['Milk', null],
+    ],
+  );
+});
+
+test('Save sorts the day in the order of the SOURCES table', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () => withSources(['Cash', 'cash'], ['Bank', 'bank']),
+    formulas: async () => [['Bank', OCTOBER_5, 'Food', 'Shop', -20]],
+  });
+
+  await handlers.save({ ...filled, digits: '500' });
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', 'Bakery', -5],
+    ['Bank', OCTOBER_5, 'Food', 'Shop', -20],
+  ]);
+});
+
+test('Save puts a movement of a paired source right above its partner of the same amount', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () =>
+      withSources(['Cash', 'cash', 'Provisioned'], ['Polina', 'bank'], ['Provisioned', 'bank']),
+    formulas: async () => [
+      ['Polina', OCTOBER_5, 'Food', 'A', -10],
+      ['Provisioned', OCTOBER_5, 'Food', 'B', -5],
+    ],
+  });
+
+  await handlers.save({ ...filled, digits: '500' });
+
+  assert.deepEqual(
+    log.writes[0].rows.map(([source]) => source),
+    ['Cash', 'Provisioned', 'Polina'],
+  );
+});
+
+test('Save after Edit sorts the day in the order of the SOURCES table', async () => {
+  const rows = [
+    ['Bank', OCTOBER_5, 'Food', 'A', -1],
+    ['Cash', OCTOBER_5, 'Food', 'B', -2],
+  ];
+  const { handlers, log } = await signedInEditor({
+    ...editSheet(rows),
+    appRows: async () => withSources(['Cash', 'cash'], ['Bank', 'bank']),
+  });
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(rows[0]), concept: 'Ant' });
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', 'B', -2],
+    ['Bank', OCTOBER_5, 'Food', 'Ant', -1],
+  ]);
+});
+
+test('an App sheet without the SOURCES table shows the message that it is missing', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => [['CATEGORIES'], [], ['Food', '', 'cart', '#2b8a3e']],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'tableMissing', table: 'SOURCES', sheet: 'App' }],
+  });
+});
+
+test('a mistake in the SOURCES table shows its line', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withSources(['Cash', 'wallet']),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'badSourceIcon', table: 'SOURCES', row: 3, icon: 'wallet', sheet: 'App' }],
   });
 });

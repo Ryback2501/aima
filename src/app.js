@@ -257,7 +257,6 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     movementRows = movements;
     goal = {
       ...goalStatus(movements, goalSettings),
-      limit: goalSettings.limit,
       // With the movements the goal leaves out: the eye button of the goal card shows them.
       // Each movement gets its icon and color from the CATEGORIES table.
       months: goalMonths(movements, goalSettings, { leftOut: true }).map((month) => ({

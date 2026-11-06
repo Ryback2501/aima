@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { setUp, sheetDay } from './helpers.js';
+import { GOAL_LEAVE_OUT_TABLE, GOAL_TABLE, setUp, sheetDay, sideBySide } from './helpers.js';
 import { CARDS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 import { STRINGS } from '../../src/i18n.js';
@@ -49,18 +49,28 @@ async function signIn(page, options = {}) {
   return { requests, movements };
 }
 
-// The SOURCES table is required too (issue #124). An App sheet of these tests, with an empty
-// SOURCES table on the right of its cells (when it has none yet), so it adds no line.
-function withSources(appSheet) {
-  const [titles = [], ...rest] = appSheet;
-  if (titles.some((title) => String(title).trim().toUpperCase() === 'SOURCES')) return appSheet;
+// The SOURCES, GOAL and GOAL LEAVE OUT tables are required too (issues #124 and #125). An App
+// sheet of these tests, with the ones it does not have on the right of its cells, after one
+// empty column: an empty SOURCES table and the tests' goal tables, so they add no line.
+function withRequired(appSheet) {
+  const titles = new Set((appSheet[0] ?? []).map((title) => String(title).trim().toUpperCase()));
+  const tables = [
+    ['SOURCES', [['SOURCES'], ['Source', 'Icon', 'Paired with']]],
+    ['GOAL', GOAL_TABLE],
+    ['GOAL LEAVE OUT', GOAL_LEAVE_OUT_TABLE],
+  ].filter(([title]) => !titles.has(title));
+  if (tables.length === 0) return appSheet;
+  const right = sideBySide(...tables.map(([, table]) => table));
   const width = Math.max(...appSheet.map((row) => row.length));
-  return [[...titles, ...new Array(width + 1 - titles.length).fill(''), 'SOURCES'], ...rest];
+  return Array.from({ length: Math.max(appSheet.length, right.length) }, (_, index) => {
+    const row = appSheet[index] ?? [];
+    return [...row, ...new Array(width + 1 - row.length).fill(''), ...(right[index] ?? [])];
+  });
 }
 
 // Signs in with these rows in the App sheet (null: no App sheet), and waits for the message.
 async function openMessage(page, appSheet, options = {}) {
-  const parts = await signIn(page, { appSheet: appSheet && withSources(appSheet), ...options });
+  const parts = await signIn(page, { appSheet: appSheet && withRequired(appSheet), ...options });
   await expect(messageCard(page)).toBeVisible();
   return parts;
 }
@@ -164,7 +174,7 @@ test.describe('the mistakes', () => {
   });
 
   test('a cell with only a space is empty: no message', async ({ page }) => {
-    await signIn(page, { appSheet: withSources([['CATEGORIES'], [], ['', ' ']]) });
+    await signIn(page, { appSheet: withRequired([['CATEGORIES'], [], ['', ' ']]) });
 
     await expect(page.locator('#total-value')).toHaveText('€549.50');
     await expect(messageCard(page)).toBeHidden();
@@ -172,7 +182,7 @@ test.describe('the mistakes', () => {
 
   test('an empty row between two items: no message', async ({ page }) => {
     await signIn(page, {
-      appSheet: withSources([
+      appSheet: withRequired([
         ['CATEGORIES'],
         [],
         ['Car', '', 'car', '#2f6fd6'],

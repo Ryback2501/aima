@@ -35,17 +35,45 @@ const config = {
   appSheet: 'App',
 };
 
-// An App sheet with its CATEGORIES table (issue #123) and its SOURCES table (issue #124): from
-// then on both tables are required.
-const APP_SHEET = [
+// 5 October 2026 as the sheet sends it: days since 30 December 1899.
+const OCTOBER_5 = 46300;
+
+// A date cell of the App sheet, as the sheets client gives it (issue #125): its day number and
+// the text the sheet shows.
+const dateCell = (day, text) => ({ day, text });
+
+// The GOAL and GOAL LEAVE OUT tables of the tests (issue #125), side by side: the goal from
+// 1 October to 31 December 2026, with a limit of 3000, that leaves out the category Pay and the
+// Home movements called Water.
+const OCTOBER_1 = dateCell(OCTOBER_5 - 4, '1/10/2026');
+const DECEMBER_31 = dateCell(OCTOBER_5 + 87, '31/12/2026');
+const GOAL_TABLES = [
+  ['GOAL', '', '', 'GOAL LEAVE OUT'],
+  ['Setting', 'Value', '', 'Category', 'Description'],
+  ['From', OCTOBER_1, '', 'Pay'],
+  ['To', DECEMBER_31, '', 'Home', 'Water'],
+  ['Limit', 3000],
+];
+
+// An App sheet of the tests with the goal tables on the right of its cells, after one empty
+// column. From issue #125, both goal tables are required.
+function withGoal(rows, tables = GOAL_TABLES) {
+  const width = Math.max(0, ...rows.map((row) => row.length));
+  return Array.from({ length: Math.max(rows.length, tables.length) }, (_, index) => {
+    const row = rows[index] ?? [];
+    return [...row, ...new Array(width + 1 - row.length).fill(''), ...(tables[index] ?? [])];
+  });
+}
+
+// An App sheet with its CATEGORIES table (issue #123), its SOURCES table (issue #124) and its
+// goal tables: from then on all of them are required.
+const CATEGORIES_AND_SOURCES = [
   ['CATEGORIES', '', '', '', '', 'SOURCES'],
   ['Category', 'Description has', 'Icon', 'Color', '', 'Source', 'Icon', 'Paired with'],
   ['Food', '', 'cart', '#2b8a3e', '', 'Bank'],
   ['', '', '', '', '', 'Cash', 'cash'],
 ];
-
-// 5 October 2026 as the sheet sends it: days since 30 December 1899.
-const OCTOBER_5 = 46300;
+const APP_SHEET = withGoal(CATEGORIES_AND_SOURCES);
 
 function memoryStorage() {
   const data = new Map();
@@ -1486,7 +1514,7 @@ const noAppSheet = async () => {
   throw new NoSuchSheetError('App');
 };
 // An App sheet with one mistake: row 3 of CATEGORIES has an empty first column.
-const brokenApp = async () => [['CATEGORIES', '', '', '', 'SOURCES'], [], ['', 'car']];
+const brokenApp = async () => withGoal([['CATEGORIES', '', '', '', 'SOURCES'], [], ['', 'car']]);
 const FIRST_COLUMN_EMPTY = { kind: 'firstColumnEmpty', table: 'CATEGORIES', row: 3, sheet: 'App' };
 
 test('every load reads the App sheet first, then the Total and the movements', async () => {
@@ -1525,11 +1553,8 @@ test('with no App sheet, only the message shows, and the rest is not read', asyn
 test('the mistakes of the App sheet are shown, each with the name of the sheet', async () => {
   const { app, handlers, last } = setup({
     // CATEGORIES covers the columns B and C; its second copy starts at D.
-    appRows: async () => [
-      ['', 'CATEGORIES', '', 'CATEGORIES', '', 'SOURCES'],
-      [],
-      ['x', '', 'car'],
-    ],
+    appRows: async () =>
+      withGoal([['', 'CATEGORIES', '', 'CATEGORIES', '', 'SOURCES'], [], ['x', '', 'car']]),
   });
   await app.start();
 
@@ -1737,7 +1762,7 @@ test('each movement on the main screen gets its icon and color from the CATEGORI
 });
 
 test('an App sheet without the CATEGORIES table shows the message that it is missing', async () => {
-  const { app, handlers, last } = setup({ appRows: async () => [['SOURCES']] });
+  const { app, handlers, last } = setup({ appRows: async () => withGoal([['SOURCES']]) });
   await app.start();
 
   await handlers.signIn();
@@ -1750,11 +1775,8 @@ test('an App sheet without the CATEGORIES table shows the message that it is mis
 
 test('a mistake in the CATEGORIES table shows its line', async () => {
   const { app, handlers, last } = setup({
-    appRows: async () => [
-      ['CATEGORIES', '', '', '', '', 'SOURCES'],
-      [],
-      ['Food', '', 'carr', '#2b8a3e'],
-    ],
+    appRows: async () =>
+      withGoal([['CATEGORIES', '', '', '', '', 'SOURCES'], [], ['Food', '', 'carr', '#2b8a3e']]),
   });
   await app.start();
 
@@ -1768,15 +1790,16 @@ test('a mistake in the CATEGORIES table shows its line', async () => {
 
 // Issue #124: the icons, the order and the pairs of the sources come from the SOURCES table.
 // An App sheet with this SOURCES table (from row 3 down) and the CATEGORIES table of APP_SHEET.
-const withSources = (...items) => [
-  ['CATEGORIES', '', '', '', '', 'SOURCES'],
-  [],
-  ...Array.from({ length: Math.max(items.length, 1) }, (_, index) => [
-    ...(index === 0 ? ['Food', '', 'cart', '#2b8a3e'] : ['', '', '', '']),
-    '',
-    ...(items[index] ?? []),
-  ]),
-];
+const withSources = (...items) =>
+  withGoal([
+    ['CATEGORIES', '', '', '', '', 'SOURCES'],
+    [],
+    ...Array.from({ length: Math.max(items.length, 1) }, (_, index) => [
+      ...(index === 0 ? ['Food', '', 'cart', '#2b8a3e'] : ['', '', '', '']),
+      '',
+      ...(items[index] ?? []),
+    ]),
+  ]);
 
 test('each movement on the main screen gets its source icon from the SOURCES table', async () => {
   const { app, handlers, last } = setup({
@@ -1855,7 +1878,7 @@ test('Save after Edit sorts the day in the order of the SOURCES table', async ()
 
 test('an App sheet without the SOURCES table shows the message that it is missing', async () => {
   const { app, handlers, last } = setup({
-    appRows: async () => [['CATEGORIES'], [], ['Food', '', 'cart', '#2b8a3e']],
+    appRows: async () => withGoal([['CATEGORIES'], [], ['Food', '', 'cart', '#2b8a3e']]),
   });
   await app.start();
 

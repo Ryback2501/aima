@@ -675,7 +675,7 @@ test.describe('the new movement form', () => {
       await expect(amount).toHaveValue('1.25');
     });
 
-    test('the cursor always goes back to the end', async ({ page }) => {
+    test('the cursor always goes back to the end @both-screens', async ({ page }) => {
       await openForm(page);
       const amount = field(page, 'amount');
       await typeAmount(page, '1250');

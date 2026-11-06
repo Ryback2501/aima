@@ -19,3 +19,23 @@ test('the end-to-end tests run in the Playwright image of the installed Playwrig
   // The browser is already in the image, so nothing is installed while the tests run.
   assert.doesNotMatch(workflow, /playwright install/);
 });
+
+// The browser tests run on a phone screen and on a computer screen (issue #130). Most of them do
+// not depend on the screen size, so only the tests about the layout, marked with @both-screens in
+// their name, also run on the computer screen. The phone screen runs every test.
+test('the phone screen runs every browser test, the computer screen only those marked @both-screens', async () => {
+  const { default: config } = await import('../../playwright.config.js');
+  const screens = Object.fromEntries(config.projects.map((project) => [project.name, project]));
+  assert.deepEqual(Object.keys(screens).sort(), ['computer', 'phone']);
+
+  const runs = (screen, name) => {
+    const { grep, grepInvert } = screens[screen];
+    const matches = (patterns) => [patterns].flat().some((pattern) => pattern.test(name));
+    return (!grep || matches(grep)) && (!grepInvert || !matches(grepInvert));
+  };
+
+  assert.equal(runs('phone', 'a month opens on a tap'), true);
+  assert.equal(runs('phone', 'the pills sit in a row @both-screens'), true);
+  assert.equal(runs('computer', 'a month opens on a tap'), false);
+  assert.equal(runs('computer', 'the pills sit in a row @both-screens'), true);
+});

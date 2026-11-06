@@ -2,8 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 
-// End-to-end tests: they open the built app in a real browser, on a phone screen and a
-// computer screen. Google is replaced by a stand-in, so the tests never use real accounts.
+// End-to-end tests: they open the built app in a real browser. Google is replaced by a
+// stand-in, so the tests never use real accounts.
+//
+// Every test runs on a phone screen. Only the tests about the layout also run on a computer
+// screen: they have @both-screens at the end of their name. Add it when a test checks a size, a
+// position, scrolling, something cut off by the edge of the screen, hover or touch, or when it
+// changes the screen size. When it is not clear, add it. A test without it runs on the phone only.
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
@@ -22,7 +27,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'] } },
-    { name: 'computer', use: { ...devices['Desktop Chrome'] } },
+    { name: 'computer', use: { ...devices['Desktop Chrome'] }, grep: /@both-screens/ },
   ],
   webServer: {
     command: `node scripts/build.mjs && node scripts/serve.mjs dist ${PORT}`,

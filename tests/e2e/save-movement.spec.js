@@ -77,7 +77,7 @@ const writtenRows = (body) =>
       values.map(({ userEnteredValue = {} }) => Object.values(userEnteredValue)[0] ?? ''),
     );
 
-test('Save is a button with a teal border, next to Cancel', async ({ page }) => {
+test('Save is a button with a teal border, next to Cancel @both-screens', async ({ page }) => {
   await openForm(page);
 
   await expect(save(page)).toHaveText('Save');

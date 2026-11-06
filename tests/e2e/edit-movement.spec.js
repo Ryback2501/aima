@@ -204,7 +204,7 @@ const playing = (page) =>
   );
 
 test.describe('the Edit button', () => {
-  test('with one movement selected, Edit shows on the left of "+" and Delete on its right', async ({
+  test('with one movement selected, Edit shows on the left of "+" and Delete on its right @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -240,7 +240,7 @@ test.describe('the Edit button', () => {
   test.describe('on a screen 360 pixels wide', () => {
     test.use({ viewport: { width: 360, height: 740 } });
 
-    test('Edit, "+" and Delete fit next to the back button, with nothing cut off or overlapping', async ({
+    test('Edit, "+" and Delete fit next to the back button, with nothing cut off or overlapping @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -257,7 +257,7 @@ test.describe('the Edit button', () => {
     });
   });
 
-  test('with a second movement selected, Edit goes and "+" and Delete are in the middle', async ({
+  test('with a second movement selected, Edit goes and "+" and Delete are in the middle @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -276,7 +276,7 @@ test.describe('the Edit button', () => {
     await threeInTheMiddle(page);
   });
 
-  test('unselecting the only movement takes Edit and Delete away, and "+" stays in the middle', async ({
+  test('unselecting the only movement takes Edit and Delete away, and "+" stays in the middle @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -288,7 +288,7 @@ test.describe('the Edit button', () => {
     await onlyPlusInTheMiddle(page);
   });
 
-  test('with one movement selected, "+" opens the new movement form; after Cancel nothing is selected', async ({
+  test('with one movement selected, "+" opens the new movement form; after Cancel nothing is selected @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -305,7 +305,7 @@ test.describe('the Edit button', () => {
     await onlyPlusInTheMiddle(page);
   });
 
-  test('with one movement selected, Delete and then No bring the three buttons back', async ({
+  test('with one movement selected, Delete and then No bring the three buttons back @both-screens', async ({
     page,
   }) => {
     await openGoal(page);
@@ -324,7 +324,7 @@ test.describe('the Edit button', () => {
   test.describe('with motion', () => {
     test.use({ reducedMotion: 'no-preference' });
 
-    test('Edit and Delete rise in together while "+" stays still; unselecting, they sink together', async ({
+    test('Edit and Delete rise in together while "+" stays still; unselecting, they sink together @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -354,7 +354,7 @@ test.describe('the Edit button', () => {
       await onlyPlusInTheMiddle(page);
     });
 
-    test('a second movement: Edit sinks while the three slide left; back to one, it rises next to "+" while they slide right', async ({
+    test('a second movement: Edit sinks while the three slide left; back to one, it rises next to "+" while they slide right @both-screens', async ({
       page,
     }) => {
       await openGoal(page);
@@ -510,7 +510,7 @@ test.describe('the edit form', () => {
     expect(requests.saves).toEqual([]);
   });
 
-  test('an amount with more than two decimals has a red warning in the list, and the form cuts it', async ({
+  test('an amount with more than two decimals has a red warning in the list, and the form cuts it @both-screens', async ({
     page,
   }) => {
     const movements = movementRows();
@@ -541,7 +541,7 @@ test.describe('the edit form', () => {
     );
   });
 
-  test('Cancel closes the form, changes nothing in the sheet, and nothing is selected', async ({
+  test('Cancel closes the form, changes nothing in the sheet, and nothing is selected @both-screens', async ({
     page,
   }) => {
     const { requests, movements } = await openEdit(page, 1);
@@ -573,7 +573,7 @@ async function saveAndClose(page) {
 }
 
 test.describe('saving a change', () => {
-  test('a new amount shows in the movement, its month and the goal; the sheet has only that change', async ({
+  test('a new amount shows in the movement, its month and the goal; the sheet has only that change @both-screens', async ({
     page,
   }) => {
     const { requests, movements } = await openEdit(page, 1);
@@ -794,7 +794,7 @@ test.describe('saving a change', () => {
     await expect(page.locator('.amount-warning')).toHaveCount(0);
   });
 
-  test('Save with nothing changed closes the form, writes nothing, and nothing is selected', async ({
+  test('Save with nothing changed closes the form, writes nothing, and nothing is selected @both-screens', async ({
     page,
   }) => {
     const { requests } = await openEdit(page, 1);
@@ -809,7 +809,7 @@ test.describe('saving a change', () => {
 });
 
 test.describe('problems while saving a change', () => {
-  test('when the sheet was changed by hand, nothing is saved, and Close shows the sheet as it is now', async ({
+  test('when the sheet was changed by hand, nothing is saved, and Close shows the sheet as it is now @both-screens', async ({
     page,
   }) => {
     const { requests, movements } = await openEdit(page, 1);

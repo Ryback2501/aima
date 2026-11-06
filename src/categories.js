@@ -53,7 +53,7 @@ export function readCategories(table) {
     if (!color) mistakes.push({ kind: 'colorMissing', table: TABLE, row });
     else if (!COLOR.test(color)) mistakes.push({ kind: 'badColor', table: TABLE, row, color });
     // The same category and text twice. For the text, capital letters do not matter.
-    const key = `${category}\n${has.toLowerCase()}`;
+    const key = JSON.stringify([category, has.toLowerCase()]);
     if (seen.has(key)) mistakes.push({ kind: 'categoryTwice', table: TABLE, row, category, has });
     seen.add(key);
     if (mistakes.length === before) rules.push({ category, has, icon, color });

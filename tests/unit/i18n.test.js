@@ -376,3 +376,11 @@ test('the lines about the GOAL tables are written in Russian', () => {
     'App, GOAL, строка 5: лимит должен быть числом больше 0.',
   ]);
 });
+
+// The title of the goal card is a fixed text in each language: it does not depend on the limit
+// of the GOAL table (issue #125).
+test('the title of the goal card is a fixed text in every language', () => {
+  assert.equal(STRINGS.en.goalTitle, 'Goal 4K');
+  assert.equal(STRINGS.es.goalTitle, 'Objetivo 4K');
+  assert.equal(STRINGS.ru.goalTitle, 'Цель 4K');
+});

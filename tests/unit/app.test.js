@@ -325,7 +325,6 @@ test('a person with access sees the total after sign-in', async () => {
     goal: {
       amount: 12.5,
       level: 'ok',
-      limit: 3000,
       months: [
         {
           year: 2026,
@@ -1909,7 +1908,7 @@ const withGoalTables = (...rows) =>
     ...rows,
   ]);
 
-test('the limit of the goal comes from the GOAL table', async () => {
+test('the limit of the goal comes from the GOAL table, and the screen does not get it', async () => {
   const { app, handlers, last } = setup({
     appRows: async () =>
       withGoalTables(['From', OCTOBER_1, '', 'Pay'], ['To', DECEMBER_31], ['Limit', 10]),
@@ -1918,7 +1917,8 @@ test('the limit of the goal comes from the GOAL table', async () => {
 
   await handlers.signIn();
 
-  assert.equal(last().goal.limit, 10);
+  // The title of the goal card is a fixed text: it does not show the limit.
+  assert.equal(Object.hasOwn(last().goal, 'limit'), false);
   // Shop: 12.50 of spending, over the limit.
   assert.equal(last().goal.amount, 12.5);
   assert.equal(last().goal.level, 'over');

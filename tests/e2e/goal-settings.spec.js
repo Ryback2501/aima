@@ -88,10 +88,13 @@ test.describe('the goal from the App sheet', () => {
     await expect.poll(() => descriptions(page, 0)).toEqual(['Cinema', 'October pay', 'Market']);
   });
 
-  test('a limit of 100 shows the goal amount in red', async ({ page }) => {
+  test('a limit of 100 shows the goal amount in red, and the title still says Goal 4K', async ({
+    page,
+  }) => {
     await signIn(page, sheetWith({ goal: goalWith({ [LIMIT]: ['Limit', 100] }) }));
 
     await expect(goalValue(page)).toHaveAttribute('data-level', 'over');
+    await expect(page.locator('#goal-title')).toHaveText('Goal 4K');
   });
 
   test('From on 1/11/2026: October is not in the list, and its spending does not count', async ({

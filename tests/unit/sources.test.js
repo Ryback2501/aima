@@ -209,8 +209,8 @@ test('the chain is found also when the source that goes below is higher in the t
 
 test('the mistakes of one row come in the order of its columns', () => {
   assert.deepEqual(mistakesOf(['Cash', 'cash'], ['Cash', 'wallet', 'Bank']), [
-    { kind: 'badSourceIcon', table: 'SOURCES', row: 4, icon: 'wallet' },
     { kind: 'sourceTwice', table: 'SOURCES', row: 4, source: 'Cash' },
+    { kind: 'badSourceIcon', table: 'SOURCES', row: 4, icon: 'wallet' },
     { kind: 'unknownPartner', table: 'SOURCES', row: 4, partner: 'Bank' },
   ]);
 });

@@ -13,6 +13,7 @@ import { isConfigured } from './config.js';
 import { NoAccessError, NoSuchSheetError, SignInExpiredError } from './sheets.js';
 import { readAppSheet } from './app-sheet.js';
 import { lookOf, readCategories } from './categories.js';
+import { readSources } from './sources.js';
 import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
@@ -72,6 +73,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   let lists = null;
   // The rules of the CATEGORIES table of the App sheet: the icon and the color of each movement.
   let categories = [];
+  // The goal's settings, with the icons, the order and the pairs of the sources from the SOURCES
+  // table of the App sheet (see sources.js). Until the App sheet is read: no sources.
+  let goalSettings = { ...config.goal, sources: {}, sourceOrder: [], sourcePairs: {} };
   // The movement the form is changing ({ index, row }: its place in movementRows, and the row
   // as it was read), or null when the form adds a new movement.
   let editing = null;
@@ -205,10 +209,14 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         throw new AppSheetMistakes([{ kind: 'noAppSheet', sheet }]);
       throw error;
     }
-    const { settings, mistakes } = readAppSheet(rows, { CATEGORIES: readCategories });
+    const { settings, mistakes } = readAppSheet(rows, {
+      CATEGORIES: readCategories,
+      SOURCES: readSources,
+    });
     if (mistakes.length > 0)
       throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
     categories = settings.CATEGORIES;
+    goalSettings = { ...config.goal, ...settings.SOURCES };
   }
 
   // Shows only the message about the mistakes of the App sheet.
@@ -238,11 +246,11 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   function showGoalOf(movements) {
     movementRows = movements;
     goal = {
-      ...goalStatus(movements, config.goal),
+      ...goalStatus(movements, goalSettings),
       limit: config.goal.limit,
       // With the movements the goal leaves out: the eye button of the goal card shows them.
       // Each movement gets its icon and color from the CATEGORIES table.
-      months: goalMonths(movements, config.goal, { leftOut: true }).map((month) => ({
+      months: goalMonths(movements, goalSettings, { leftOut: true }).map((month) => ({
         ...month,
         days: month.days.map((day) => ({
           ...day,
@@ -266,7 +274,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
         sheets.getSheet(sheet),
       ]);
       const row = movementRow(values);
-      const plan = planSave(rows, row, config.goal);
+      const plan = planSave(rows, row, goalSettings);
       const written = plan.rows.map((each) => (each === row ? each.map(typed) : each));
       await sheets.writeRows({ ...place, startRow: firstRow - 1 + plan.start, rows: written });
       return true;
@@ -280,7 +288,7 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   async function rewrite(index, values) {
     const row = movementRow(values);
     const result = await changeRows([index], (rows, [place]) => ({
-      ...planEdit(rows, place, row, config.goal),
+      ...planEdit(rows, place, row, goalSettings),
       typedRow: row,
     }));
     return typeof result === 'string' ? result : 'saved';

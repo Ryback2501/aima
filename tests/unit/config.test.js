@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { config, isConfigured } from '../../src/config.js';
-import { ICONS } from '../../src/icons.js';
 
 const real = {
   googleClientId: '123-abc.apps.googleusercontent.com',
@@ -55,24 +54,16 @@ test('the real config is fully set up', () => {
   assert.match(config.googleApiKey, /^AIza/);
 });
 
-test('the movements start at the source column, and each source has an icon of the Total', () => {
+test('the movements start at the source column', () => {
   assert.equal(config.goal.movements, 'Movements!A:E');
-  // Every source of the sheet has an icon: the bank, a card or cash (issue #120).
-  assert.deepEqual(config.goal.sources, {
-    'BBVA David': 'bank',
-    'BBVA Común': 'bank',
-    Polina: 'bank',
-    Provisioned: 'bank',
-    Deprovisioned: 'bank',
-    Después: 'card',
-    AMEX: 'card',
-    ECI: 'card',
-    ICON: 'card',
-    Pluxee: 'card',
-    Edenred: 'card',
-    Cash: 'cash',
-  });
-  for (const icon of Object.values(config.goal.sources)) assert.ok(ICONS[icon], icon);
+});
+
+// The icons, the order and the pairs of the sources come from the SOURCES table of the App
+// sheet (issue #124): the code has no source names.
+test('the config has no sources, no order of the sources and no pairs', () => {
+  assert.equal(Object.hasOwn(config.goal, 'sources'), false);
+  assert.equal(Object.hasOwn(config.goal, 'sourceOrder'), false);
+  assert.equal(Object.hasOwn(config.goal, 'sourcePairs'), false);
 });
 
 // The dropdowns of the first movement row (row 2, under the headers) give the form's lists:
@@ -81,26 +72,6 @@ test('the form reads its lists from the dropdowns of the first movement row', ()
   const sheet = config.goal.movements.split('!')[0];
   assert.equal(config.form.sourceList, `${sheet}!A2`);
   assert.equal(config.form.categoryList, `${sheet}!C2`);
-});
-
-// The order of the movements of one day, from top to bottom. Each Cash movement is followed by
-// its Provisioned movement.
-test('the movements of one day are sorted by their source, in the order of the issue', () => {
-  assert.deepEqual(config.goal.sourceOrder, [
-    'BBVA David',
-    'BBVA Común',
-    'Después',
-    'AMEX',
-    'ECI',
-    'ICON',
-    'Pluxee',
-    'Edenred',
-    'Cash',
-    'Polina',
-    'Provisioned',
-    'Deprovisioned',
-  ]);
-  assert.deepEqual(config.goal.sourcePairs, { Cash: 'Provisioned' });
 });
 
 test('new movements are written on the movements sheet, from the first movement row', () => {

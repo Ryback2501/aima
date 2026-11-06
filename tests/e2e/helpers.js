@@ -35,9 +35,10 @@ const FAKE_DROPDOWNS = {
 };
 // The App sheet as the app asks for it: the whole sheet, by its name.
 export const FAKE_APP_RANGE = "'App'";
-// The App sheet of the tests: the CATEGORIES table with the rows of issue #123, as the app
-// looked before the settings moved to the sheet.
-export const FAKE_APP_SHEET = [
+// The tables of the tests' App sheet, each from row 1: its title, its headers, then its items.
+// CATEGORIES has the rows of issue #123 and SOURCES the rows of issue #124, as the app looked
+// and worked before the settings moved to the sheet.
+export const CATEGORIES_TABLE = [
   ['CATEGORIES'],
   ['Category', 'Description has', 'Icon', 'Color'],
   ['Car', '', 'car', '#2f6fd6'],
@@ -54,6 +55,37 @@ export const FAKE_APP_SHEET = [
   ['Whitening', '', 'pumpSoap', '#b06ad9'],
   ['Yoshi', '', 'paw', '#b8860b'],
 ];
+export const SOURCES_TABLE = [
+  ['SOURCES'],
+  ['Source', 'Icon', 'Paired with'],
+  ['BBVA David', 'bank'],
+  ['BBVA Común', 'bank'],
+  ['Después', 'card'],
+  ['AMEX', 'card'],
+  ['ECI', 'card'],
+  ['ICON', 'card'],
+  ['Pluxee', 'card'],
+  ['Edenred', 'card'],
+  ['Cash', 'cash', 'Provisioned'],
+  ['Polina', 'bank'],
+  ['Provisioned', 'bank'],
+  ['Deprovisioned', 'bank'],
+];
+
+// Puts tables side by side, as in the App sheet: each one as wide as its headers, with one
+// empty column after it.
+export function sideBySide(...tables) {
+  const height = Math.max(...tables.map((table) => table.length));
+  return Array.from({ length: height }, (_, index) =>
+    tables.flatMap((table) => {
+      const row = table[index] ?? [];
+      return Array.from({ length: table[1].length + 1 }, (__, column) => row[column] ?? '');
+    }),
+  );
+}
+
+// The App sheet of the tests: CATEGORIES in the columns A to D, and SOURCES in F to H.
+export const FAKE_APP_SHEET = sideBySide(CATEGORIES_TABLE, SOURCES_TABLE);
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.

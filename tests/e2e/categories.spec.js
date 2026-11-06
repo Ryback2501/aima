@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-import { FAKE_APP_SHEET, setUp, sheetDay } from './helpers.js';
+import {
+  CATEGORIES_TABLE,
+  FAKE_APP_SHEET,
+  SOURCES_TABLE,
+  setUp,
+  sheetDay,
+  sideBySide,
+} from './helpers.js';
 import { ICONS } from '../../src/icons.js';
 
 // The icon and the color of each movement come from the CATEGORIES table of the App sheet
@@ -20,13 +27,18 @@ const october = [
   ['Cash', sheetDay('2026-10-06'), 'Leisure', 'Cinema', -10],
 ];
 
-// The rows of the tests' App sheet: the row of each category is its place in FAKE_APP_SHEET.
+// The rows of the CATEGORIES table of the tests: the row of each category is its place in
+// CATEGORIES_TABLE.
 const CAR = 2;
 const GENERAL_COMPRA = 5;
 const GENERAL = 6;
-// A copy of the tests' App sheet with some cells changed: { [index of the row]: cells }.
+// A copy of the tests' App sheet with some cells of the CATEGORIES table changed:
+// { [index of the row]: cells }. The other tables of the sheet do not change.
 const sheetWith = (changes) =>
-  FAKE_APP_SHEET.map((row, index) => (index in changes ? changes[index] : [...row]));
+  sideBySide(
+    CATEGORIES_TABLE.map((row, index) => (index in changes ? changes[index] : [...row])),
+    SOURCES_TABLE,
+  );
 
 async function signIn(page, appSheet) {
   const requests = await setUp(page, { movements: october, ...(appSheet && { appSheet }) });

@@ -49,9 +49,18 @@ async function signIn(page, options = {}) {
   return { requests, movements };
 }
 
-// Signs in with these rows in the App sheet, and waits for the message.
+// The SOURCES table is required too (issue #124). An App sheet of these tests, with an empty
+// SOURCES table on the right of its cells (when it has none yet), so it adds no line.
+function withSources(appSheet) {
+  const [titles = [], ...rest] = appSheet;
+  if (titles.some((title) => String(title).trim().toUpperCase() === 'SOURCES')) return appSheet;
+  const width = Math.max(...appSheet.map((row) => row.length));
+  return [[...titles, ...new Array(width + 1 - titles.length).fill(''), 'SOURCES'], ...rest];
+}
+
+// Signs in with these rows in the App sheet (null: no App sheet), and waits for the message.
 async function openMessage(page, appSheet, options = {}) {
-  const parts = await signIn(page, { appSheet, ...options });
+  const parts = await signIn(page, { appSheet: appSheet && withSources(appSheet), ...options });
   await expect(messageCard(page)).toBeVisible();
   return parts;
 }
@@ -155,7 +164,7 @@ test.describe('the mistakes', () => {
   });
 
   test('a cell with only a space is empty: no message', async ({ page }) => {
-    await signIn(page, { appSheet: [['CATEGORIES'], [], ['', ' ']] });
+    await signIn(page, { appSheet: withSources([['CATEGORIES'], [], ['', ' ']]) });
 
     await expect(page.locator('#total-value')).toHaveText('€549.50');
     await expect(messageCard(page)).toBeHidden();
@@ -163,13 +172,13 @@ test.describe('the mistakes', () => {
 
   test('an empty row between two items: no message', async ({ page }) => {
     await signIn(page, {
-      appSheet: [
+      appSheet: withSources([
         ['CATEGORIES'],
         [],
         ['Car', '', 'car', '#2f6fd6'],
         [],
         ['Yoshi', '', 'paw', '#b8860b'],
-      ],
+      ]),
     });
 
     await expect(page.locator('#total-value')).toHaveText('€549.50');

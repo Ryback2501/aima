@@ -24,13 +24,10 @@ const config = {
   ],
   goal: {
     movements: 'Sheet2!A:E',
-    sources: { Cash: 'cash' },
     from: '2026-10-01',
     to: '2026-12-31',
     limit: 3000,
     skip: { categories: ['Pay'], descriptions: { Home: ['Water'] } },
-    sourceOrder: ['Bank', 'Cash'],
-    sourcePairs: {},
   },
   // The cells whose dropdown lists give the options of the new movement form.
   form: { sourceList: 'Sheet2!A2', categoryList: 'Sheet2!C2', sheet: 'Sheet2', firstRow: 2 },
@@ -38,11 +35,13 @@ const config = {
   appSheet: 'App',
 };
 
-// An App sheet with its CATEGORIES table (issue #123): from then on the table is required.
-const CATEGORIES_SHEET = [
-  ['CATEGORIES'],
-  ['Category', 'Description has', 'Icon', 'Color'],
-  ['Food', '', 'cart', '#2b8a3e'],
+// An App sheet with its CATEGORIES table (issue #123) and its SOURCES table (issue #124): from
+// then on both tables are required.
+const APP_SHEET = [
+  ['CATEGORIES', '', '', '', '', 'SOURCES'],
+  ['Category', 'Description has', 'Icon', 'Color', '', 'Source', 'Icon', 'Paired with'],
+  ['Food', '', 'cart', '#2b8a3e', '', 'Bank'],
+  ['', '', '', '', '', 'Cash', 'cash'],
 ];
 
 // 5 October 2026 as the sheet sends it: days since 30 December 1899.
@@ -81,7 +80,7 @@ function setup({
   // What happens when rows are written.
   write = async () => {},
   // The rows of the App sheet, as Google sends them (issue #122), with its CATEGORIES table.
-  appRows = async () => CATEGORIES_SHEET,
+  appRows = async () => APP_SHEET,
   // Parts of the view that work differently in a test, for example one that breaks.
   viewChanges = {},
 } = {}) {
@@ -1487,7 +1486,7 @@ const noAppSheet = async () => {
   throw new NoSuchSheetError('App');
 };
 // An App sheet with one mistake: row 3 of CATEGORIES has an empty first column.
-const brokenApp = async () => [['CATEGORIES'], [], ['', 'car']];
+const brokenApp = async () => [['CATEGORIES', '', '', '', 'SOURCES'], [], ['', 'car']];
 const FIRST_COLUMN_EMPTY = { kind: 'firstColumnEmpty', table: 'CATEGORIES', row: 3, sheet: 'App' };
 
 test('every load reads the App sheet first, then the Total and the movements', async () => {
@@ -1501,7 +1500,7 @@ test('every load reads the App sheet first, then the Total and the movements', a
 });
 
 test('an App sheet with its tables shows the same main screen as before', async () => {
-  const { app, handlers, last } = setup({ appRows: async () => CATEGORIES_SHEET });
+  const { app, handlers, last } = setup({ appRows: async () => APP_SHEET });
   await app.start();
 
   await handlers.signIn();
@@ -1526,7 +1525,11 @@ test('with no App sheet, only the message shows, and the rest is not read', asyn
 test('the mistakes of the App sheet are shown, each with the name of the sheet', async () => {
   const { app, handlers, last } = setup({
     // CATEGORIES covers the columns B and C; its second copy starts at D.
-    appRows: async () => [['', 'CATEGORIES', '', 'CATEGORIES'], [], ['x', '', 'car']],
+    appRows: async () => [
+      ['', 'CATEGORIES', '', 'CATEGORIES', '', 'SOURCES'],
+      [],
+      ['x', '', 'car'],
+    ],
   });
   await app.start();
 
@@ -1556,7 +1559,7 @@ test('a person who has not picked the document gets the Google picker at the App
   const { app, handlers, log, last } = setup({
     appRows: async () => {
       if (!picked) throw new NoAccessError();
-      return CATEGORIES_SHEET;
+      return APP_SHEET;
     },
     pick: async () => (picked = true),
   });
@@ -1585,7 +1588,7 @@ test('a person who cannot open the document gets the same access message as befo
 test('a saved movement with a broken App sheet: the thumbs-up, then the message', async () => {
   let broken = false;
   const { handlers, order, last, log } = await signedInEditor({
-    appRows: async () => (broken ? brokenApp() : CATEGORIES_SHEET),
+    appRows: async () => (broken ? brokenApp() : APP_SHEET),
     write: async () => (broken = true),
   });
 
@@ -1600,7 +1603,7 @@ test('a saved change with a broken App sheet: the thumbs-up, then the message', 
   let broken = false;
   const { handlers, order, log } = await signedInEditor({
     ...editSheet(),
-    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
+    appRows: async () => (broken ? noAppSheet() : APP_SHEET),
     write: async () => (broken = true),
   });
   await handlers.edit(1);
@@ -1615,7 +1618,7 @@ test('deleted movements with a broken App sheet: the thumbs-up, then the message
   let broken = false;
   const { handlers, order, log, last } = await signedInEditor({
     ...deleteSheet(),
-    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
+    appRows: async () => (broken ? noAppSheet() : APP_SHEET),
     write: async () => (broken = true),
   });
 
@@ -1632,7 +1635,7 @@ test('an edited row changed by hand with a broken App sheet: the warning, then t
   const { handlers, order, log, last } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
-    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
+    appRows: async () => (broken ? noAppSheet() : APP_SHEET),
   });
   await handlers.edit(2);
   rows = [mv('A', -1), mv('New', -9), mv('C', -3, OCTOBER_5 + 1)];
@@ -1657,7 +1660,7 @@ test('a delete stopped by a change by hand with a broken App sheet: the warning,
   const { handlers, order, log } = await signedInEditor({
     movements: async () => [HEADERS, ...rows],
     formulas: async () => rows,
-    appRows: async () => (broken ? noAppSheet() : CATEGORIES_SHEET),
+    appRows: async () => (broken ? noAppSheet() : APP_SHEET),
   });
   rows = [mv('A', -1), mv('B', -2), mv('New', -9), mv('D', -4)];
   broken = true;
@@ -1678,7 +1681,7 @@ test('when the sheet cannot be read again at all after a save, the app does what
   const { handlers, order, last } = await signedInEditor({
     appRows: async () => {
       if (saved) throw new SheetsError('Could not reach Google.');
-      return CATEGORIES_SHEET;
+      return APP_SHEET;
     },
     write: async () => (saved = true),
   });
@@ -1695,7 +1698,7 @@ test('when the sheet cannot be read again at all after a delete, the goal shows 
     ...deleteSheet(),
     appRows: async () => {
       if (deleted) throw new SheetsError('Could not reach Google.');
-      return CATEGORIES_SHEET;
+      return APP_SHEET;
     },
     write: async () => (deleted = true),
   });
@@ -1747,7 +1750,11 @@ test('an App sheet without the CATEGORIES table shows the message that it is mis
 
 test('a mistake in the CATEGORIES table shows its line', async () => {
   const { app, handlers, last } = setup({
-    appRows: async () => [['CATEGORIES'], [], ['Food', '', 'carr', '#2b8a3e']],
+    appRows: async () => [
+      ['CATEGORIES', '', '', '', '', 'SOURCES'],
+      [],
+      ['Food', '', 'carr', '#2b8a3e'],
+    ],
   });
   await app.start();
 
@@ -1756,5 +1763,120 @@ test('a mistake in the CATEGORIES table shows its line', async () => {
   assert.deepEqual(last(), {
     screen: 'mistakes',
     mistakes: [{ kind: 'unknownIcon', table: 'CATEGORIES', row: 3, icon: 'carr', sheet: 'App' }],
+  });
+});
+
+// Issue #124: the icons, the order and the pairs of the sources come from the SOURCES table.
+// An App sheet with this SOURCES table (from row 3 down) and the CATEGORIES table of APP_SHEET.
+const withSources = (...items) => [
+  ['CATEGORIES', '', '', '', '', 'SOURCES'],
+  [],
+  ...Array.from({ length: Math.max(items.length, 1) }, (_, index) => [
+    ...(index === 0 ? ['Food', '', 'cart', '#2b8a3e'] : ['', '', '', '']),
+    '',
+    ...(items[index] ?? []),
+  ]),
+];
+
+test('each movement on the main screen gets its source icon from the SOURCES table', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withSources(['Cash', 'card'], ['Bank']),
+    movements: async () => [
+      ['Cash', OCTOBER_5, 'Food', 'Shop', -12.5],
+      ['Bank', OCTOBER_5, 'Food', 'Bread', -2],
+      ['Other', OCTOBER_5, 'Food', 'Milk', -1],
+    ],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(
+    movementsOf(last()).map(({ description, source }) => [description, source]),
+    [
+      ['Shop', 'card'],
+      // Bank has no icon in the table, and Other is not in it: no source icon.
+      ['Bread', null],
+      ['Milk', null],
+    ],
+  );
+});
+
+test('Save sorts the day in the order of the SOURCES table', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () => withSources(['Cash', 'cash'], ['Bank', 'bank']),
+    formulas: async () => [['Bank', OCTOBER_5, 'Food', 'Shop', -20]],
+  });
+
+  await handlers.save({ ...filled, digits: '500' });
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', 'Bakery', -5],
+    ['Bank', OCTOBER_5, 'Food', 'Shop', -20],
+  ]);
+});
+
+test('Save puts a movement of a paired source right above its partner of the same amount', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () =>
+      withSources(['Cash', 'cash', 'Provisioned'], ['Polina', 'bank'], ['Provisioned', 'bank']),
+    formulas: async () => [
+      ['Polina', OCTOBER_5, 'Food', 'A', -10],
+      ['Provisioned', OCTOBER_5, 'Food', 'B', -5],
+    ],
+  });
+
+  await handlers.save({ ...filled, digits: '500' });
+
+  assert.deepEqual(
+    log.writes[0].rows.map(([source]) => source),
+    ['Cash', 'Provisioned', 'Polina'],
+  );
+});
+
+test('Save after Edit sorts the day in the order of the SOURCES table', async () => {
+  const rows = [
+    ['Bank', OCTOBER_5, 'Food', 'A', -1],
+    ['Cash', OCTOBER_5, 'Food', 'B', -2],
+  ];
+  const { handlers, log } = await signedInEditor({
+    ...editSheet(rows),
+    appRows: async () => withSources(['Cash', 'cash'], ['Bank', 'bank']),
+  });
+  await handlers.edit(1);
+
+  await handlers.save({ ...valuesOf(rows[0]), concept: 'Ant' });
+
+  assert.deepEqual(log.writes[0].rows, [
+    ['Cash', OCTOBER_5, 'Food', 'B', -2],
+    ['Bank', OCTOBER_5, 'Food', 'Ant', -1],
+  ]);
+});
+
+test('an App sheet without the SOURCES table shows the message that it is missing', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => [['CATEGORIES'], [], ['Food', '', 'cart', '#2b8a3e']],
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'tableMissing', table: 'SOURCES', sheet: 'App' }],
+  });
+});
+
+test('a mistake in the SOURCES table shows its line', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withSources(['Cash', 'wallet']),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'badSourceIcon', table: 'SOURCES', row: 3, icon: 'wallet', sheet: 'App' }],
   });
 });

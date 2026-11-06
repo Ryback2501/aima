@@ -333,7 +333,14 @@ test.describe('sign-in', () => {
     await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
     const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values`;
-    expect(sheetRequests).toHaveLength(2);
+    // The App sheet first (issue #122), then the Total and the movements.
+    expect(sheetRequests).toHaveLength(3);
+    expect(sheetRequests[0]).toEqual({
+      url:
+        `${sheetUrl}/'App'` +
+        '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
+      authorization: 'Bearer fake-token',
+    });
     expect(sheetRequests).toEqual(
       expect.arrayContaining([
         {

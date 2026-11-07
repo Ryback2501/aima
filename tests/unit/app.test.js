@@ -2052,3 +2052,131 @@ test('an App sheet without the GOAL LEAVE OUT table shows the message that it is
     mistakes: [{ kind: 'tableMissing', table: 'GOAL LEAVE OUT', sheet: 'App' }],
   });
 });
+
+// Issue #126: the cells of the Total, the movements sheet, its first movement row and the cells
+// of the form's lists come from the CELLS table of the App sheet.
+// The tests' App sheet with some Cells of the CELLS table changed: { [name]: cell }.
+const withCells = (changes) =>
+  withGoal(
+    CATEGORIES_AND_SOURCES,
+    GOAL_TABLES,
+    CELLS_TABLE.map(([name, cell]) => (name in changes ? [name, changes[name]] : [name, cell])),
+  );
+// Another movements sheet, Data, with the movements from row 3, and another list sheet.
+const OTHER_CELLS = {
+  'Total - cash': 'Sheet1!B9',
+  'Movements sheet': 'Data',
+  'First movement row': 3,
+  'Source list': 'Data!A3',
+  'Category list': 'Lists!B1',
+};
+const OTHER_SHEETS = async () => [
+  ...DOCUMENT_SHEETS,
+  { title: 'Data', sheetId: 9, rowCount: 50, columnCount: 5 },
+];
+
+test('the Total, the movements and the lists of the form are read from the cells of CELLS', async () => {
+  const { log, last } = await signedInEditor({
+    appRows: async () => withCells(OTHER_CELLS),
+    documentSheets: OTHER_SHEETS,
+  });
+
+  assert.deepEqual(log.cells.at(-1).ranges, ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!B9']);
+  assert.deepEqual(log.values, [
+    { spreadsheetId: 'sheet-1', range: 'Data!A:E', options: { raw: true } },
+  ]);
+  assert.deepEqual(log.dropdowns.sort(), ['Data!A3', 'Lists!B1']);
+  assert.equal(last().screen, 'main');
+});
+
+test('the list of the sheets of the document is read once at each load, with the App sheet', async () => {
+  const { app, handlers, log } = setup();
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.equal(log.documentSheets, 1);
+});
+
+test('Save writes on the movements sheet of CELLS, from its first movement row', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () => withCells(OTHER_CELLS),
+    documentSheets: OTHER_SHEETS,
+  });
+
+  await handlers.save(filled);
+
+  assert.deepEqual(log.sheets, ['Data']);
+  assert.ok(log.values.some(({ range, options }) => range === 'Data!A3:E' && options.formulas));
+  // From the day of the movement: Shop, the first movement, on the 3rd row of the sheet
+  // (counted from 0: 2). With the movements from row 2, it would be 1.
+  assert.equal(log.writes.length, 1);
+  assert.equal(log.writes[0].startRow, 2);
+});
+
+test('Yes deletes on the movements sheet of CELLS, from its first movement row', async () => {
+  const { handlers, log } = await signedInEditor({
+    appRows: async () => withCells(OTHER_CELLS),
+    documentSheets: OTHER_SHEETS,
+    // Two rows of headers: the movements start at row 3.
+    movements: async () => [['Title'], HEADERS, ...sheetRows],
+    formulas: async () => sheetRows,
+  });
+
+  // B and D: rows 4 and 6 of the sheet (the places 3 and 5 of the rows the goal read).
+  await handlers.delete([3, 5]);
+
+  assert.ok(log.values.some(({ range, options }) => range === 'Data!A3:E' && options.formulas));
+  assert.deepEqual(log.writes, [
+    {
+      sheetId: 7,
+      rowCount: 100,
+      // From B, the 4th row of the sheet (counted from 0: row 3).
+      startRow: 3,
+      rows: [mv('C', -3), ['', '', '', '', ''], ['', '', '', '', '']],
+    },
+  ]);
+});
+
+test('a mistake in the CELLS table shows its line', async () => {
+  const { app, handlers, log, last } = setup({
+    appRows: async () => withCells({ 'Total - cash': 'Nowhere!A1' }),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'noSuchCell', table: 'CELLS', row: 6, cell: 'Nowhere!A1', sheet: 'App' }],
+  });
+  assert.deepEqual(log.reads, ['app App']);
+});
+
+test('a movements sheet that is not in the document shows its line', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withCells({ 'Movements sheet': 'Data' }),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'noSuchSheet', table: 'CELLS', row: 7, name: 'Data', sheet: 'App' }],
+  });
+});
+
+test('an App sheet without the CELLS table shows the message that it is missing', async () => {
+  const { app, handlers, last } = setup({
+    appRows: async () => withGoal(CATEGORIES_AND_SOURCES, GOAL_TABLES, []),
+  });
+  await app.start();
+
+  await handlers.signIn();
+
+  assert.deepEqual(last(), {
+    screen: 'mistakes',
+    mistakes: [{ kind: 'tableMissing', table: 'CELLS', sheet: 'App' }],
+  });
+});

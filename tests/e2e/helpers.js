@@ -26,7 +26,7 @@ export const FAKE_CATEGORY_LIST = 'Sheet2!C2';
 // The default dropdowns: the sources are typed in the rule, the categories come from cells.
 export const FAKE_SOURCES = ['BBVA David', 'BBVA Común', 'Después', 'Cash', 'Provisioned'];
 export const FAKE_CATEGORIES = ['Car', 'General', 'House', 'Leisure'];
-const FAKE_DROPDOWNS = {
+export const FAKE_DROPDOWNS = {
   [FAKE_SOURCE_LIST]: {
     type: 'ONE_OF_LIST',
     values: FAKE_SOURCES.map((value) => ({ userEnteredValue: value })),
@@ -158,6 +158,8 @@ export async function setUp(
     sheetStatus = 200,
     // The values of the four parts of the Total.
     cells = FAKE_AMOUNTS,
+    // The values of other single cells: { 'Sheet1!B7': 75 }. A cell that is not here is empty.
+    otherCells = {},
     // Movement rows: source, date (sheetDay), category, description, amount.
     movements = [],
     email = 'ana@example.com',
@@ -285,7 +287,14 @@ export async function setUp(
       await route.fulfill({ status: 400, json: { error: { code: 400 } } });
       return;
     }
-    let answer = { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    // Single cells: the four parts of the Total, or other cells.
+    let answer = {
+      valueRanges: url.searchParams.getAll('ranges').map((cell) => {
+        const index = FAKE_CELLS.indexOf(cell);
+        const value = index === -1 ? otherCells[cell] : cells[index];
+        return value === undefined ? {} : { values: [[value]] };
+      }),
+    };
     if (range === FAKE_APP_RANGE) {
       answer = { values: appValues(app, url.searchParams.get('dateTimeRenderOption')) };
     }

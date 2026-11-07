@@ -276,6 +276,16 @@ const MISTAKE_LINES = {
     fromAfterTo: ({ sheet, table, row }) => `${sheet}, ${table}, row ${row}: From is after To.`,
     badLimit: ({ sheet, table, row }) =>
       `${sheet}, ${table}, row ${row}: the limit must be a number above 0.`,
+    unknownName: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, row ${row}: there is no row called "${name}" in this table.`,
+    badFirstRow: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, row ${row}: First movement row must be a whole number of 1 or more.`,
+    emptyCell: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, row ${row}: the cell of ${setting} is empty.`,
+    noSuchCell: ({ sheet, table, row, cell }) =>
+      `${sheet}, ${table}, row ${row}: the document has no cell ${cell}.`,
+    noSuchSheet: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, row ${row}: the document has no sheet called ${name}.`,
   },
   es: {
     noAppSheet: ({ sheet }) => `El documento no tiene ninguna hoja llamada ${sheet}.`,
@@ -318,6 +328,16 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, fila ${row}: From es posterior a To.`,
     badLimit: ({ sheet, table, row }) =>
       `${sheet}, ${table}, fila ${row}: el límite debe ser un número mayor que 0.`,
+    unknownName: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, fila ${row}: no hay ninguna fila llamada "${name}" en esta tabla.`,
+    badFirstRow: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, fila ${row}: First movement row debe ser un número entero de 1 o más.`,
+    emptyCell: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, fila ${row}: la celda de ${setting} está vacía.`,
+    noSuchCell: ({ sheet, table, row, cell }) =>
+      `${sheet}, ${table}, fila ${row}: el documento no tiene ninguna celda ${cell}.`,
+    noSuchSheet: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, fila ${row}: el documento no tiene ninguna hoja llamada ${name}.`,
   },
   ru: {
     noAppSheet: ({ sheet }) => `В документе нет листа с названием ${sheet}.`,
@@ -360,6 +380,16 @@ const MISTAKE_LINES = {
       `${sheet}, ${table}, строка ${row}: From позже, чем To.`,
     badLimit: ({ sheet, table, row }) =>
       `${sheet}, ${table}, строка ${row}: лимит должен быть числом больше 0.`,
+    unknownName: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, строка ${row}: в этой таблице нет строки с названием "${name}".`,
+    badFirstRow: ({ sheet, table, row }) =>
+      `${sheet}, ${table}, строка ${row}: First movement row должен быть целым числом от 1 и больше.`,
+    emptyCell: ({ sheet, table, row, setting }) =>
+      `${sheet}, ${table}, строка ${row}: ячейка для ${setting} пустая.`,
+    noSuchCell: ({ sheet, table, row, cell }) =>
+      `${sheet}, ${table}, строка ${row}: в документе нет ячейки ${cell}.`,
+    noSuchSheet: ({ sheet, table, row, name }) =>
+      `${sheet}, ${table}, строка ${row}: в документе нет листа с названием ${name}.`,
   },
 };
 

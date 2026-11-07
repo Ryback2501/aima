@@ -98,14 +98,14 @@ export const GOAL_LEAVE_OUT_TABLE = [
 export const CELLS_TABLE = [
   ['CELLS'],
   ['Name', 'Cell'],
-  ['Total - bank', 'Sheet1!A1'],
-  ['Total - cards', 'Sheet1!A2'],
-  ['Total - provisioned', 'Sheet1!A3'],
-  ['Total - cash', 'Sheet1!A4'],
-  ['Movements sheet', 'Sheet2'],
+  ...['bank', 'cards', 'provisioned', 'cash'].map((part, index) => [
+    `Total - ${part}`,
+    FAKE_CELLS[index],
+  ]),
+  ['Movements sheet', FAKE_SHEET],
   ['First movement row', 2],
-  ['Source list', 'Sheet2!A2'],
-  ['Category list', 'Sheet2!C2'],
+  ['Source list', FAKE_SOURCE_LIST],
+  ['Category list', FAKE_CATEGORY_LIST],
 ];
 
 // Puts tables side by side, as in the App sheet: each one as wide as its headers, with one

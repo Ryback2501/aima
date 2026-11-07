@@ -36,9 +36,9 @@ const FAKE_DROPDOWNS = {
 // The App sheet as the app asks for it: the whole sheet, by its name.
 export const FAKE_APP_RANGE = "'App'";
 // The tables of the tests' App sheet, each from row 1: its title, its headers, then its items.
-// CATEGORIES has the rows of issue #123, SOURCES the rows of issue #124, and GOAL and GOAL LEAVE
-// OUT the rows of issue #125, as the app looked and worked before the settings moved to the
-// sheet.
+// CATEGORIES has the rows of issue #123, SOURCES the rows of issue #124, GOAL and GOAL LEAVE OUT
+// the rows of issue #125, and CELLS the cells the tests use (issue #126), as the app looked and
+// worked before the settings moved to the sheet.
 export const CATEGORIES_TABLE = [
   ['CATEGORIES'],
   ['Category', 'Description has', 'Icon', 'Color'],
@@ -95,6 +95,18 @@ export const GOAL_LEAVE_OUT_TABLE = [
   ['House', 'Luz - Endesa'],
   ['House', 'Gas - Endesa'],
 ];
+export const CELLS_TABLE = [
+  ['CELLS'],
+  ['Name', 'Cell'],
+  ['Total - bank', 'Sheet1!A1'],
+  ['Total - cards', 'Sheet1!A2'],
+  ['Total - provisioned', 'Sheet1!A3'],
+  ['Total - cash', 'Sheet1!A4'],
+  ['Movements sheet', 'Sheet2'],
+  ['First movement row', 2],
+  ['Source list', 'Sheet2!A2'],
+  ['Category list', 'Sheet2!C2'],
+];
 
 // Puts tables side by side, as in the App sheet: each one as wide as its headers, with one
 // empty column after it.
@@ -109,12 +121,13 @@ export function sideBySide(...tables) {
 }
 
 // The App sheet of the tests: CATEGORIES in the columns A to D, SOURCES in F to H, GOAL in J and
-// K, and GOAL LEAVE OUT in M and N.
+// K, GOAL LEAVE OUT in M and N, and CELLS in P and Q.
 export const FAKE_APP_SHEET = sideBySide(
   CATEGORIES_TABLE,
   SOURCES_TABLE,
   GOAL_TABLE,
   GOAL_LEAVE_OUT_TABLE,
+  CELLS_TABLE,
 );
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
@@ -229,14 +242,21 @@ export async function setUp(
       await route.fulfill({ status: answer, json: answer === 200 ? {} : { error: {} } });
       return;
     }
-    // The number and the size of each sheet.
+    // The number and the size of each sheet of the document.
     if (url.searchParams.get('fields')?.startsWith('sheets.properties')) {
-      const properties = {
-        sheetId: FAKE_SHEET_NUMBER,
-        title: FAKE_SHEET,
-        gridProperties: { rowCount: rows },
-      };
-      await route.fulfill({ json: { sheets: [{ properties }] } });
+      const sheets = [
+        { sheetId: 0, title: 'Sheet1', gridProperties: { rowCount: 1000, columnCount: 26 } },
+        {
+          sheetId: FAKE_SHEET_NUMBER,
+          title: FAKE_SHEET,
+          gridProperties: { rowCount: rows, columnCount: 26 },
+        },
+        { sheetId: 3, title: 'Lists', gridProperties: { rowCount: 1000, columnCount: 26 } },
+        ...(app === null
+          ? []
+          : [{ sheetId: 4, title: 'App', gridProperties: { rowCount: 1000, columnCount: 26 } }]),
+      ];
+      await route.fulfill({ json: { sheets: sheets.map((properties) => ({ properties })) } });
       return;
     }
     // The dropdown rule of one cell.

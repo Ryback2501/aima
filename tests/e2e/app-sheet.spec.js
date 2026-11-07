@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-import { GOAL_LEAVE_OUT_TABLE, GOAL_TABLE, setUp, sheetDay, sideBySide } from './helpers.js';
+import {
+  CELLS_TABLE,
+  GOAL_LEAVE_OUT_TABLE,
+  GOAL_TABLE,
+  setUp,
+  sheetDay,
+  sideBySide,
+} from './helpers.js';
 import { CARDS } from '../../src/components.js';
 import { ICONS } from '../../src/icons.js';
 import { STRINGS } from '../../src/i18n.js';
@@ -49,15 +56,17 @@ async function signIn(page, options = {}) {
   return { requests, movements };
 }
 
-// The SOURCES, GOAL and GOAL LEAVE OUT tables are required too (issues #124 and #125). An App
-// sheet of these tests, with the ones it does not have on the right of its cells, after one
-// empty column: an empty SOURCES table and the tests' goal tables, so they add no line.
+// The SOURCES, GOAL, GOAL LEAVE OUT and CELLS tables are required too (issues #124 to #126). An
+// App sheet of these tests, with the ones it does not have on the right of its cells, after one
+// empty column: an empty SOURCES table, and the tests' goal tables and CELLS table, so they add
+// no line.
 function withRequired(appSheet) {
   const titles = new Set((appSheet[0] ?? []).map((title) => String(title).trim().toUpperCase()));
   const tables = [
     ['SOURCES', [['SOURCES'], ['Source', 'Icon', 'Paired with']]],
     ['GOAL', GOAL_TABLE],
     ['GOAL LEAVE OUT', GOAL_LEAVE_OUT_TABLE],
+    ['CELLS', CELLS_TABLE],
   ].filter(([title]) => !titles.has(title));
   if (tables.length === 0) return appSheet;
   const right = sideBySide(...tables.map(([, table]) => table));

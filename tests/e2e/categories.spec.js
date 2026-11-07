@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 import {
   CATEGORIES_TABLE,
+  CELLS_TABLE,
   FAKE_APP_SHEET,
   GOAL_LEAVE_OUT_TABLE,
   GOAL_TABLE,
@@ -42,6 +43,7 @@ const sheetWith = (changes) =>
     SOURCES_TABLE,
     GOAL_TABLE,
     GOAL_LEAVE_OUT_TABLE,
+    CELLS_TABLE,
   );
 
 async function signIn(page, appSheet) {

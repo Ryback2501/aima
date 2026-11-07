@@ -50,14 +50,33 @@ const GOAL_TABLES = [
   ['Limit', 3000],
 ];
 
-// An App sheet of the tests with the goal tables on the right of its cells, after one empty
-// column. From issue #125, both goal tables are required.
-function withGoal(rows, tables = GOAL_TABLES) {
+// The CELLS table of the tests (issue #126): the cells the tests use.
+const CELLS_TABLE = [
+  ['CELLS'],
+  ['Name', 'Cell'],
+  ['Total - bank', 'Sheet1!A1'],
+  ['Total - cards', 'Sheet1!A2'],
+  ['Total - provisioned', 'Sheet1!A3'],
+  ['Total - cash', 'Sheet1!A4'],
+  ['Movements sheet', 'Sheet2'],
+  ['First movement row', 2],
+  ['Source list', 'Sheet2!A2'],
+  ['Category list', 'Sheet2!C2'],
+];
+
+// Rows with a table on their right, after one empty column.
+function besides(rows, table) {
   const width = Math.max(0, ...rows.map((row) => row.length));
-  return Array.from({ length: Math.max(rows.length, tables.length) }, (_, index) => {
+  return Array.from({ length: Math.max(rows.length, table.length) }, (_, index) => {
     const row = rows[index] ?? [];
-    return [...row, ...new Array(width + 1 - row.length).fill(''), ...(tables[index] ?? [])];
+    return [...row, ...new Array(width + 1 - row.length).fill(''), ...(table[index] ?? [])];
   });
+}
+
+// An App sheet of the tests with the goal tables on the right of its cells, and then the CELLS
+// table. From issue #125, both goal tables are required, and from issue #126 the CELLS table.
+function withGoal(rows, tables = GOAL_TABLES, cells = CELLS_TABLE) {
+  return besides(besides(rows, tables), cells);
 }
 
 // An App sheet with its CATEGORIES table (issue #123), its SOURCES table (issue #124) and its
@@ -69,6 +88,13 @@ const CATEGORIES_AND_SOURCES = [
   ['', '', '', '', '', 'Cash', 'cash'],
 ];
 const APP_SHEET = withGoal(CATEGORIES_AND_SOURCES);
+
+// The sheets of the document of the tests: the cells of CELLS_TABLE are in them.
+const DOCUMENT_SHEETS = [
+  { title: 'App', sheetId: 4, rowCount: 1000, columnCount: 26 },
+  { title: 'Sheet1', sheetId: 0, rowCount: 1000, columnCount: 26 },
+  { title: 'Sheet2', sheetId: 7, rowCount: 100, columnCount: 26 },
+];
 
 function memoryStorage() {
   const data = new Map();
@@ -100,6 +126,8 @@ function setup({
   formulas = async () => [['Cash', OCTOBER_5, 'Food', 'Shop', -12.5]],
   // The number and the size of the movements sheet.
   sheet = async () => ({ sheetId: 7, rowCount: 100 }),
+  // The sheets of the document, with their names, numbers and sizes.
+  documentSheets = async () => DOCUMENT_SHEETS,
   // What happens when rows are written.
   write = async () => {},
   // The rows of the App sheet, as Google sends them (issue #122), with its CATEGORIES table.
@@ -194,6 +222,8 @@ function setup({
     writes: [],
     // The reads of the sheet, in the order they started: 'app', 'cells' or 'values'.
     reads: [],
+    // How many times the list of the document's sheets was read.
+    documentSheets: 0,
   };
   const auth = {
     signIn: (options) => {
@@ -241,6 +271,11 @@ function setup({
       getSheet: async (name) => {
         log.sheets = [...(log.sheets ?? []), name];
         return sheet(name);
+      },
+      // Read at the same time as the App sheet, as part of its settings: not in log.reads.
+      getSheets: async () => {
+        log.documentSheets += 1;
+        return documentSheets();
       },
       writeRows: async (change) => {
         log.writes.push(change);

@@ -66,6 +66,12 @@ test('the config has no sources, no order of the sources and no pairs', () => {
   assert.equal(Object.hasOwn(config.goal, 'sourcePairs'), false);
 });
 
+// The dates, the limit and the left-out movements of the goal come from the GOAL and GOAL LEAVE
+// OUT tables of the App sheet (issue #125): the config of the goal has only the movements.
+test('the config of the goal has no dates, no limit and no left-out movements', () => {
+  assert.deepEqual(Object.keys(config.goal), ['movements']);
+});
+
 // The dropdowns of the first movement row (row 2, under the headers) give the form's lists:
 // the source in the first column, the category in the third.
 test('the form reads its lists from the dropdowns of the first movement row', () => {

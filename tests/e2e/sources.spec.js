@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-import { CATEGORIES_TABLE, SOURCES_TABLE, setUp, sheetDay, sideBySide } from './helpers.js';
+import {
+  CATEGORIES_TABLE,
+  GOAL_LEAVE_OUT_TABLE,
+  GOAL_TABLE,
+  SOURCES_TABLE,
+  setUp,
+  sheetDay,
+  sideBySide,
+} from './helpers.js';
 import { ICONS } from '../../src/icons.js';
 import { STRINGS } from '../../src/i18n.js';
 
@@ -25,14 +33,17 @@ const AMEX = 5;
 const CASH = 10;
 const PROVISIONED = 12;
 // A copy of the tests' App sheet with some cells of the SOURCES table changed:
-// { [index of the row]: cells }. The CATEGORIES table does not change.
+// { [index of the row]: cells }. The other tables do not change.
 const sheetWith = (changes) =>
   sideBySide(
     CATEGORIES_TABLE,
     SOURCES_TABLE.map((row, index) => (index in changes ? changes[index] : [...row])),
+    GOAL_TABLE,
+    GOAL_LEAVE_OUT_TABLE,
   );
 // The tests' App sheet with every row of the SOURCES table cleared: only its title and headers.
-const noSourceRows = () => sideBySide(CATEGORIES_TABLE, SOURCES_TABLE.slice(0, 2));
+const noSourceRows = () =>
+  sideBySide(CATEGORIES_TABLE, SOURCES_TABLE.slice(0, 2), GOAL_TABLE, GOAL_LEAVE_OUT_TABLE);
 
 const movement = (source, day, description, amount) => [
   source,

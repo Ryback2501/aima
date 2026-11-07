@@ -40,7 +40,8 @@ function columnName(column) {
 //   - firstColumnEmpty: { table, row } - an item with no name;
 //   - tableTwice: { table, column } - the second (or later) copy of a title;
 //   - notInTable: { cell } - a filled cell on the left of the first title;
-//   - the mistakes of the readers, with their rows;
+//   - the mistakes of the readers, with their rows (a mistake about something missing from a
+//     table has no row: these come after the others);
 //   - tableMissing: { table } - a table with a reader is not there. These come last.
 // - settings: for each reader whose table is there, its value.
 export function readAppSheet(rows, readers = {}) {
@@ -104,10 +105,14 @@ export function readAppSheet(rows, readers = {}) {
     }
     const { value, mistakes } = reader(table);
     settings[title] = value;
-    for (const mistake of mistakes) found.push({ ...mistake, at: [mistake.row, table.column] });
+    // A mistake with no row (something missing from the table) comes after the ones with a row.
+    for (const mistake of mistakes) {
+      found.push({ ...mistake, at: [mistake.row ?? Infinity, table.column] });
+    }
   }
 
-  // at: the row and the column of each mistake, only to sort them.
+  // at: the row and the column of each mistake, only to sort them. Two mistakes with no row are
+  // sorted by their column (Infinity - Infinity is not a number, so the row does not decide).
   found.sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1]);
   for (const mistake of found) delete mistake.at;
   return { tables, settings, mistakes: [...found, ...missing] };

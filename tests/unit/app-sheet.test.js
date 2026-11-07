@@ -236,3 +236,23 @@ test("a reader's mistakes go with the others, from the top of the sheet down", (
     { kind: 'colorMissing', table: 'CATEGORIES', row: 5 },
   ]);
 });
+
+// Issue #125: a reader's mistake about something missing from its table has no row.
+test("a reader's mistake with no row comes after the mistakes with a row, before the missing tables", () => {
+  const rows = [['GOAL', '', '', 'SOURCES'], [], ['', 'x', '', 'Cash']];
+  const readers = {
+    GOAL: () => ({
+      value: {},
+      mistakes: [{ kind: 'settingMissing', table: 'GOAL', setting: 'To' }],
+    }),
+    SOURCES: () => ({ value: {}, mistakes: [{ kind: 'sourceTwice', table: 'SOURCES', row: 3 }] }),
+    CATEGORIES: () => ({ value: {}, mistakes: [] }),
+  };
+
+  assert.deepEqual(readAppSheet(rows, readers).mistakes, [
+    { kind: 'firstColumnEmpty', table: 'GOAL', row: 3 },
+    { kind: 'sourceTwice', table: 'SOURCES', row: 3 },
+    { kind: 'settingMissing', table: 'GOAL', setting: 'To' },
+    { kind: 'tableMissing', table: 'CATEGORIES' },
+  ]);
+});

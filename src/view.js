@@ -863,8 +863,8 @@ export function createView(document, language) {
       // The color comes from the level: "over" is red, "close" is yellow (see styles.css).
       goalValue.textContent = formatMoney(state.goal.amount);
       goalValue.dataset.level = state.goal.level;
-      // "Goal 4K": the word in the app's language and the limit in thousands.
-      goalTitle.textContent = `${t('goal')} ${state.goal.limit / 1000}K`;
+      // A fixed text in the app's language ("Goal 4K"): it does not show the limit.
+      goalTitle.textContent = t('goalTitle');
       months.render(state.goal.months, { keepOpen: keepMonths });
       keepMonths = false;
       monthsShown?.();

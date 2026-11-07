@@ -3,6 +3,8 @@ import { test, expect } from '@playwright/test';
 import {
   CATEGORIES_TABLE,
   FAKE_APP_SHEET,
+  GOAL_LEAVE_OUT_TABLE,
+  GOAL_TABLE,
   SOURCES_TABLE,
   setUp,
   sheetDay,
@@ -38,6 +40,8 @@ const sheetWith = (changes) =>
   sideBySide(
     CATEGORIES_TABLE.map((row, index) => (index in changes ? changes[index] : [...row])),
     SOURCES_TABLE,
+    GOAL_TABLE,
+    GOAL_LEAVE_OUT_TABLE,
   );
 
 async function signIn(page, appSheet) {

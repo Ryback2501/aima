@@ -14,6 +14,7 @@ import { NoAccessError, NoSuchSheetError, SignInExpiredError } from './sheets.js
 import { readAppSheet } from './app-sheet.js';
 import { lookOf, readCategories } from './categories.js';
 import { readSources } from './sources.js';
+import { readGoal, readLeftOut } from './goal-settings.js';
 import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
@@ -73,8 +74,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   let lists = null;
   // The rules of the CATEGORIES table of the App sheet: the icon and the color of each movement.
   let categories = [];
-  // The goal's settings, with the icons, the order and the pairs of the sources from the SOURCES
-  // table of the App sheet (see sources.js). Until the App sheet is read: no sources.
+  // The goal's settings: the icons, the order and the pairs of the sources from the SOURCES
+  // table of the App sheet (see sources.js), and the dates, the limit and the left-out movements
+  // from its GOAL and GOAL LEAVE OUT tables (see goal-settings.js). Until the App sheet is read:
+  // no sources.
   let goalSettings = { ...config.goal, sources: {}, sourceOrder: [], sourcePairs: {} };
   // The movement the form is changing ({ index, row }: its place in movementRows, and the row
   // as it was read), or null when the form adds a new movement.
@@ -212,11 +215,18 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     const { settings, mistakes } = readAppSheet(rows, {
       CATEGORIES: readCategories,
       SOURCES: readSources,
+      GOAL: readGoal,
+      'GOAL LEAVE OUT': readLeftOut,
     });
     if (mistakes.length > 0)
       throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
     categories = settings.CATEGORIES;
-    goalSettings = { ...config.goal, ...settings.SOURCES };
+    goalSettings = {
+      ...config.goal,
+      ...settings.SOURCES,
+      ...settings.GOAL,
+      skip: settings['GOAL LEAVE OUT'],
+    };
   }
 
   // Shows only the message about the mistakes of the App sheet.
@@ -247,7 +257,6 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     movementRows = movements;
     goal = {
       ...goalStatus(movements, goalSettings),
-      limit: config.goal.limit,
       // With the movements the goal leaves out: the eye button of the goal card shows them.
       // Each movement gets its icon and color from the CATEGORIES table.
       months: goalMonths(movements, goalSettings, { leftOut: true }).map((month) => ({

@@ -333,14 +333,19 @@ test.describe('sign-in', () => {
     await expect(page.getByText('ana@example.com')).toHaveCount(0);
     await expect(page.locator('#login')).toBeHidden();
     const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values`;
-    // The App sheet first (issue #122), then the Total and the movements.
-    expect(sheetRequests).toHaveLength(3);
-    expect(sheetRequests[0]).toEqual({
-      url:
-        `${sheetUrl}/'App'` +
-        '?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER',
-      authorization: 'Bearer fake-token',
-    });
+    // The App sheet first (issue #122), then the Total and the movements. The App sheet is read
+    // twice at the same time: with the dates as day numbers, and as text (issue #125).
+    expect(sheetRequests).toHaveLength(4);
+    expect(sheetRequests.slice(0, 2)).toEqual(
+      expect.arrayContaining(
+        ['SERIAL_NUMBER', 'FORMATTED_STRING'].map((dates) => ({
+          url:
+            `${sheetUrl}/'App'` +
+            `?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=${dates}`,
+          authorization: 'Bearer fake-token',
+        })),
+      ),
+    );
     expect(sheetRequests).toEqual(
       expect.arrayContaining([
         {

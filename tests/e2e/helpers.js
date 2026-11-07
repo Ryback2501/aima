@@ -36,8 +36,9 @@ const FAKE_DROPDOWNS = {
 // The App sheet as the app asks for it: the whole sheet, by its name.
 export const FAKE_APP_RANGE = "'App'";
 // The tables of the tests' App sheet, each from row 1: its title, its headers, then its items.
-// CATEGORIES has the rows of issue #123 and SOURCES the rows of issue #124, as the app looked
-// and worked before the settings moved to the sheet.
+// CATEGORIES has the rows of issue #123, SOURCES the rows of issue #124, and GOAL and GOAL LEAVE
+// OUT the rows of issue #125, as the app looked and worked before the settings moved to the
+// sheet.
 export const CATEGORIES_TABLE = [
   ['CATEGORIES'],
   ['Category', 'Description has', 'Icon', 'Color'],
@@ -71,6 +72,29 @@ export const SOURCES_TABLE = [
   ['Provisioned', 'bank'],
   ['Deprovisioned', 'bank'],
 ];
+// A date cell of the App sheet is written { date: '2026-10-01' } in the tests (see appValues).
+export const GOAL_TABLE = [
+  ['GOAL'],
+  ['Setting', 'Value'],
+  ['From', { date: '2026-10-01' }],
+  ['To', { date: '2026-12-31' }],
+  ['Limit', 4000],
+];
+export const GOAL_LEAVE_OUT_TABLE = [
+  ['GOAL LEAVE OUT'],
+  ['Category', 'Description'],
+  ['Whitening'],
+  ['Salary'],
+  ['Mortgage'],
+  ['Credit Cards'],
+  ['Investing'],
+  ['House', 'Seguro hogar BBVA'],
+  ['House', 'Pepephone - Internet'],
+  ['House', 'Impuesto vivienda'],
+  ['House', 'Comunidad'],
+  ['House', 'Luz - Endesa'],
+  ['House', 'Gas - Endesa'],
+];
 
 // Puts tables side by side, as in the App sheet: each one as wide as its headers, with one
 // empty column after it.
@@ -84,13 +108,33 @@ export function sideBySide(...tables) {
   );
 }
 
-// The App sheet of the tests: CATEGORIES in the columns A to D, and SOURCES in F to H.
-export const FAKE_APP_SHEET = sideBySide(CATEGORIES_TABLE, SOURCES_TABLE);
+// The App sheet of the tests: CATEGORIES in the columns A to D, SOURCES in F to H, GOAL in J and
+// K, and GOAL LEAVE OUT in M and N.
+export const FAKE_APP_SHEET = sideBySide(
+  CATEGORIES_TABLE,
+  SOURCES_TABLE,
+  GOAL_TABLE,
+  GOAL_LEAVE_OUT_TABLE,
+);
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
 // A date as the sheet sends it in plain values: days since 30 December 1899.
 export const sheetDay = (date) =>
   (Date.parse(`${date}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
+
+// The App sheet as Google sends it. A date cell, { date: '2026-10-01' } (with a time:
+// { date, time: 0.5 } for noon), comes as a day number, or as the text the sheet shows
+// (1/10/2026) when the app asks for dates as text. The other cells come as they are.
+function appValues(sheet, dates) {
+  return sheet.map((row) =>
+    row.map((cell) => {
+      if (cell === null || typeof cell !== 'object') return cell;
+      if (dates !== 'FORMATTED_STRING') return sheetDay(cell.date) + (cell.time ?? 0);
+      const [year, month, day] = cell.date.split('-').map(Number);
+      return `${day}/${month}/${year}`;
+    }),
+  );
+}
 
 // Prepares the page: fake IDs in the config, the Google stand-in, and fake Google answers.
 // Returns the list of requests the app sent to Google Sheets, and their kinds in .methods.
@@ -222,7 +266,9 @@ export async function setUp(
       return;
     }
     let answer = { valueRanges: cells.map((value) => ({ values: [[value]] })) };
-    if (range === FAKE_APP_RANGE) answer = { values: app };
+    if (range === FAKE_APP_RANGE) {
+      answer = { values: appValues(app, url.searchParams.get('dateTimeRenderOption')) };
+    }
     if (range === FAKE_MOVEMENTS) answer = { values: [FAKE_HEADERS, ...movements] };
     if (range === FAKE_SAVE_RANGE) answer = { values: movements };
     const body = sheetStatus === 200 ? answer : { error: {} };

@@ -329,3 +329,58 @@ test('the lines about the SOURCES table are written in Russian', () => {
     'App, SOURCES, строка 13: Provisioned идёт под Cash, поэтому его нельзя связать с другим источником.',
   ]);
 });
+
+// The lines about the GOAL and GOAL LEAVE OUT tables (issue #125).
+const GOAL_MISTAKES = [
+  { kind: 'tableMissing', sheet: 'App', table: 'GOAL LEAVE OUT' },
+  { kind: 'settingMissing', sheet: 'App', table: 'GOAL', setting: 'From' },
+  { kind: 'settingTwice', sheet: 'App', table: 'GOAL', row: 5, setting: 'Limit' },
+  { kind: 'unknownSetting', sheet: 'App', table: 'GOAL', row: 6, setting: 'Start' },
+  { kind: 'notADate', sheet: 'App', table: 'GOAL', row: 4, setting: 'To' },
+  { kind: 'fromAfterTo', sheet: 'App', table: 'GOAL', row: 3 },
+  { kind: 'badLimit', sheet: 'App', table: 'GOAL', row: 5 },
+];
+
+test('the lines about the GOAL tables are written in English', () => {
+  assert.deepEqual(GOAL_MISTAKES.map(createMistakeWriter('en')), [
+    'App, GOAL LEAVE OUT: the table is missing.',
+    'App, GOAL: the row From is missing.',
+    'App, GOAL, row 5: Limit is there twice.',
+    'App, GOAL, row 6: there is no setting called "Start". Use From, To or Limit.',
+    'App, GOAL, row 4: To is not a date.',
+    'App, GOAL, row 3: From is after To.',
+    'App, GOAL, row 5: the limit must be a number above 0.',
+  ]);
+});
+
+test('the lines about the GOAL tables are written in Spanish', () => {
+  assert.deepEqual(GOAL_MISTAKES.map(createMistakeWriter('es')), [
+    'App, GOAL LEAVE OUT: falta la tabla.',
+    'App, GOAL: falta la fila From.',
+    'App, GOAL, fila 5: Limit está dos veces.',
+    'App, GOAL, fila 6: no hay ningún ajuste llamado "Start". Usa From, To o Limit.',
+    'App, GOAL, fila 4: To no es una fecha.',
+    'App, GOAL, fila 3: From es posterior a To.',
+    'App, GOAL, fila 5: el límite debe ser un número mayor que 0.',
+  ]);
+});
+
+test('the lines about the GOAL tables are written in Russian', () => {
+  assert.deepEqual(GOAL_MISTAKES.map(createMistakeWriter('ru')), [
+    'App, GOAL LEAVE OUT: таблица отсутствует.',
+    'App, GOAL: нет строки From.',
+    'App, GOAL, строка 5: Limit указан дважды.',
+    'App, GOAL, строка 6: нет настройки с названием "Start". Используйте From, To или Limit.',
+    'App, GOAL, строка 4: To — это не дата.',
+    'App, GOAL, строка 3: From позже, чем To.',
+    'App, GOAL, строка 5: лимит должен быть числом больше 0.',
+  ]);
+});
+
+// The title of the goal card is a fixed text in each language: it does not depend on the limit
+// of the GOAL table (issue #125).
+test('the title of the goal card is a fixed text in every language', () => {
+  assert.equal(STRINGS.en.goalTitle, 'Goal 4K');
+  assert.equal(STRINGS.es.goalTitle, 'Objetivo 4K');
+  assert.equal(STRINGS.ru.goalTitle, 'Цель 4K');
+});

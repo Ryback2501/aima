@@ -458,6 +458,9 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       if (!sameMovements(movementRows, fresh, indexes)) return 'changed';
       // A place in the goal's rows → its row in the sheet → its place in the rows read here.
       const offset = firstRowOf(movements) - firstRow;
+      // A movement above the first movement row of the CELLS table is not in the rows read here:
+      // changing the rows around it could write over the top of the sheet.
+      if (indexes.some((index) => index + offset < 0)) return 'failed';
       const {
         start,
         rows: planned,

@@ -194,6 +194,21 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     return { sheetId: found.sheetId, rowCount: found.gridProperties?.rowCount ?? 0 };
   }
 
+  // Returns the sheets of the document, in their order: [{ title, sheetId, rowCount,
+  // columnCount }]. A sheet with no grid, like a chart sheet, has a size of 0.
+  async function getSheets() {
+    const fields = encodeURIComponent(
+      'sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))',
+    );
+    const data = await request(`${sheetUrl}?fields=${fields}`);
+    return (data.sheets ?? []).map(({ properties = {} }) => ({
+      title: properties.title,
+      sheetId: properties.sheetId,
+      rowCount: properties.gridProperties?.rowCount ?? 0,
+      columnCount: properties.gridProperties?.columnCount ?? 0,
+    }));
+  }
+
   // Writes rows of five values into the first five columns of a sheet, from the row startRow
   // (counted from 0). Only the values change: each cell keeps its format. A formula ("=...")
   // stays a formula, and an empty value empties its cell. When the sheet has too few rows, rows
@@ -232,7 +247,16 @@ export function createSheetsClient({ spreadsheetId, getToken, fetch = globalThis
     await request(`${sheetUrl}:batchUpdate`, { requests });
   }
 
-  return { getValues, getSheetRows, getCells, canEdit, getDropdown, getSheet, writeRows };
+  return {
+    getValues,
+    getSheetRows,
+    getCells,
+    canEdit,
+    getDropdown,
+    getSheet,
+    getSheets,
+    writeRows,
+  };
 }
 
 // One cell for writeRows: a number, a formula, a text, or nothing (an empty cell). A value

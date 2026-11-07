@@ -6,7 +6,7 @@ const fakePicker = readFile(new URL('./fake-picker.js', import.meta.url), 'utf8'
 export const FAKE_CLIENT_ID = 'test-client.apps.googleusercontent.com';
 export const FAKE_SHEET_ID = 'test-sheet-id';
 export const FAKE_API_KEY = 'test-api-key';
-// Made-up cells for the four parts of the Total, in the order of config.pills.
+// Made-up cells for the four parts of the Total, in the order of config.pills (as in CELLS_TABLE).
 export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 // The default amounts of those parts, and their sum as the app writes it in English.
 export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
@@ -197,20 +197,14 @@ export async function setUp(
 
   await page.route('**/config.js', async (route) => {
     const response = await route.fetch();
-    // Tests never use the real IDs, cell or movements range: they get fake ones, or the example
-    // values to test the "not set up yet" message.
+    // Tests never use the real IDs: they get fake ones, or the example values to test the "not
+    // set up yet" message. The cells come from the CELLS table of the tests' App sheet.
     const clientId = configured ? FAKE_CLIENT_ID : 'REPLACE_WITH_GOOGLE_CLIENT_ID';
     const sheetId = configured ? FAKE_SHEET_ID : 'REPLACE_WITH_SPREADSHEET_ID';
-    let next = 0;
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
       .replace(/googleApiKey: '[^']*'/, `googleApiKey: '${FAKE_API_KEY}'`)
-      .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
-      .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
-      .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`)
-      .replace(/sourceList: '[^']*'/, `sourceList: '${FAKE_SOURCE_LIST}'`)
-      .replace(/categoryList: '[^']*'/, `categoryList: '${FAKE_CATEGORY_LIST}'`)
-      .replace(/\bsheet: '[^']*'/, `sheet: '${FAKE_SHEET}'`);
+      .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`);
     await route.fulfill({ response, body });
   });
 

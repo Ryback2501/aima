@@ -21,32 +21,16 @@ export const config = {
   // The sheet of the document with the app's settings (see app-sheet.js). The app reads it first.
   appSheet: 'App',
 
-  // The parts of the Total, each read from one cell. The Total adds up the parts that are
-  // switched on; a part with "subtract" is taken away instead. Each part shows as a pill when
-  // the Total card is open.
+  // The parts of the Total. The Total adds up the parts that are switched on; a part with
+  // "subtract" is taken away instead. Each part shows as a pill when the Total card is open. The
+  // cell of each part, the movements sheet and the cells of the new movement form's lists are
+  // in the CELLS table of the App sheet (see cells.js).
   pills: [
-    { name: 'bank', cell: 'Briefing!E7' },
-    { name: 'cards', cell: 'Briefing!B10' },
-    { name: 'provisioned', cell: 'Briefing!I7', subtract: true },
-    { name: 'cash', cell: 'Briefing!K7' },
+    { name: 'bank' },
+    { name: 'cards' },
+    { name: 'provisioned', subtract: true },
+    { name: 'cash' },
   ],
-
-  // The spending goal shown below the Total. Its dates, its limit and the movements it leaves
-  // out are in the App sheet (see goal-settings.js).
-  goal: {
-    // The movements: source, date, category, description and amount, one movement per row.
-    movements: 'Movements!A:E',
-  },
-
-  // The new movement form (only for people who can edit the sheet). Its Source and Category
-  // lists are the dropdown lists of these cells: the first movement row, under the headers.
-  form: {
-    sourceList: 'Movements!A2',
-    categoryList: 'Movements!C2',
-    // Where a new movement is saved: the sheet of the movements, and its first movement row.
-    sheet: 'Movements',
-    firstRow: 2,
-  },
 
   // What the app asks Google for.
   // "drive.file" lets the app open only the files the person picks for it in the Google file

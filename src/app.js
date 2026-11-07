@@ -15,6 +15,7 @@ import { readAppSheet } from './app-sheet.js';
 import { lookOf, readCategories } from './categories.js';
 import { readSources } from './sources.js';
 import { readGoal, readLeftOut } from './goal-settings.js';
+import { readCells } from './cells.js';
 import { goalStatus, goalMonths, hasExtraDecimals } from './goal.js';
 import { PermissionMissingError, SignInFailedError } from './auth.js';
 import {
@@ -78,7 +79,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // table of the App sheet (see sources.js), and the dates, the limit and the left-out movements
   // from its GOAL and GOAL LEAVE OUT tables (see goal-settings.js). Until the App sheet is read:
   // no sources.
-  let goalSettings = { ...config.goal, sources: {}, sourceOrder: [], sourcePairs: {} };
+  let goalSettings = { sources: {}, sourceOrder: [], sourcePairs: {} };
+  // The cells the app uses, from the CELLS table of the App sheet (see cells.js): the parts of
+  // the Total, the movements sheet and the cells of the form's lists. Read before anything else.
+  let cells = null;
   // The movement the form is changing ({ index, row }: its place in movementRows, and the row
   // as it was read), or null when the form adds a new movement.
   let editing = null;
@@ -154,8 +158,8 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // call tries again.
   function getLists() {
     lists ??= Promise.all([
-      sheets.getDropdown(config.form.sourceList),
-      sheets.getDropdown(config.form.categoryList),
+      sheets.getDropdown(cells.sourceList),
+      sheets.getDropdown(cells.categoryList),
     ]).then(
       ([sources, categories]) => ({ sources, categories }),
       (error) => {
@@ -200,13 +204,15 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
     view.openForm(edit ? { ...form, edit } : form);
   }
 
-  // Reads the App sheet. Fails with AppSheetMistakes when it is not there or has mistakes; each
-  // mistake also says the name of the sheet, for its line in the message.
+  // Reads the App sheet, and at the same time the list of the document's sheets, to check the
+  // cells of the CELLS table. Fails with AppSheetMistakes when it is not there or has mistakes;
+  // each mistake also says the name of the sheet, for its line in the message.
   async function readSettings() {
     const sheet = config.appSheet;
     let rows;
+    let documentSheets;
     try {
-      rows = await sheets.getSheetRows(sheet);
+      [rows, documentSheets] = await Promise.all([sheets.getSheetRows(sheet), sheets.getSheets()]);
     } catch (error) {
       if (error instanceof NoSuchSheetError)
         throw new AppSheetMistakes([{ kind: 'noAppSheet', sheet }]);
@@ -217,12 +223,13 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
       SOURCES: readSources,
       GOAL: readGoal,
       'GOAL LEAVE OUT': readLeftOut,
+      CELLS: (table) => readCells(table, documentSheets),
     });
     if (mistakes.length > 0)
       throw new AppSheetMistakes(mistakes.map((each) => ({ ...each, sheet })));
     categories = settings.CATEGORIES;
+    cells = settings.CELLS;
     goalSettings = {
-      ...config.goal,
       ...settings.SOURCES,
       ...settings.GOAL,
       skip: settings['GOAL LEAVE OUT'],
@@ -235,13 +242,13 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   }
 
   // Reads the App sheet first: it is the app's first read of the document. Then reads the parts
-  // of the Total and the movements, both at the same time, and works out what the main screen
-  // shows.
+  // of the Total and the movements, both at the same time, from the cells of its CELLS table,
+  // and works out what the main screen shows.
   async function load() {
     await readSettings();
     const [amounts, movements] = await Promise.all([
-      sheets.getCells(config.pills.map(({ cell }) => cell)),
-      sheets.getValues(config.goal.movements, { raw: true }),
+      sheets.getCells(config.pills.map(({ name }) => cells.totals[name])),
+      sheets.getValues(cells.movements, { raw: true }),
     ]);
     // A cell that is empty or not a number counts as 0.
     parts = config.pills.map(({ name, subtract = false }, index) => ({
@@ -276,10 +283,10 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // movements.js). The rows are read again just before, so the newest sheet is used. Returns
   // false when Google could not be reached or refused the change: then nothing was saved.
   async function write(values) {
-    const { sheet, firstRow } = config.form;
+    const { sheet, firstRow, rows: range } = cells;
     try {
       const [rows, place] = await Promise.all([
-        sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
+        sheets.getValues(range, { formulas: true }),
         sheets.getSheet(sheet),
       ]);
       const row = movementRow(values);
@@ -441,16 +448,19 @@ export function createApp({ config, view, session, loadAuth, loadPicker, createS
   // the movements is no longer in its row (the sheet was changed by hand), or "failed" when
   // Google could not be reached or refused the change.
   async function changeRows(indexes, plan) {
-    const { sheet, firstRow } = config.form;
+    const { sheet, firstRow, movements, rows: range } = cells;
     try {
       const [fresh, rows, place] = await Promise.all([
-        sheets.getValues(config.goal.movements, { raw: true }),
-        sheets.getValues(`${sheet}!A${firstRow}:E`, { formulas: true }),
+        sheets.getValues(movements, { raw: true }),
+        sheets.getValues(range, { formulas: true }),
         sheets.getSheet(sheet),
       ]);
       if (!sameMovements(movementRows, fresh, indexes)) return 'changed';
       // A place in the goal's rows → its row in the sheet → its place in the rows read here.
-      const offset = firstRowOf(config.goal.movements) - firstRow;
+      const offset = firstRowOf(movements) - firstRow;
+      // A movement above the first movement row of the CELLS table is not in the rows read here:
+      // changing the rows around it could write over the top of the sheet.
+      if (indexes.some((index) => index + offset < 0)) return 'failed';
       const {
         start,
         rows: planned,

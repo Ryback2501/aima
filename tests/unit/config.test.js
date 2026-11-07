@@ -22,12 +22,14 @@ test('example values or empty values do not count as set up', () => {
   assert.equal(isConfigured({}), false);
 });
 
-test('the Total is made of four parts, each read from one cell', () => {
-  assert.deepEqual(
-    config.pills.map(({ name }) => name),
-    ['bank', 'cards', 'provisioned', 'cash'],
-  );
-  for (const { cell } of config.pills) assert.match(cell, /^.+![A-Z]+[0-9]+$/);
+// The cell of each part comes from the CELLS table of the App sheet (issue #126).
+test('the Total is made of four parts, and provisioned is taken away', () => {
+  assert.deepEqual(config.pills, [
+    { name: 'bank' },
+    { name: 'cards' },
+    { name: 'provisioned', subtract: true },
+    { name: 'cash' },
+  ]);
 });
 
 test('the permission to read sheets is required and asked for', () => {
@@ -54,34 +56,13 @@ test('the real config is fully set up', () => {
   assert.match(config.googleApiKey, /^AIza/);
 });
 
-test('the movements start at the source column', () => {
-  assert.equal(config.goal.movements, 'Movements!A:E');
-});
-
-// The icons, the order and the pairs of the sources come from the SOURCES table of the App
-// sheet (issue #124): the code has no source names.
-test('the config has no sources, no order of the sources and no pairs', () => {
-  assert.equal(Object.hasOwn(config.goal, 'sources'), false);
-  assert.equal(Object.hasOwn(config.goal, 'sourceOrder'), false);
-  assert.equal(Object.hasOwn(config.goal, 'sourcePairs'), false);
-});
-
-// The dates, the limit and the left-out movements of the goal come from the GOAL and GOAL LEAVE
-// OUT tables of the App sheet (issue #125): the config of the goal has only the movements.
-test('the config of the goal has no dates, no limit and no left-out movements', () => {
-  assert.deepEqual(Object.keys(config.goal), ['movements']);
-});
-
-// The dropdowns of the first movement row (row 2, under the headers) give the form's lists:
-// the source in the first column, the category in the third.
-test('the form reads its lists from the dropdowns of the first movement row', () => {
-  const sheet = config.goal.movements.split('!')[0];
-  assert.equal(config.form.sourceList, `${sheet}!A2`);
-  assert.equal(config.form.categoryList, `${sheet}!C2`);
-});
-
-test('new movements are written on the movements sheet, from the first movement row', () => {
-  const sheet = config.goal.movements.split('!')[0];
-  assert.equal(config.form.sheet, sheet);
-  assert.equal(`${config.form.sheet}!A${config.form.firstRow}`, config.form.sourceList);
+// The cells of the Total, the movements sheet, its first movement row and the cells of the
+// form's lists come from the CELLS table of the App sheet (issue #126). The goal's sources come
+// from its SOURCES table (issue #124), and its dates, limit and left-out movements from its GOAL
+// and GOAL LEAVE OUT tables (issue #125).
+test('the config has no goal or form settings, and no cell or sheet name apart from the App sheet', () => {
+  assert.equal(Object.hasOwn(config, 'goal'), false);
+  assert.equal(Object.hasOwn(config, 'form'), false);
+  assert.equal(config.appSheet, 'App');
+  assert.doesNotMatch(JSON.stringify(config), /![A-Z]|Briefing|Movements/);
 });

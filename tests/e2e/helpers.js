@@ -6,7 +6,7 @@ const fakePicker = readFile(new URL('./fake-picker.js', import.meta.url), 'utf8'
 export const FAKE_CLIENT_ID = 'test-client.apps.googleusercontent.com';
 export const FAKE_SHEET_ID = 'test-sheet-id';
 export const FAKE_API_KEY = 'test-api-key';
-// Made-up cells for the four parts of the Total, in the order of config.pills.
+// Made-up cells for the four parts of the Total, in the order of config.pills (as in CELLS_TABLE).
 export const FAKE_CELLS = ['Sheet1!A1', 'Sheet1!A2', 'Sheet1!A3', 'Sheet1!A4'];
 // The default amounts of those parts, and their sum as the app writes it in English.
 export const FAKE_AMOUNTS = [1000, -200.5, 300, 50];
@@ -26,7 +26,7 @@ export const FAKE_CATEGORY_LIST = 'Sheet2!C2';
 // The default dropdowns: the sources are typed in the rule, the categories come from cells.
 export const FAKE_SOURCES = ['BBVA David', 'BBVA Común', 'Después', 'Cash', 'Provisioned'];
 export const FAKE_CATEGORIES = ['Car', 'General', 'House', 'Leisure'];
-const FAKE_DROPDOWNS = {
+export const FAKE_DROPDOWNS = {
   [FAKE_SOURCE_LIST]: {
     type: 'ONE_OF_LIST',
     values: FAKE_SOURCES.map((value) => ({ userEnteredValue: value })),
@@ -36,9 +36,9 @@ const FAKE_DROPDOWNS = {
 // The App sheet as the app asks for it: the whole sheet, by its name.
 export const FAKE_APP_RANGE = "'App'";
 // The tables of the tests' App sheet, each from row 1: its title, its headers, then its items.
-// CATEGORIES has the rows of issue #123, SOURCES the rows of issue #124, and GOAL and GOAL LEAVE
-// OUT the rows of issue #125, as the app looked and worked before the settings moved to the
-// sheet.
+// CATEGORIES has the rows of issue #123, SOURCES the rows of issue #124, GOAL and GOAL LEAVE OUT
+// the rows of issue #125, and CELLS the cells the tests use (issue #126), as the app looked and
+// worked before the settings moved to the sheet.
 export const CATEGORIES_TABLE = [
   ['CATEGORIES'],
   ['Category', 'Description has', 'Icon', 'Color'],
@@ -95,6 +95,18 @@ export const GOAL_LEAVE_OUT_TABLE = [
   ['House', 'Luz - Endesa'],
   ['House', 'Gas - Endesa'],
 ];
+export const CELLS_TABLE = [
+  ['CELLS'],
+  ['Name', 'Cell'],
+  ...['bank', 'cards', 'provisioned', 'cash'].map((part, index) => [
+    `Total - ${part}`,
+    FAKE_CELLS[index],
+  ]),
+  ['Movements sheet', FAKE_SHEET],
+  ['First movement row', 2],
+  ['Source list', FAKE_SOURCE_LIST],
+  ['Category list', FAKE_CATEGORY_LIST],
+];
 
 // Puts tables side by side, as in the App sheet: each one as wide as its headers, with one
 // empty column after it.
@@ -109,12 +121,13 @@ export function sideBySide(...tables) {
 }
 
 // The App sheet of the tests: CATEGORIES in the columns A to D, SOURCES in F to H, GOAL in J and
-// K, and GOAL LEAVE OUT in M and N.
+// K, GOAL LEAVE OUT in M and N, and CELLS in P and Q.
 export const FAKE_APP_SHEET = sideBySide(
   CATEGORIES_TABLE,
   SOURCES_TABLE,
   GOAL_TABLE,
   GOAL_LEAVE_OUT_TABLE,
+  CELLS_TABLE,
 );
 const FAKE_LIST_CELLS = { 'Lists!A1:A5': [...FAKE_CATEGORIES.map((value) => [value]), ['']] };
 
@@ -145,6 +158,8 @@ export async function setUp(
     sheetStatus = 200,
     // The values of the four parts of the Total.
     cells = FAKE_AMOUNTS,
+    // The values of other single cells: { 'Sheet1!B7': 75 }. A cell that is not here is empty.
+    otherCells = {},
     // Movement rows: source, date (sheetDay), category, description, amount.
     movements = [],
     email = 'ana@example.com',
@@ -182,20 +197,14 @@ export async function setUp(
 
   await page.route('**/config.js', async (route) => {
     const response = await route.fetch();
-    // Tests never use the real IDs, cell or movements range: they get fake ones, or the example
-    // values to test the "not set up yet" message.
+    // Tests never use the real IDs: they get fake ones, or the example values to test the "not
+    // set up yet" message. The cells come from the CELLS table of the tests' App sheet.
     const clientId = configured ? FAKE_CLIENT_ID : 'REPLACE_WITH_GOOGLE_CLIENT_ID';
     const sheetId = configured ? FAKE_SHEET_ID : 'REPLACE_WITH_SPREADSHEET_ID';
-    let next = 0;
     const body = (await response.text())
       .replace(/googleClientId: '[^']*'/, `googleClientId: '${clientId}'`)
       .replace(/googleApiKey: '[^']*'/, `googleApiKey: '${FAKE_API_KEY}'`)
-      .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`)
-      .replace(/cell: '[^']*'/g, () => `cell: '${FAKE_CELLS[next++]}'`)
-      .replace(/movements: '[^']*'/, `movements: '${FAKE_MOVEMENTS}'`)
-      .replace(/sourceList: '[^']*'/, `sourceList: '${FAKE_SOURCE_LIST}'`)
-      .replace(/categoryList: '[^']*'/, `categoryList: '${FAKE_CATEGORY_LIST}'`)
-      .replace(/\bsheet: '[^']*'/, `sheet: '${FAKE_SHEET}'`);
+      .replace(/spreadsheetId: '[^']*'/, `spreadsheetId: '${sheetId}'`);
     await route.fulfill({ response, body });
   });
 
@@ -229,14 +238,21 @@ export async function setUp(
       await route.fulfill({ status: answer, json: answer === 200 ? {} : { error: {} } });
       return;
     }
-    // The number and the size of each sheet.
+    // The number and the size of each sheet of the document.
     if (url.searchParams.get('fields')?.startsWith('sheets.properties')) {
-      const properties = {
-        sheetId: FAKE_SHEET_NUMBER,
-        title: FAKE_SHEET,
-        gridProperties: { rowCount: rows },
-      };
-      await route.fulfill({ json: { sheets: [{ properties }] } });
+      const sheets = [
+        { sheetId: 0, title: 'Sheet1', gridProperties: { rowCount: 1000, columnCount: 26 } },
+        {
+          sheetId: FAKE_SHEET_NUMBER,
+          title: FAKE_SHEET,
+          gridProperties: { rowCount: rows, columnCount: 26 },
+        },
+        { sheetId: 3, title: 'Lists', gridProperties: { rowCount: 1000, columnCount: 26 } },
+        ...(app === null
+          ? []
+          : [{ sheetId: 4, title: 'App', gridProperties: { rowCount: 1000, columnCount: 26 } }]),
+      ];
+      await route.fulfill({ json: { sheets: sheets.map((properties) => ({ properties })) } });
       return;
     }
     // The dropdown rule of one cell.
@@ -265,7 +281,14 @@ export async function setUp(
       await route.fulfill({ status: 400, json: { error: { code: 400 } } });
       return;
     }
-    let answer = { valueRanges: cells.map((value) => ({ values: [[value]] })) };
+    // Single cells: the four parts of the Total, or other cells.
+    let answer = {
+      valueRanges: url.searchParams.getAll('ranges').map((cell) => {
+        const index = FAKE_CELLS.indexOf(cell);
+        const value = index === -1 ? otherCells[cell] : cells[index];
+        return value === undefined ? {} : { values: [[value]] };
+      }),
+    };
     if (range === FAKE_APP_RANGE) {
       answer = { values: appValues(app, url.searchParams.get('dateTimeRenderOption')) };
     }

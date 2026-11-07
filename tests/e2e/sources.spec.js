@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 import {
   CATEGORIES_TABLE,
+  CELLS_TABLE,
   GOAL_LEAVE_OUT_TABLE,
   GOAL_TABLE,
   SOURCES_TABLE,
@@ -40,10 +41,17 @@ const sheetWith = (changes) =>
     SOURCES_TABLE.map((row, index) => (index in changes ? changes[index] : [...row])),
     GOAL_TABLE,
     GOAL_LEAVE_OUT_TABLE,
+    CELLS_TABLE,
   );
 // The tests' App sheet with every row of the SOURCES table cleared: only its title and headers.
 const noSourceRows = () =>
-  sideBySide(CATEGORIES_TABLE, SOURCES_TABLE.slice(0, 2), GOAL_TABLE, GOAL_LEAVE_OUT_TABLE);
+  sideBySide(
+    CATEGORIES_TABLE,
+    SOURCES_TABLE.slice(0, 2),
+    GOAL_TABLE,
+    GOAL_LEAVE_OUT_TABLE,
+    CELLS_TABLE,
+  );
 
 const movement = (source, day, description, amount) => [
   source,

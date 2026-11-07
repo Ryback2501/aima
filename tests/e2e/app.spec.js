@@ -334,17 +334,26 @@ test.describe('sign-in', () => {
     await expect(page.locator('#login')).toBeHidden();
     const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}/values`;
     // The App sheet first (issue #122), then the Total and the movements. The App sheet is read
-    // twice at the same time: with the dates as day numbers, and as text (issue #125).
-    expect(sheetRequests).toHaveLength(4);
-    expect(sheetRequests.slice(0, 2)).toEqual(
-      expect.arrayContaining(
-        ['SERIAL_NUMBER', 'FORMATTED_STRING'].map((dates) => ({
+    // twice at the same time: with the dates as day numbers, and as text (issue #125). With it,
+    // the list of the document's sheets, to check the cells of its CELLS table (issue #126).
+    expect(sheetRequests).toHaveLength(5);
+    expect(sheetRequests.slice(0, 3)).toEqual(
+      expect.arrayContaining([
+        ...['SERIAL_NUMBER', 'FORMATTED_STRING'].map((dates) => ({
           url:
             `${sheetUrl}/'App'` +
             `?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=${dates}`,
           authorization: 'Bearer fake-token',
         })),
-      ),
+        {
+          url:
+            `https://sheets.googleapis.com/v4/spreadsheets/${FAKE_SHEET_ID}?fields=` +
+            encodeURIComponent(
+              'sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))',
+            ),
+          authorization: 'Bearer fake-token',
+        },
+      ]),
     );
     expect(sheetRequests).toEqual(
       expect.arrayContaining([

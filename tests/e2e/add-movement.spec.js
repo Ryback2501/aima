@@ -224,11 +224,15 @@ test.describe('the new movement form', () => {
     page,
   }) => {
     await setUp(page, { canEdit: true });
-    // The lists answer only when the test says so.
+    // The lists answer only when the test says so. A dropdown is read with the cell in
+    // "ranges"; the list of the document's sheets (issue #126) has no "ranges", and answers.
     let answer;
     const held = new Promise((done) => (answer = done));
     await page.route(
-      (url) => url.hostname === 'sheets.googleapis.com' && url.searchParams.has('fields'),
+      (url) =>
+        url.hostname === 'sheets.googleapis.com' &&
+        url.searchParams.has('fields') &&
+        url.searchParams.has('ranges'),
       async (route) => {
         await held;
         await route.fallback();

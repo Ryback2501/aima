@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 import {
   CATEGORIES_TABLE,
+  CELLS_TABLE,
   GOAL_LEAVE_OUT_TABLE,
   GOAL_TABLE,
   SOURCES_TABLE,
@@ -39,7 +40,7 @@ const LIMIT = 4;
 const SALARY = 3;
 // A copy of the tests' App sheet with other GOAL and GOAL LEAVE OUT tables.
 const sheetWith = ({ goal = GOAL_TABLE, leaveOut = GOAL_LEAVE_OUT_TABLE }) =>
-  sideBySide(CATEGORIES_TABLE, SOURCES_TABLE, goal, leaveOut);
+  sideBySide(CATEGORIES_TABLE, SOURCES_TABLE, goal, leaveOut, CELLS_TABLE);
 // GOAL with some rows changed: { [place of the row]: cells }.
 const goalWith = (changes) =>
   GOAL_TABLE.map((row, index) => (index in changes ? changes[index] : [...row]));

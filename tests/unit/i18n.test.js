@@ -377,6 +377,57 @@ test('the lines about the GOAL tables are written in Russian', () => {
   ]);
 });
 
+// The lines about the CELLS table (issue #126).
+const CELL_MISTAKES = [
+  { kind: 'tableMissing', sheet: 'App', table: 'CELLS' },
+  { kind: 'settingMissing', sheet: 'App', table: 'CELLS', setting: 'Total - bank' },
+  { kind: 'settingTwice', sheet: 'App', table: 'CELLS', row: 6, setting: 'Source list' },
+  { kind: 'unknownName', sheet: 'App', table: 'CELLS', row: 11, name: 'Totl - bank' },
+  { kind: 'badFirstRow', sheet: 'App', table: 'CELLS', row: 8 },
+  { kind: 'emptyCell', sheet: 'App', table: 'CELLS', row: 6, setting: 'Total - cash' },
+  { kind: 'noSuchCell', sheet: 'App', table: 'CELLS', row: 6, cell: 'Nowhere!A1' },
+  { kind: 'noSuchSheet', sheet: 'App', table: 'CELLS', row: 7, name: 'Movementz' },
+];
+
+test('the lines about the CELLS table are written in English', () => {
+  assert.deepEqual(CELL_MISTAKES.map(createMistakeWriter('en')), [
+    'App, CELLS: the table is missing.',
+    'App, CELLS: the row Total - bank is missing.',
+    'App, CELLS, row 6: Source list is there twice.',
+    'App, CELLS, row 11: there is no row called "Totl - bank" in this table.',
+    'App, CELLS, row 8: First movement row must be a whole number of 1 or more.',
+    'App, CELLS, row 6: the cell of Total - cash is empty.',
+    'App, CELLS, row 6: the document has no cell Nowhere!A1.',
+    'App, CELLS, row 7: the document has no sheet called Movementz.',
+  ]);
+});
+
+test('the lines about the CELLS table are written in Spanish', () => {
+  assert.deepEqual(CELL_MISTAKES.map(createMistakeWriter('es')), [
+    'App, CELLS: falta la tabla.',
+    'App, CELLS: falta la fila Total - bank.',
+    'App, CELLS, fila 6: Source list está dos veces.',
+    'App, CELLS, fila 11: no hay ninguna fila llamada "Totl - bank" en esta tabla.',
+    'App, CELLS, fila 8: First movement row debe ser un número entero de 1 o más.',
+    'App, CELLS, fila 6: la celda de Total - cash está vacía.',
+    'App, CELLS, fila 6: el documento no tiene ninguna celda Nowhere!A1.',
+    'App, CELLS, fila 7: el documento no tiene ninguna hoja llamada Movementz.',
+  ]);
+});
+
+test('the lines about the CELLS table are written in Russian', () => {
+  assert.deepEqual(CELL_MISTAKES.map(createMistakeWriter('ru')), [
+    'App, CELLS: таблица отсутствует.',
+    'App, CELLS: нет строки Total - bank.',
+    'App, CELLS, строка 6: Source list указан дважды.',
+    'App, CELLS, строка 11: в этой таблице нет строки с названием "Totl - bank".',
+    'App, CELLS, строка 8: First movement row должен быть целым числом от 1 и больше.',
+    'App, CELLS, строка 6: ячейка для Total - cash пустая.',
+    'App, CELLS, строка 6: в документе нет ячейки Nowhere!A1.',
+    'App, CELLS, строка 7: в документе нет листа с названием Movementz.',
+  ]);
+});
+
 // The title of the goal card is a fixed text in each language: it does not depend on the limit
 // of the GOAL table (issue #125).
 test('the title of the goal card is a fixed text in every language', () => {

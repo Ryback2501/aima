@@ -266,6 +266,54 @@ test('getSheet fails when there is no sheet with that name', async () => {
   await assert.rejects(client(fetch).getSheet('Sheet1'), SheetsError);
 });
 
+// The CELLS table of the App sheet names sheets and cells: the app checks them against the
+// sheets of the document (issue #126).
+test('getSheets lists the sheets of the document: name, number and size', async () => {
+  const { fetch, calls } = fakeFetch(200, {
+    sheets: [
+      {
+        properties: {
+          sheetId: 0,
+          title: 'Briefing',
+          gridProperties: { rowCount: 1000, columnCount: 26 },
+        },
+      },
+      {
+        properties: {
+          sheetId: 7,
+          title: 'My sheet',
+          gridProperties: { rowCount: 50, columnCount: 5 },
+        },
+      },
+    ],
+  });
+
+  assert.deepEqual(await client(fetch).getSheets(), [
+    { title: 'Briefing', sheetId: 0, rowCount: 1000, columnCount: 26 },
+    { title: 'My sheet', sheetId: 7, rowCount: 50, columnCount: 5 },
+  ]);
+  assert.equal(
+    calls[0].url,
+    'https://sheets.googleapis.com/v4/spreadsheets/sheet-123?fields=' +
+      encodeURIComponent('sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))'),
+  );
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token-abc');
+});
+
+test('getSheets gives a sheet with no size a size of 0', async () => {
+  const { fetch } = fakeFetch(200, { sheets: [{ properties: { sheetId: 3, title: 'Chart' } }] });
+
+  assert.deepEqual(await client(fetch).getSheets(), [
+    { title: 'Chart', sheetId: 3, rowCount: 0, columnCount: 0 },
+  ]);
+});
+
+test('getSheets still says when the person cannot open the document', async () => {
+  const { fetch } = fakeFetch(403);
+
+  await assert.rejects(client(fetch).getSheets(), NoAccessError);
+});
+
 test('writeRows writes only the values of the first five columns, in one single request', async () => {
   const { fetch, calls } = fakeFetch(200, {});
 

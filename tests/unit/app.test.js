@@ -2180,3 +2180,17 @@ test('an App sheet without the CELLS table shows the message that it is missing'
     mistakes: [{ kind: 'tableMissing', table: 'CELLS', sheet: 'App' }],
   });
 });
+
+test('a movement above the first movement row of CELLS is not deleted, and nothing is written', async () => {
+  const { handlers, log, deleteLog } = await signedInEditor({
+    appRows: async () => withCells({ 'First movement row': 3 }),
+    // A is in row 2 of the sheet, above the first movement row.
+    movements: async () => [HEADERS, ...sheetRows],
+    formulas: async () => sheetRows.slice(1),
+  });
+
+  await handlers.delete([1]);
+
+  assert.deepEqual(log.writes, []);
+  assert.deepEqual(deleteLog.events, ['failed']);
+});

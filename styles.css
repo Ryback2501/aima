@@ -1,0 +1,1420 @@
+/* The app's font. It has one heavy style, so we say it covers every weight. Then the browser
+   does not draw a fake, even bolder copy of it. It has no Russian letters: those use the
+   system font. */
+@font-face {
+  font-family: 'Sol';
+  src: url('fonts/solheavy.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* The app's colors. The app is always light, also when the phone uses dark mode. */
+:root {
+  --background: #f6f7f6;
+  --text: #1c2321;
+  --text-soft: #5b6662;
+  --accent: #0f766e;
+  --label-background: #ffffff;
+  --label-shadow: rgba(28, 35, 33, 0.25);
+  /* The shadows of cards, pills and months. They are moved right and down, and a bit smaller
+     than their item, so they never show above it or to its left. A card's or pill's shadow
+     reaches 24px to the right and 26px down. A month's shadow reaches 14px down: it ends
+     exactly where the next month starts. */
+  --shadow: 12px 14px 16px -4px var(--label-shadow);
+  --month-shadow: 8px 8px 11px -5px var(--label-shadow);
+  --red: #dc2626;
+  --yellow: #b45309;
+  /* How far the back button of an open card is from the screen edges. */
+  --back-gap: 20px;
+  /* How long a pill takes to change color when it is switched on or off. */
+  --pill-fade: 250ms;
+  /* "only" also stops browsers from painting the app dark by themselves. */
+  color-scheme: only light;
+}
+
+* {
+  box-sizing: border-box;
+  /* One finger scrolls, but two fingers or a double tap never zoom, like in a phone app. It is
+     on every element, because a scroll area (like a month's list) would allow zoom again. */
+  touch-action: pan-x pan-y;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  /* Pulling down does not move the whole app or reload it, like in a phone app. Browsers read
+     this from html; body has it too for older browsers. */
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family:
+    'Sol',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  /* Sol is always heavy. Bold makes the system font (used for Russian letters) look close to it. */
+  font-weight: 700;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* While the app gets ready (cards, words in the right language, font), it stays hidden, so
+   people never see it change. The app removes the "loading" class when it is ready. If that
+   never happens (for example a script fails to load), the page shows after 4 seconds anyway. */
+html.loading main {
+  visibility: hidden;
+  animation: show-anyway 0s 4s forwards;
+}
+
+@keyframes show-anyway {
+  to {
+    visibility: visible;
+  }
+}
+
+main {
+  min-height: 100%;
+  display: grid;
+  /* Keep content away from the phone's notch and rounded corners. */
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.logo {
+  width: 128px;
+  height: 128px;
+}
+
+.logo-small {
+  width: 72px;
+  height: 72px;
+}
+
+.app-name {
+  margin: 0 0 12px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+/* The small copyright line at the bottom of the login screen. The free space above it and
+   above the logo is shared, so the logo, name and button stay in the middle. */
+#login > :first-child {
+  margin-top: auto;
+}
+
+.legal {
+  margin-top: auto;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
+/* The sentence under the app's name that says what aima does: small grey text, like the
+   copyright line. */
+.about {
+  max-width: 32ch;
+  margin: -12px 0 12px;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
+.legal a {
+  color: inherit;
+}
+
+.message {
+  max-width: 32ch;
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+#main {
+  justify-content: space-between;
+}
+
+/* The Total and the spending goal: one group, in the middle of the free space. */
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  margin: auto 0;
+}
+
+/* A card, like the cards in the iisu app. The card is painted with its border gradient, and
+   an inner fill sits on top of it. The fill has a hole in the shape of the badge, so the badge
+   shows the same gradient as the border: one surface, with no edge between them.
+   Each card's sizes and colors come from components.js. The values here are only a fallback. */
+.label {
+  --width: 34rem;
+  --height: 0px;
+  --border: 3px;
+  --radius: 24px;
+  --badge-size: 48px;
+  --pad-x: 24px;
+  --pad-y: 48px;
+  --label-border: linear-gradient(to bottom right, #14b8a6, #ec4899);
+  /* The badge's round corner has the card's corner size, but never more than the badge allows. */
+  --badge-corner: min(var(--radius), calc(var(--badge-size) - var(--border)));
+  position: relative;
+  /* Keeps the inner fill (below) behind the text but in front of the gradient. */
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, var(--width));
+  min-height: var(--height);
+  margin: 0;
+  padding: var(--pad-y) var(--pad-x);
+  border: var(--border) solid transparent;
+  border-radius: var(--radius);
+  background: var(--label-border) border-box;
+  /* The shadow falls to the bottom-right. */
+  box-shadow: var(--shadow);
+}
+
+/* The inner fill. Its mask shows it everywhere except the badge: to the right of the badge,
+   below the badge, and outside the badge's round bottom-right corner. */
+.label::before {
+  --hole: calc(var(--badge-size) - var(--border));
+  --corner-start: calc(var(--hole) - var(--badge-corner));
+  /* The round-corner piece reaches 1px past the badge, over the straight parts. Then no thin
+     see-through line shows where they meet, also on phones with uneven pixel sizes. */
+  --corner-piece: calc(var(--badge-corner) + 1px);
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: calc(var(--radius) - var(--border));
+  background: var(--label-background);
+  mask:
+    linear-gradient(to right, transparent var(--hole), #000 var(--hole)),
+    linear-gradient(to bottom, transparent var(--hole), #000 var(--hole)),
+    radial-gradient(
+        circle at 0 0,
+        transparent calc(var(--badge-corner) - 0.25px),
+        #000 calc(var(--badge-corner) + 0.25px)
+      )
+      var(--corner-start) var(--corner-start) / var(--corner-piece) var(--corner-piece) no-repeat;
+}
+
+/* Cards rise into view when their screen appears: the card and its shadow fade in from the
+   background, the card moves up a little, and the shadow moves away from it to the
+   bottom-right. There is only a start ("from"): each card ends at its own normal look.
+   The browser plays it again every time a screen appears. While the app is still loading
+   (html.loading) nothing plays, so the cards rise once people can see them. */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    box-shadow: 0 0 0 var(--label-shadow);
+  }
+}
+
+.label {
+  /* How long one card takes, and the wait before the next card starts. */
+  --rise-time: 250ms;
+  --rise-step: 75ms;
+  /* The card's place in the line: 0 starts first. */
+  --card-order: 0;
+}
+
+html:not(.loading) .label {
+  /* "backwards": a card waiting for its turn stays invisible. */
+  animation: card-rise var(--rise-time) ease-out calc(var(--card-order) * var(--rise-step))
+    backwards;
+}
+
+/* On the main screen the cards rise one after the other, from the top down. */
+#main [data-card='goal'] {
+  --card-order: 1;
+}
+
+#main [data-card='logOut'],
+#main [data-card='language'] {
+  --card-order: 2;
+}
+
+/* The message about the mistakes of the App sheet takes the place of the Total and the goal,
+   in the middle of the free space. Its lines are on the left. */
+.card-stack[hidden] {
+  display: none;
+}
+
+.mistakes-card {
+  margin: auto 0;
+  align-items: stretch;
+}
+
+.mistake-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  line-height: 1.4;
+}
+
+/* People who asked their phone to reduce motion get the cards at once, without movement. */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.loading) .label {
+    animation: none;
+  }
+}
+
+/* The bottom row of the main screen: Log out and the language selector, side by side in the
+   middle. */
+.bottom-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.bottom-row > .label {
+  flex: none;
+}
+
+/* The language selector's place in the row, as big as the closed selector (view.js sets the
+   width and height from components.js). The selector stands on the bottom of this place: when it opens, it
+   grows upward over the free space, and the row does not move. */
+.language-place {
+  position: relative;
+  flex: none;
+  width: var(--language-width);
+  height: var(--language-height);
+}
+
+/* While the language selector is open, this see-through shield covers the rest of the screen,
+   below the selector. A tap on it closes the selector, and nothing under it reacts. */
+#picker-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+}
+
+/* The selector. The flags sit in one column, one slot each; a slot is as tall as the inside of
+   the closed selector. Closed, it shows only the slot of the app's language (--selected, set
+   by view.js). Open, it is as tall as all the slots (--flag-count). Its height and the
+   column's place change together, with the same timing, so the opening and the closing are
+   the same movement played in both directions. The flags outside the border are cropped. */
+.language-picker {
+  --slot: calc(var(--height) - 2 * var(--border));
+  --open-time: 300ms;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  height: var(--height);
+  transition: height var(--open-time) ease-in-out;
+}
+
+.language-picker.expanded {
+  height: calc(var(--flag-count) * var(--slot) + 2 * var(--border));
+}
+
+/* The inside of the border, round corners included. Flags outside it are cropped. */
+.flag-window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius) - var(--border));
+}
+
+/* The column moves with "top", not with "transform": the height above and "top" are both
+   worked out by the page layout in the same step of every frame, so they always stay
+   together. iPhones move "transform" changes on their own clock, and then the flags would
+   bounce against the moving border. */
+.flag-column {
+  position: absolute;
+  top: calc(var(--selected) * var(--slot) * -1);
+  right: 0;
+  left: 0;
+  transition: top var(--open-time) ease-in-out;
+}
+
+.language-picker.expanded .flag-column {
+  top: 0;
+}
+
+.flag {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: var(--slot);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* The flags are square drawings: the app makes them round. */
+.flag svg {
+  display: block;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .language-picker,
+  .flag-column {
+    transition: none;
+  }
+}
+
+/* A card without a corner icon has no hole in its fill. */
+.label[data-badge='none']::before {
+  mask: none;
+}
+
+/* Cards are flex boxes, so "hidden" needs saying again for them. */
+.label[hidden] {
+  display: none;
+}
+
+/* An icon used as content takes the color of the text around it. */
+[data-icon] svg {
+  display: block;
+  fill: currentColor;
+}
+
+/* The badge only holds the icon. Its color comes from the card's border gradient. */
+.label-badge {
+  position: absolute;
+  top: calc(-1 * var(--border));
+  left: calc(-1 * var(--border));
+  display: grid;
+  place-items: center;
+  width: var(--badge-size);
+  height: var(--badge-size);
+}
+
+.label-badge svg {
+  fill: #ffffff;
+}
+
+/* A card people can tap. */
+.card-button {
+  margin: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+
+.card-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.total-value {
+  margin: 0;
+  font-size: clamp(1.5rem, 6vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.25;
+  /* Keep the line breaks from the cell and break very long words. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* The spending goal is red when it is over the limit, and yellow when it gets close. */
+/* A Total below 0 is red. */
+.total-value[data-negative] {
+  color: var(--red);
+}
+
+.goal-value[data-level='over'] {
+  color: var(--red);
+}
+
+.goal-value[data-level='close'] {
+  color: var(--yellow);
+}
+
+/* A tap on an expandable card opens it full screen (see view.js). It grows from its place to
+   the whole screen, above everything, while everything else fades to white. */
+.label {
+  /* How long opening and closing take. */
+  --expand-time: 400ms;
+}
+
+.label[data-expandable] {
+  cursor: pointer;
+}
+
+.label.open {
+  position: fixed;
+  /* The whole screen, but not under the phone's notch or rounded screen corners. */
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  z-index: 20;
+  width: auto;
+  height: auto;
+  cursor: default;
+}
+
+/* Keeps the open card's place, so the other cards do not move. */
+.card-placeholder {
+  flex: none;
+}
+
+#backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+/* The back button of an open card, in the bottom-left corner, above the card. */
+#back {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  left: calc(env(safe-area-inset-left, 0px) + var(--back-gap));
+  z-index: 30;
+}
+
+/* The eye button of the open goal card, in the bottom-right corner, at the same height as the
+   back button. It shows the open eye while it is on, and the crossed-out eye while it is off. */
+#eye {
+  position: fixed;
+  right: calc(env(safe-area-inset-right, 0px) + var(--back-gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  z-index: 30;
+}
+
+#eye[aria-pressed='true'] .eye-off,
+#eye[aria-pressed='false'] .eye-on {
+  display: none;
+}
+
+/* The "+" button of the open goal card: in the middle, at the same height as the back button.
+   While movements are selected, buttons for them sit right next to it, 14px away: Edit on its
+   left (one movement only) and Delete on its right. With one movement, "+" stays in the middle;
+   with more (data-selection, set by view.js), "+" and Delete slide to the left together, so the
+   two sit in the middle. Edit and Delete always slide with "+". "translate" moves them, so the
+   rise and sink movements (which use "transform") still play while they slide. */
+#add,
+#edit,
+#delete {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--back-gap));
+  z-index: 30;
+  transition: translate var(--rise-time) ease-in-out;
+}
+
+#add {
+  left: calc(50% - var(--width) / 2);
+}
+
+#edit {
+  left: calc(50% - var(--width) * 1.5 - 14px);
+}
+
+#delete {
+  left: calc(50% + var(--width) / 2 + 14px);
+}
+
+#main[data-selection='many'] :is(#add, #edit, #delete) {
+  translate: calc(-1 * (var(--width) / 2 + 7px)) 0;
+}
+
+/* What an open card shows as it opens: its parts rise in one after the other (--rise-order,
+   set by view.js), once the card fills the screen ("settled"). When it closes ("closing"),
+   they sink away in the reverse order (--sink-order): the same movement, backwards.
+   The new movement form uses the same movements: before it appears, the months sink away
+   ("hiding-months"); then the form rises in, and on Cancel it sinks away ("sinking"). The
+   delete question does the same ("asking"). */
+@keyframes card-sink {
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+    box-shadow: 0 0 0 var(--label-shadow);
+  }
+}
+
+.label.open:not(.settled) .rise-in {
+  visibility: hidden;
+}
+
+.label.open.settled .rise-in,
+.label.open.settled.adding .movement-form,
+.label.open.settled.asking .delete-panel {
+  animation: card-rise var(--rise-time) ease-out calc(var(--rise-order) * var(--rise-step))
+    backwards;
+}
+
+.label.open.settled.closing .rise-in,
+.label.open.settled.hiding-months .month,
+.label.open.settled.adding .movement-form.sinking,
+.label.open.settled.asking .delete-panel.sinking,
+#back.sinking,
+#add.sinking,
+#edit.sinking,
+#delete.sinking,
+#eye.sinking {
+  animation: card-sink var(--rise-time) ease-in calc(var(--sink-order) * var(--rise-step)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label.open.settled .rise-in,
+  .label.open.settled.adding .movement-form,
+  .label.open.settled.closing .rise-in,
+  .label.open.settled.hiding-months .month,
+  .label.open.settled.adding .movement-form.sinking,
+  .label.open.settled.asking .delete-panel,
+  .label.open.settled.asking .delete-panel.sinking,
+  #back.sinking,
+  #add.sinking,
+  #edit.sinking,
+  #delete.sinking,
+  #eye.sinking {
+    animation: none;
+  }
+
+  #add,
+  #edit,
+  #delete {
+    transition: none;
+  }
+}
+
+/* The open Total card: the number at the top as a header, with a small caption above it,
+   and the parts of the Total below it as pills. They only show while the card is open. */
+.label.open[data-card='total'],
+.label.open[data-card='goal'] {
+  justify-content: flex-start;
+  /* Room at the bottom for the back button (its height, --back-size, is set by view.js). */
+  padding-bottom: calc(var(--back-gap) + var(--back-size) - var(--border));
+}
+
+/* The pills sit in the middle of the free space between the number and the back button,
+   so the space above them and below them is the same. */
+.label.open .pills {
+  margin: auto 0;
+}
+
+.total-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.total-caption {
+  display: none;
+  color: var(--text-soft);
+  font-size: clamp(0.875rem, 3vw, 1.375rem);
+}
+
+.pills {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: 32px;
+}
+
+.label.open .total-caption {
+  display: block;
+}
+
+.label.open .pills {
+  display: flex;
+}
+
+/* A pill, like the "Playtime" pill in the iisu app: a dark outer part with a thin light
+   border and the name in white, and a white inner part with the value. Black when the part
+   counts in the Total (on), grey when it does not (off). It casts the same shadow as cards.
+   Each pill's sizes and colors come from components.js. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, var(--pill-width));
+  height: var(--pill-height);
+  padding: var(--pill-pad-y) var(--pill-pad-y) var(--pill-pad-y) var(--pill-pad-x);
+  border: var(--pill-border) solid var(--pill-border-color);
+  border-radius: 999px;
+  background-color: var(--pill-on);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background-color var(--pill-fade) ease-in-out;
+}
+
+.pill[aria-pressed='false'] {
+  background-color: var(--pill-off);
+}
+
+/* The pill's icon, left of the name, in the same color as the name. */
+.pill-icon {
+  flex: none;
+  fill: currentColor;
+}
+
+.pill-name {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill-name::after {
+  content: ':';
+}
+
+.pill-value {
+  display: grid;
+  flex: none;
+  width: var(--pill-value-width);
+  place-items: center;
+  align-self: stretch;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1c2321;
+  transition: color var(--pill-fade) ease-in-out;
+}
+
+/* A pill that is off: its amount turns to the same grey as the pill, with the same fade. */
+.pill[aria-pressed='false'] .pill-value {
+  color: var(--pill-off);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .pill-value {
+    transition: none;
+  }
+}
+
+/* The open goal card: the months of the goal, one under the other, in an area between the
+   number and the back button (32px from each). The area is a box that cuts everything at its
+   edges; its edges never move. On the sides it reaches into the card's padding, so the months'
+   shadows are not cut. The shadows never reach above a month, so nothing is needed at the top. */
+.month-area {
+  display: none;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: min(100%, 360px);
+  margin: 32px 0;
+}
+
+.label.open .month-area {
+  display: block;
+}
+
+/* The new movement form and the delete question (see view.js) take the place of the months
+   while they are open. */
+.movement-form,
+.delete-panel {
+  display: none;
+}
+
+.label.open.adding .movement-form,
+.label.open.asking .delete-panel {
+  display: flex;
+}
+
+.label.open.adding .month-area,
+.label.open.asking .month-area {
+  display: none;
+}
+
+/* The back button is hidden while the form or the question is open, so the card needs no room
+   for it. */
+.label.open.adding,
+.label.open.asking {
+  padding-bottom: 16px;
+}
+
+/* The form, and the delete question: a light grey panel with a white border, like the months.
+   When the screen is too short for all of it, it scrolls inside its border. It rises in and
+   sinks away with the open card's movements (see above), without waiting for other parts. */
+.movement-form,
+.delete-panel {
+  --rise-order: 0;
+  --sink-order: 0;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-height: 0;
+  width: min(100%, 360px);
+  margin-top: 16px;
+  padding: 12px 16px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 4px solid #ffffff;
+  border-radius: 24px;
+  background: #f5f6f8;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: default;
+}
+
+.movement-form:focus,
+.delete-panel:focus {
+  outline: none;
+}
+
+/* While a movement is saved or deleted, the content of the form or of the delete question
+   fades out, and its card stays (busy-view.js). The fades also play with "reduce motion": they
+   do not move anything. */
+.movement-form,
+.delete-panel {
+  position: relative;
+}
+
+.movement-form > :not(.busy),
+.delete-panel > :not(.busy) {
+  transition: opacity var(--rise-time) ease-in-out;
+}
+
+.movement-form.working > :not(.busy),
+.delete-panel.working > :not(.busy) {
+  opacity: 0;
+}
+
+/* The busy layer covers the card. The spinner, the thumbs-up and the warning lie on top of each
+   other in its middle, and only the one in data-show is seen. The spinner waits until the
+   content has faded out. */
+.busy {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.busy > svg {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--rise-time) ease-in-out;
+}
+
+.busy[data-show='spinner'] .busy-spinner {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: var(--rise-time);
+}
+
+.busy[data-show='done'] .busy-done,
+.busy[data-show='failed'] .busy-failed {
+  opacity: 1;
+  visibility: visible;
+}
+
+.busy-done {
+  fill: #2b8a3e;
+}
+
+.busy-failed {
+  fill: var(--red);
+}
+
+/* Only for screen readers: the words of the spinner, the thumbs-up and the warning. */
+.busy-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The delete question, as big as the form's title. */
+.delete-question {
+  margin: 0;
+  padding: 6px 0 4px;
+  color: #47524e;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+/* When the sheet was changed by hand, Yes sinks away like a card. */
+.delete-panel [data-card='yes'].sinking {
+  animation: card-sink var(--rise-time) ease-in both;
+}
+
+/* Said when nothing was deleted. It rises in like a card. */
+.delete-message {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.9375rem;
+  text-align: center;
+  animation: card-rise var(--rise-time) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delete-message,
+  .delete-panel [data-card='yes'].sinking {
+    animation: none;
+  }
+}
+
+/* The title, with a thin line below it. */
+.movement-form-title {
+  margin: 0;
+  padding: 2px 0 10px;
+  border-bottom: 2px solid #e3e6ea;
+  color: #47524e;
+  font-size: 1.25rem;
+  font-weight: inherit;
+  text-align: center;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The name of a field, on the left above it. */
+.field-name {
+  align-self: flex-start;
+  margin-left: 6px;
+  color: var(--text-soft);
+  font-size: 0.8125rem;
+}
+
+/* A required field that was empty when Save was tapped ("missing"): its name is red with
+   " - Required" after it, and its box has a red border, except while it is in use. */
+.field-message {
+  display: none;
+}
+
+.form-field.missing .field-message {
+  display: inline;
+}
+
+.form-field.missing .field-name {
+  color: var(--red);
+}
+
+.form-field.missing .field-box:not(:focus-within) {
+  border-color: var(--red);
+}
+
+/* The grey box around each field. The field being used gets a blue-to-purple border. */
+.field-box {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: #e9ebef;
+}
+
+.field-box:focus-within {
+  background:
+    linear-gradient(#f3f5f8, #f3f5f8) padding-box,
+    linear-gradient(to bottom right, #60a5fa, #a78bfa) border-box;
+}
+
+/* The fields themselves have no look of their own: the box gives it. At least 16px, or
+   iPhones zoom in when a field is used. */
+.field-box select,
+.field-box input,
+.field-box textarea {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.0625rem;
+  outline: none;
+}
+
+/* A list to pick from, with a small arrow on the right. */
+.field-box select {
+  appearance: none;
+  padding-right: 24px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%235b6662' d='M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7L86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z'/%3E%3C/svg%3E")
+    right center / 16px no-repeat;
+  cursor: pointer;
+}
+
+/* The concept wraps onto more lines, and form-view.js makes the field as tall as its text. */
+.field-box textarea {
+  display: block;
+  padding: 9px 0;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.field-box input::placeholder {
+  color: #9aa3a0;
+}
+
+/* The amount sits on the right, like on a shop card machine: the numbers grow to the left, and
+   the cursor is always on the right, also next to the grey hint when the field is empty. */
+#movement-amount {
+  text-align: right;
+}
+
+/* The amount, with the "− / +" switch on its left. */
+.amount-row {
+  display: flex;
+  gap: 10px;
+}
+
+.amount-row .field-box {
+  flex: 1;
+}
+
+/* A dark switch with two halves: the chosen sign is white. */
+.sign-switch {
+  display: flex;
+  flex: none;
+  width: 96px;
+  height: 46px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 23px;
+  background: var(--text-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sign-switch span {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  border-radius: 19px;
+  color: #ffffff;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sign-switch .chosen {
+  background: #ffffff;
+  color: var(--text);
+}
+
+/* Said when a changed movement had more than two decimals: small, in orange, under Amount. */
+.amount-note {
+  margin: 0;
+  color: #ea580c;
+  font-size: 0.8125rem;
+}
+
+/* Said when the lists cannot be read, or when the movement was not saved. */
+.form-message,
+.save-message {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+/* The message after Save rises in like a card. When the sheet was changed by hand, Save sinks
+   away like a card. */
+.save-message {
+  animation: card-rise var(--rise-time) ease-out;
+}
+
+.movement-form [data-card='save'].sinking {
+  animation: card-sink var(--rise-time) ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-message,
+  .movement-form [data-card='save'].sinking {
+    animation: none;
+  }
+}
+
+/* The buttons at the bottom of the form. */
+.form-buttons {
+  display: flex;
+  flex: none;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.form-buttons .label {
+  flex: 1;
+}
+
+.month-room {
+  height: 100%;
+  margin: 0 -24px;
+  padding: 0 24px;
+  /* With no month open it scrolls like a normal list. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* While a month is open (or the months move), months-view.js places them: no scrolling by hand. */
+.month-room.placed {
+  overflow-y: hidden;
+}
+
+/* Changes that must happen at once, without animation (see months-view.js). */
+.month-room.instant .month-column,
+.month-room.instant .month,
+.month-room.instant .month-arrow,
+.month-room.instant .month-all {
+  transition: none;
+}
+
+.month-column {
+  /* Room below the last month for its shadow, also when the area scrolls. */
+  padding-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform var(--expand-time) ease-in-out;
+}
+
+/* A month: a light panel like the side panel in the iisu app, with white parts inside. */
+.month {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 6px;
+  border: 3px solid #ffffff;
+  border-radius: 22px;
+  background: #e9ebef;
+  color: #1c2321;
+  box-shadow: var(--month-shadow);
+  transition: height var(--expand-time) ease-in-out;
+}
+
+/* The header row: calendar with the month's letter, the month's spending, and the arrow. */
+.month-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  /* Tight enough that a month's amount and its second amount fit on one line, also on a phone
+     360px wide. */
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 16px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+
+.month-head:disabled {
+  cursor: default;
+}
+
+.month-calendar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.month-calendar svg,
+.month-arrow,
+.movement svg {
+  flex: none;
+  fill: currentColor;
+}
+
+/* The month's first letter, in white on the filled lower part of the calendar. Its place (top)
+   fits the calendar icon in icons.js at 28px (CALENDAR_SIZE in months-view.js). If either one
+   changes, move the letter too. */
+.month-letter {
+  position: absolute;
+  top: 14px;
+  right: 0;
+  left: 0;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+
+.month-amount {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The spending of all the month's movements, right of its amount, in smaller grey text: it only
+   shows while the eye button shows the movements the goal leaves out ("all", set by
+   months-view.js), and never for a month with "--". It fades in and out as fast as the pills of
+   the Total. It always stays on one line: when it does not fit, it is cut with "…", so the
+   amount and the arrow keep their places. It sits closer to the amount (4px) than the other
+   parts of the row (8px), because it belongs to it. */
+.month-all {
+  flex: 1;
+  min-width: 0;
+  margin-left: -4px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--pill-fade) ease-in-out,
+    visibility var(--pill-fade);
+}
+
+.month-room.all .month-all:not([data-empty]) {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* A month without movements: two lines and the arrow in grey. */
+.month-amount[data-empty],
+.month-head:disabled .month-arrow {
+  color: #9ca3af;
+  fill: #9ca3af;
+}
+
+.month-arrow {
+  transition: transform var(--expand-time) ease-in-out;
+}
+
+.month.open .month-arrow {
+  transform: rotate(180deg);
+}
+
+/* The list of movements. It only shows once the month has a size of its own ("sized"), so a
+   closed month is just its header row. When there is no room for all movements, it scrolls,
+   and its scrolling never moves the months. */
+.month-list {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  margin-top: 6px;
+  padding: 0 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.month.sized .month-list {
+  display: block;
+}
+
+/* A movement, with a soft shape behind it in a very light version of its icon's color
+   (--movement-color, set by months-view.js). The shape's edges are blurred, so it is visible
+   but subtle. "isolation" keeps the shape behind this movement only. */
+.movement {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+  padding: 10px 12px;
+  /* Keeping a finger on a movement selects it (months-view.js), so its text is never selected
+     and the phone's own menu never opens. iPhones only know the -webkit- names. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.movement::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--movement-color) 8%, #ffffff);
+  filter: blur(6px);
+}
+
+.movement > svg {
+  fill: var(--movement-color, currentColor);
+}
+
+/* A small red warning right after an amount with more than two decimals (months-view.js), on
+   the same line. */
+.amount-line {
+  display: flex;
+  align-items: center;
+}
+
+.amount-warning {
+  display: inline-flex;
+  flex: none;
+  margin-left: 4px;
+  color: var(--red);
+}
+
+.amount-warning svg {
+  fill: currentColor;
+}
+
+/* A selected movement gets the same blue-to-purple border as a form field in use. The border is
+   a layer over the movement (the mask keeps only its edge). It fades in and out as fast as the
+   pills of the Total. */
+.movement::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: linear-gradient(to bottom right, #60a5fa, #a78bfa) border-box;
+  -webkit-mask:
+    linear-gradient(#000000, #000000) padding-box,
+    linear-gradient(#000000, #000000);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000000, #000000) padding-box exclude,
+    linear-gradient(#000000, #000000);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--pill-fade) ease-in-out;
+}
+
+.movement.selected::after {
+  opacity: 1;
+}
+
+/* The date above the movements of a day: dark, centered text on a grey band (light at the top,
+   a little darker at the bottom), so it is easy to see. While the list scrolls, it stays at the
+   top of the list. The next date stops at the same place and covers it, because it comes later
+   in the page. The band reaches across the list's side padding, so nothing shows through. It
+   always fits on one line, so all dates are the same height and the next one covers it fully.
+   z-index: the movements pass under it. */
+.movement-date {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 -12px;
+  padding: 7px 12px;
+  background: linear-gradient(#f3f5f8, #d3d9e3);
+  color: #1c2321;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.movement-text {
+  display: flex;
+  flex: 1;
+  /* The text may be narrower than its words, so a long description cannot push the source
+     icon out of the row. */
+  min-width: 0;
+  flex-direction: column;
+  text-align: left;
+}
+
+/* The description is always one line. When it does not fit, it ends with "…", or it moves
+   slowly to the left ("moving", see months-view.js). */
+.movement-description {
+  color: #5b6662;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* While it moves, the track is one block that can slide (plain text cannot). */
+.movement-description.moving .description-track {
+  display: inline-block;
+}
+
+/* The dot between the description and its copy, with space on both sides. */
+.description-dot {
+  margin: 0 1em;
+}
+
+/* Where the money came from (cash, card or bank): grey and see-through, at the right end of
+   the row, so it does not take attention from the amount. */
+.movement > svg.movement-source {
+  fill: #888888;
+  opacity: 0.25;
+}
+
+/* Soft fades over a month that is cut at the top or bottom edge of the area (see
+   months-view.js). They show and hide at once, also while months move. */
+.month-fade {
+  position: absolute;
+  right: -24px;
+  left: -24px;
+  z-index: 2;
+  height: 24px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.month-fade-top {
+  top: 0;
+  background: linear-gradient(var(--label-background), transparent);
+}
+
+.month-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(transparent, var(--label-background));
+}
+
+.month-fade.visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .month-column,
+  .month,
+  .month-arrow,
+  .month-all,
+  .movement::after {
+    transition: none;
+  }
+}

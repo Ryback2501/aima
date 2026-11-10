@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en" class="loading">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="only light" />
+    <meta name="description" content="Personal home economy survival helper" />
+    <title>aima</title>
+    <link rel="icon" href="icons/logo.svg" type="image/svg+xml" />
+    <!-- These make aima work like an app when it is added to the phone's home screen. -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="aima" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <!-- Start loading the font at once, so the app can appear with it. -->
+    <link rel="preload" href="fonts/solheavy.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="main.js"></script>
+  </head>
+  <body>
+    <main>
+      <!-- Login: the only screen people see before they sign in. -->
+      <section id="login" class="screen">
+        <img class="logo" src="icons/logo.svg" alt="" width="128" height="128" />
+        <h1 class="app-name">aima</h1>
+        <!-- One short sentence that says what aima does. -->
+        <p class="about" data-i18n="about">
+          aima shows your household's money summary from a Google Sheet you have access to.
+        </p>
+        <!-- A card. Its look (sizes, colors, corner icon) is set in components.js. -->
+        <button id="sign-in" class="label card-button" data-card="signIn" type="button" disabled>
+          <span data-i18n="signIn">Login with Google</span>
+        </button>
+        <p id="login-message" class="message" role="status" aria-live="polite" hidden></p>
+        <!-- A small line at the bottom: copyright, and links to the terms and the privacy policy. -->
+        <footer class="legal">
+          © 2026 David Entrena · <a href="about/" data-i18n="aboutPage">About</a> ·
+          <a href="terms/" data-i18n="terms">Terms</a> ·
+          <a href="privacy/" data-i18n="privacy">Privacy</a>
+        </footer>
+      </section>
+
+      <!-- Checking: we ask the sheet if this person may see it. -->
+      <section id="checking" class="screen" hidden>
+        <img class="logo logo-small" src="icons/logo.svg" alt="" width="72" height="72" />
+        <p class="message" data-i18n="checking">Checking your access…</p>
+      </section>
+
+      <!-- Main screen: the Total from the sheet, in the middle of the screen. -->
+      <section id="main" class="screen" hidden>
+        <!-- The Total and the spending goal, kept together in the middle of the screen. -->
+        <div class="card-stack">
+          <!-- A card. Its look (sizes, colors, corner icon) is set in components.js.
+               data-expandable: a tap opens it full screen. -->
+          <div
+            class="label"
+            data-card="total"
+            data-expandable
+            role="button"
+            tabindex="0"
+            aria-expanded="false"
+          >
+            <!-- When the card is open: the header with a caption, and the parts of the Total. -->
+            <div class="total-header">
+              <span class="total-caption rise-in" data-i18n="total">Total</span>
+              <p id="total-value" class="total-value"></p>
+            </div>
+            <!-- A tap on a pill switches that part of the Total on or off. -->
+            <div class="pills">
+              <button class="pill rise-in" data-pill="bank" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="bank">Bank</span>
+                <span class="pill-value"></span>
+              </button>
+              <button class="pill rise-in" data-pill="cards" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="cards">Cards</span>
+                <span class="pill-value"></span>
+              </button>
+              <button
+                class="pill rise-in"
+                data-pill="provisioned"
+                type="button"
+                aria-pressed="true"
+              >
+                <span class="pill-name" data-i18n="provisioned">Provisioned</span>
+                <span class="pill-value"></span>
+              </button>
+              <button class="pill rise-in" data-pill="cash" type="button" aria-pressed="true">
+                <span class="pill-name" data-i18n="cash">Cash</span>
+                <span class="pill-value"></span>
+              </button>
+            </div>
+          </div>
+          <!-- A card. Its look (sizes, colors, corner icon) is set in components.js.
+               data-expandable: a tap opens it full screen. -->
+          <div
+            class="label"
+            data-card="goal"
+            data-expandable
+            role="button"
+            tabindex="0"
+            aria-expanded="false"
+          >
+            <!-- When the card is open: the header with a title, and the months of the goal. -->
+            <div class="total-header">
+              <span id="goal-title" class="total-caption rise-in"></span>
+              <p id="goal-value" class="total-value goal-value"></p>
+            </div>
+            <!-- The space between the number and the back button. The months are built by
+                 months-view.js. Nothing shows outside this space. -->
+            <div class="month-area">
+              <div class="month-room">
+                <div class="month-column"></div>
+              </div>
+              <div class="month-fade month-fade-top"></div>
+              <div class="month-fade month-fade-bottom"></div>
+            </div>
+            <!-- The new movement form. A tap on "+" shows it here, in place of the months. The
+                 lists are filled by form-view.js from the sheet's dropdowns. -->
+            <form class="movement-form" tabindex="-1" novalidate>
+              <h2 class="movement-form-title" data-i18n="newMovement">New movement</h2>
+              <!-- When Save is tapped, each required field that is empty is marked (see form-view.js):
+                   its name turns red with " - Required" after it, and its box gets a red border.
+                   A Concept that starts with "=" is marked the same way, with " - Can't start
+                   with =".
+                   The marks stay until the next Save, and go away when the form opens again. -->
+              <div class="form-field">
+                <div class="field-name">
+                  <label for="movement-source" data-i18n="source">Source</label>
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
+                </div>
+                <div class="field-box"><select id="movement-source" name="source"></select></div>
+              </div>
+              <div class="form-field">
+                <div class="field-name">
+                  <label for="movement-date" data-i18n="date">Date</label>
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
+                </div>
+                <div class="field-box">
+                  <input id="movement-date" name="date" type="date" />
+                </div>
+              </div>
+              <div class="form-field">
+                <div class="field-name">
+                  <label for="movement-category" data-i18n="category">Category</label>
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
+                </div>
+                <div class="field-box">
+                  <select id="movement-category" name="category"></select>
+                </div>
+              </div>
+              <div class="form-field">
+                <div class="field-name">
+                  <label for="movement-concept" data-i18n="concept">Concept</label>
+                  <span class="field-message"
+                    >- <span data-i18n="startsWithEquals">Can't start with =</span></span
+                  >
+                </div>
+                <div class="field-box">
+                  <textarea id="movement-concept" name="concept" rows="1"></textarea>
+                </div>
+              </div>
+              <div class="form-field">
+                <div class="field-name">
+                  <label for="movement-amount" data-i18n="amount">Amount</label>
+                  <span class="field-message">- <span data-i18n="required">Required</span></span>
+                </div>
+                <!-- The switch says if the amount is taken away (−) or added (+). -->
+                <div class="amount-row">
+                  <button class="sign-switch" type="button" data-sign="minus">
+                    <span data-half="minus" class="chosen">−</span><span data-half="plus">+</span>
+                  </button>
+                  <div class="field-box">
+                    <input
+                      id="movement-amount"
+                      name="amount"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+                <!-- When a changed movement had more than two decimals (see form-view.js). -->
+                <p class="amount-note" data-i18n="amountCut" hidden>
+                  This amount had more than two decimals. Only the first two are kept.
+                </p>
+              </div>
+              <p class="form-message" role="status" data-i18n="listsFailed" hidden>
+                The lists could not be loaded.
+              </p>
+              <p class="save-message" role="status" data-i18n="notSaved" hidden>
+                The movement was not saved. Please try again.
+              </p>
+              <div class="form-buttons">
+                <!-- A card. Its look (sizes, colors) is set in components.js. -->
+                <button class="label card-button" data-card="cancel" type="button">
+                  <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button class="label card-button" data-card="save" type="button">
+                  <span data-i18n="save">Save</span>
+                </button>
+              </div>
+            </form>
+            <!-- The question before deleting the selected movements. A tap on Delete shows it
+                 here, in place of the months, like the form. -->
+            <div class="delete-panel" tabindex="-1" role="dialog" aria-labelledby="delete-question">
+              <p id="delete-question" class="delete-question"></p>
+              <p class="delete-message" role="status" hidden></p>
+              <div class="form-buttons">
+                <!-- Cards. Their look (sizes, colors) is set in components.js. -->
+                <button class="label card-button" data-card="no" type="button">
+                  <span class="no-text" data-i18n="no">No</span>
+                </button>
+                <button class="label card-button" data-card="yes" type="button">
+                  <span data-i18n="yes">Yes</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- When the App sheet has mistakes (issue #122), this card takes the place of the Total
+             and the goal: one line per mistake. Its look is set in components.js. -->
+        <div class="label mistakes-card" data-card="mistakes" role="alert" hidden>
+          <ul class="mistake-lines"></ul>
+        </div>
+        <!-- Covers everything behind an open card in white. -->
+        <div id="backdrop" hidden></div>
+        <!-- Closes an open card. A card without a corner icon: its content is the back icon. -->
+        <button
+          id="back"
+          class="label card-button"
+          data-card="back"
+          data-i18n-label="back"
+          aria-label="Back"
+          type="button"
+          hidden
+        >
+          <span data-icon="back" data-icon-size="24"></span>
+        </button>
+        <!-- Opens the new movement form, in the open goal card, for people who can edit the
+             sheet. A card without a corner icon: its content is the plus icon. -->
+        <button
+          id="add"
+          class="label card-button"
+          data-card="add"
+          data-i18n-label="add"
+          aria-label="Add a movement"
+          type="button"
+          hidden
+        >
+          <span data-icon="plus" data-icon-size="24"></span>
+        </button>
+        <!-- Deletes the selected movements, in the open goal card: it shows next to "+" while
+             movements are selected. A card without a corner icon: its content is the delete icon. -->
+        <button
+          id="delete"
+          class="label card-button"
+          data-card="delete"
+          data-i18n-label="delete"
+          aria-label="Delete"
+          type="button"
+          hidden
+        >
+          <span data-icon="trash" data-icon-size="24"></span>
+        </button>
+        <!-- Changes the selected movement, in the open goal card: it shows on the left of "+"
+             while exactly one movement is selected. A card without a corner icon: its content
+             is the pen icon. -->
+        <button
+          id="edit"
+          class="label card-button"
+          data-card="edit"
+          data-i18n-label="edit"
+          aria-label="Edit"
+          type="button"
+          hidden
+        >
+          <span data-icon="pen" data-icon-size="24"></span>
+        </button>
+        <!-- Shows or hides the movements the goal leaves out, in the open goal card, for people
+             who can edit the sheet. A card without a corner icon: its content is an eye, crossed
+             out while they are hidden (aria-pressed, see styles.css). -->
+        <button
+          id="eye"
+          class="label card-button"
+          data-card="eye"
+          data-i18n-label="showLeftOut"
+          aria-label="Show the movements the goal leaves out"
+          aria-pressed="false"
+          type="button"
+          hidden
+        >
+          <span class="eye-on" data-icon="eye" data-icon-size="24"></span>
+          <span class="eye-off" data-icon="eyeSlash" data-icon-size="24"></span>
+        </button>
+        <!-- While the language selector is open, covers the rest of the screen (see styles.css). -->
+        <div id="picker-shield" hidden></div>
+        <!-- The bottom row: Log out and the language selector, side by side in the middle. -->
+        <div class="bottom-row">
+          <!-- Signs out. A card without a corner icon: its content is the exit icon. -->
+          <button
+            id="sign-out"
+            class="label card-button"
+            data-card="logOut"
+            data-i18n-label="signOut"
+            aria-label="Log out"
+            type="button"
+          >
+            <span data-icon="logout" data-icon-size="24"></span>
+          </button>
+          <!-- The language selector. Its place in the row is as big as the closed selector. The
+               selector stands on the bottom of its place, so it opens upward over the free space
+               and the row never moves. The flag buttons are built by view.js from flags.js. -->
+          <div class="language-place">
+            <!-- A card. Its look (sizes, colors) is set in components.js. -->
+            <div
+              class="label language-picker"
+              data-card="language"
+              role="group"
+              data-i18n-label="language"
+              aria-label="Language"
+            >
+              <!-- The inside of the border: anything outside it is cropped. -->
+              <div class="flag-window">
+                <div class="flag-column"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <noscript>aima needs JavaScript to work.</noscript>
+  </body>
+</html>
